@@ -1,0 +1,541 @@
+module Page.Origin.Video exposing (..)
+
+import Browser
+import Html exposing (..)
+import Html.Attributes exposing(..)
+import Html.Events exposing (..)
+import Page.Page exposing(..)
+import ExpandEvent as ExEvent
+import Json.Decode
+import String
+import Route exposing (..)
+
+
+            
+-- -- helperFunction
+onChange: (String -> msg) -> Html.Attribute msg
+onChange tagger = 
+    on "change" (Json.Decode.map tagger targetValue)
+
+targetFiles : Json.Decode.Decoder (List String)
+targetFiles = 
+    Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
+registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit =
+    div[ class "container is-fluid"] [
+        columnsHtml [pageTitle "유어핏영상 등록"],
+        columnsHtml [
+            labelWrap "기본설정" 
+        ],
+        div [class "searchWrap"] [
+            columnsHtml [
+            formInputEvent "운동 제목" "운동 제목을 입력 해 주세요." False titlemsg model.titleModel 
+            ],
+            columnsHtml [
+            noEmptyselectForm "난이도" False levelmodel seletmsg  model.levelModel,
+            noEmptyselectForm "운동 부위" False partmodel partmsg  model.partModel
+            ]
+        ]
+        ,
+        columnsHtml [
+             div [ class "field is-horizontal" ] [
+                labelWrap "운동 조합",
+                button [ class "button is-small is-primary" , disabled False, onClick openbtn ] [
+                text "필터 설정"
+                ]
+                ,filterItem model.gofilter
+            ] 
+        ],
+        columnsHtml [
+            div [ class "field-body  customBox" ]
+            [ 
+                div [ class "field  is-fullwidth" ]
+                [ p [ class "control" ] [
+                    p [ class "title" ]
+                            [   
+                                div [ class "media restStyle"] [
+                                i [ class "far fa-plus-square", onClick (addItem Nothing) ]
+                                [],
+                                div [ class "media-left" ]
+                                [ figure [ class "image is-85x85" ]
+                                    [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+                                        []
+                                    ]
+                                ]
+                                , div [ class "media-content" ]
+                                [ p [ class "title is-4" ]
+                                    [ text "휴식" ]
+                                , p [ class "subtitle is-6" ]
+                                    [ text "2" ]
+                                ]
+                            ],
+                            exercise
+                        ]
+                    ]
+                    
+                ]
+            ]
+
+            , div [ class "field-body customBox scrollon" ]
+            [ 
+                div [ class "field  is-fullwidth" ]
+                [ p [ class "control" ]
+                     [ 
+                        empty
+                     ]
+                ]
+            ]
+        ],
+        columnsHtml [
+                div [ class "buttons" ] [
+                    div [ class "button is-primary cursor", onClick goedit ] [text "저장"]
+                    ,
+                    a [ class "button is-warning", Route.href (Just url) ] [text "취소"]
+                ]
+        ]
+         , 
+        videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult
+    ]
+
+
+formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit=
+    div[ class "container is-fluid"] [
+        columnsHtml [pageTitle toptitle],
+        columnsHtml [
+            labelWrap "기본설정" 
+        ],
+        div [class "searchWrap"] [
+            columnsHtml [
+            formInputEvent "운동 제목" "운동 제목을 입력 해 주세요." dis titlemsg seletmodel.title
+            ],
+            columnsHtml [
+            noEmptyselectForm "난이도" dis levelmodel seletmsg seletmodel.difficulty_code ,
+            noEmptyselectForm "운동 부위" dis partmodel partmsg seletmodel.exercise_part_code
+            ]
+        ]
+        ,
+        columnsHtml [
+             div [ class "field is-horizontal" ] [
+                labelWrap "운동 조합",
+                button [ class "button is-small is-primary" , disabled dis, onClick openbtn ] [
+                text "필터 설정"
+                ]
+                ,filterItem model.gofilter
+            ] 
+        ],
+        columnsHtml [
+            div [ class "field-body  customBox" ]
+            [ 
+                if disabledMask then
+                div [] []
+                else
+                div [ class "disabledMsk"][]
+                ,div [ class "field  is-fullwidth" ]
+                [ p [ class "control" ] [
+                    p [ class "title" ]
+                            [   
+                                div [ class "media restStyle"] [
+                                i [ class "far fa-plus-square", onClick (addItem Nothing) ]
+                                [],
+                                div [ class "media-left" ]
+                                [ figure [ class "image is-85x85" ]
+                                    [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+                                        []
+                                    ]
+                                ]
+                                , div [ class "media-content" ]
+                                [ p [ class "title is-4" ]
+                                    [ text "휴식" ]
+                                , p [ class "subtitle is-6" ]
+                                    [ text "2" ]
+                                ]
+                            ],
+                            exercise
+                        ]
+                    ]
+                    
+                ]
+            ]
+
+            , div [ class "field-body customBox scrollon" ]
+            [ 
+                  if disabledMask then
+                    div [] []
+                else
+                    div [ class "disabledMsk"][]
+                ,
+                div [ class "field  is-fullwidth" ]
+                [ p [ class "control" ]
+                     [ 
+                        empty
+                     ]
+                ]
+            ]
+        ],
+        columnsHtml [
+                div [ class "buttons" ] [
+                    if btntitle == "수정" then
+                    div [ class "button is-primary cursor", onClick changePage ] [text btntitle]
+                    else
+                    div [ class "button is-primary cursor", onClick goedit ] [text btntitle]
+                    ,
+                    a [ class "button is-warning", Route.href (Just url) ] [text "취소"]
+                ]
+        ]
+         , 
+        videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult
+    ]
+
+filterItem item = 
+    if item == [] then
+        div [] []
+    else
+        div [ class "control" ]
+        [ div [ class "tags has-addons" ]
+                (List.map (\x -> 
+                span [ class "tag is-light tagStyle" ]
+                [ text x ]
+                ) item)
+        ]
+inputBtnx btn model getFile thumb=
+    div [ class "field is-horizontal" ] [
+        labelWrap "썸네일",
+        div [ class "file has-name is-right is-fullwidth" ]
+        [ label [ class "file-label" ]
+            [ input [ class "file-input", disabled model, type_ "file", multiple False, id "thumbFile", onChange getFile ]
+                []
+            , span [ class "file-cta" ]
+                [ span [ class "file-icon" ]
+                    [ i [ class "fas fa-upload" ]
+                        []
+                    ]
+                , span [ class "file-label" ]
+                    [ text btn ]
+                ]
+            , span [ class "file-name" ]
+                [ 
+                    thumb
+                ]
+            ]
+        ]
+    ]
+
+
+
+exerciseItem idx item addItem=
+
+        div [ class "media restStyle" ] [
+            i [ class "far fa-plus-square", onClick (addItem (Just item.id)) ]
+                [  ],
+            div [ class "media-left" ]
+            [ figure [ class "image is-85x85" ]
+                [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+                    []
+                ]
+            ]
+            , div [ class "media-content" ]
+            [ p [ class "title is-4" ]
+                [ text (item.title ++ " - " ++ "3 세트")  ]
+            , p [ class "subtitle is-6" ]
+               [ 
+                   p [] [text (item.difficulty_name ++ " - "),
+                   text (item.exercise_name ++ " - "),
+                   text (item.instrument_name)
+                   ]
+               ]
+            , p [class "subtitle is-6"] [
+                text (String.join "  " item.part_detail_name)
+            ]
+            ]
+        ]
+
+exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowIdx rest setModel restModel pmd=
+    div [ class "restStyle"] [
+        div [ class "media" ] [
+            div [] [
+                i [
+                     class ("fas fa-arrows-alt-v " ++ "style"++ String.fromInt(idx) 
+                     )
+                     , onClick (switchItem idx)
+                ]
+                []
+            ],
+            i [ class "far fa-minus-square" 
+            , onClick( backItem idx) 
+            ]
+                [],
+            div [ class "media-left" ]
+            [ figure [ class "image is-85x85" ]
+                [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+                    []
+                ]
+            ] ,
+            if item.title == "" then
+            div [ class "media-content" ]
+            [ 
+                p [ class "title is-4" ]
+                    [ 
+                        text (
+                            case item.value of
+                                Just x ->
+                                    "휴식 - " ++ String.fromInt(x)  ++ " 분"
+                            
+                                Nothing ->
+                                   "휴식 - " ++ "3 분"
+                        )
+                    ]
+
+            ]
+            else
+            div [ class "media-content" ]
+            [ 
+                
+                p [ class "title is-4" ]
+                [ 
+                    text (
+                        case item.value of
+                            Just x ->
+                                 item.title ++ " - " ++ String.fromInt(x) ++ " 세트"
+                            Nothing ->
+                                item.title ++ " -  3 세트"
+                    )
+                ]
+            , p [ class "subtitle is-6" ]
+               [ 
+                   p [] [text (item.difficulty_name ++ " - ")
+                   , text (item.exercise_name ++ " - ")
+                   , text (item.instrument_name )
+                   ]
+               ]
+            , p [class "subtitle is-6"]
+               ( List.map (\x ->
+                    text (x ++"  ")
+                )item.part_detail_name)
+            ]
+            , p [] [
+                i [ 
+                    class "fas fa-chevron-down"
+                , onClick (settingShow (String.fromInt(idx))) 
+                ]
+                []
+            ]
+        ] ,
+            
+            if String.fromInt(idx) == settingShowIdx then
+                if item.title == "" then
+                   div [ class ("overlay  settingStyle " ++ newStyle) ] [
+                        setRest rest restModel idx item.value pmd backItem settingShow
+                        ] 
+                else
+                    div [ class ("overlay  settingStyle " ++ newStyle) ] [
+                        setSetting rest restModel idx item.value pmd backItem settingShow
+                        ]
+            else
+            div [ class ("overlay  settingStyle ")] []
+            ]
+
+setRest rest restModel idx val pmd backItem show=
+        div [ class ("is-small content " ) ]
+        [
+           div [ class "settingItem" ] [
+                h4[] [text "휴식시간 설정"],
+            div[ class "level"] [
+                div [ class "level-item"] [
+                    div [ class "button" 
+                        , onClick (pmd idx "minus" -1) ] [
+                        i [ class "fas fa-minus"
+                        ] 
+                        []
+                     ]
+                ],
+                div [ class "level-item"] [ 
+                    input 
+                    [ class "input"
+                    , type_ "text"
+                    , placeholder "휴식시간을 설정해 주세요."
+                    , onInput (rest idx)
+                    , value 
+                       ( case val of
+                            Just n ->
+                                String.fromInt (n)
+                            Nothing ->
+                                "3" 
+                        )
+                    ]
+                    []
+                ],
+                div [ class "level-item" ] [
+                    
+                    text " Min "
+                ],
+                div [ class "level-item"] [ 
+                    div [ class "button" 
+                        , onClick (pmd idx "plus" 1)
+                        ] [ 
+                        i [ class "fas fa-plus"
+                        ]
+                        []
+                     ]
+                 ]
+            ],
+            div[ class "level"] [
+                div [ class "level-item"] [
+                    div [class "button is-primary"
+                    , onClick (show (String.fromInt(idx))) 
+                    ] [text "닫기"]
+                ],
+                div [ class "level-item"] [
+                    div [class "button is-danger"
+                    , onClick (backItem idx)
+                    ] [text "삭제"]
+                ]
+            ]
+           ]
+        ]
+
+setSetting rest restModel idx val pmd backItem show=
+        div [ class ("is-small content " ) ]
+        [
+           div [ class "settingItem" ] [
+                h4[] [text "세트 설정"],
+            div[ class "level"] [
+                div [ class "level-item"] [
+                    div [ class "button"
+                        , onClick (pmd idx "minus" -1) ] [
+                        i [ class "fas fa-minus"] 
+                        []
+                     ]
+                ],
+                div [ class "level-item"] [ 
+                    input 
+                    [ class "input"
+                    , type_ "text"
+                    , placeholder "운동 세트를 설정해 주세요."
+                    , onInput (rest idx)
+                    , value 
+                       ( case val of
+                            Just n ->
+                                String.fromInt (n)
+                            Nothing ->
+                                "3" 
+                        )
+                    ]
+                    []
+                ],
+                div [ class "level-item" ] [
+                    
+                    text " SET "
+                ],
+                div [ class "level-item"] [ 
+                    div [ class "button" 
+                        , onClick (pmd idx "plus" 1)] [ 
+                        i [ class "fas fa-plus"]
+                        []
+                     ]
+                 ]
+            ],
+           div[ class "level"] [
+                div [ class "level-item"] [
+                    div [class "button is-primary"
+                    , onClick (show (String.fromInt(idx))) 
+                    ] [text "닫기"]
+                ],
+                div [ class "level-item"] [
+                    div [class "button is-danger"
+                    , onClick (backItem idx)
+                    ] [text "삭제"]
+                ]
+            ]
+           ]
+        ]
+        
+restMark item = 
+    span [] [text (item ++ ",")]
+hypen item = 
+    span [] [text (item ++ " - ")]
+
+
+itemText item check category list= 
+    let
+        filter = List.member item.code list
+    in
+    if filter then
+        label [ class( "button is-light filterBtn selectBtn " )]
+            [ input 
+                [  type_ "checkbox"   
+                , onClick (check (item.code, category, item.name))
+                , value item.code]
+                [] 
+                , text item.name 
+            ]
+    else
+        label [ class( "button is-light filterBtn " )]
+            [ input 
+                [  type_ "checkbox"   
+                , onClick (check (item.code, category, item.name))
+                , value item.code]
+                [] 
+                , text item.name 
+            ]
+
+
+
+videoFilter exermodel levelmodel exerItemmodel toolmodel show open check list filterResult=
+    if show then
+        div [ class "widePop"] [
+            popTitle "필터 설정" ,
+            div [ class "closeBtn"][
+                    i [ class "far fa-times-circle", onClick open ]
+                    []
+                ],
+                div [ class "filtertitle"] [
+                    text "운동부위"
+            ],
+            columnsHtml [
+                    div [] (
+                        List.map(
+                            \x -> itemText x check "part_detail_code" list.part_detail_code
+                        )exermodel
+                    )
+            ],
+                div [class "filtertitle"] [
+                    text "난이도"
+            ],
+            columnsHtml [
+                 div [] (
+                        List.map(
+                            \x -> itemText x check "difficulty_code" list.difficulty_code
+                        ) levelmodel
+                    )
+            ],
+                div [class "filtertitle"] [
+                    text "운동종류"
+            ],
+             columnsHtml [
+                  div [] (
+                        List.map(
+                            \x -> itemText x check "exercise_code" list.exercise_code
+                        )exerItemmodel
+                    )
+            ],
+                div [class "filtertitle"] [
+                    text "기구"
+            ],
+             columnsHtml [
+                  div [] (
+                        List.map(
+                            \x -> itemText x check "instrument_code" list.instrument_code
+                        )toolmodel
+                    )
+                
+            ],
+            columnsHtml [
+                div [ class "layerBtn"] [
+                    div [ class "button is-primary", onClick filterResult ]
+                    [ text "확인" ]
+                    ,  div [ class "button is-warning" , onClick open ]
+                    [ text "취소" ]
+                ]
+            ]
+        ]
+        else
+        div [] []
