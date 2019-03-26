@@ -914,3 +914,38 @@ videoShow title show showBtn=
             ]
     else
         div [] []
+
+yfVideoShow show close model sort sortMsg=
+    if show then
+        div [ class "videoPop" ] [
+            p [class "videoTitle"] [ text model.title
+            ,
+                i[ class "fas fa-times videoClose", onClick close][]
+            ],
+            div [ id "myElement" ] [
+            ],
+            div [class ""] [
+                div [class "descStyleWrap"] [
+                table [ class "descStyle"] 
+                    [ tr [] 
+                    [ th [] [text "영상 x 세트"]
+                    , th [] [text "재생시간"]
+                    ]
+                    , tbody [] (
+                        List.map (\x ->
+                            tr [onClick (sortMsg x.sort)]
+                            [ td [] [text (x.title ++ " x " ++ String.fromInt(x.value))]
+                            , td [] [text x.duration]
+                            ]
+                        ) model.exercise_items
+                    )
+                ]
+                ]
+                , p [class "descriptionVideo"] [
+                    text sort
+                ]
+            ]
+            , div [class "button videoBtn", onClick close] [text "닫기"]   
+            ]
+    else
+        div [] []

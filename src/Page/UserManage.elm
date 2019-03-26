@@ -17,6 +17,9 @@ import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
 import Json.Encode as Encode
 import Api.Endpoint as Endpoint
 import Api.Decode as Decoder
+import Page as Page
+
+
 
 type alias Model =
     { firstSelectedDate : Maybe Date
@@ -36,7 +39,19 @@ type alias Model =
     , endShow : Bool
     , dateModel : String
     , todaySave : String
+    , menus : List Menus
+    , username : String
     }
+
+
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
+
 
 type Problem
     = ServerError String
@@ -53,10 +68,11 @@ type Msg
     | Reset
     | GetId String
     | Check Encode.Value
-    | SessionCheck Encode.Value
+    -- | SessionCheck Encode.Value
     | EndDatePickerMsg DatePicker.Msg
     | DateValue String
     | PageBtn (Int, String)
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 listInit = 
     {
@@ -83,6 +99,7 @@ init session=
     , session = session
     , show = False
     , today = Nothing
+    , username = ""
     , problems = ""
     , err = Nothing
     , listForm = listInit
@@ -92,6 +109,7 @@ init session=
     , endday = Nothing
     , dateModel = "all"
     , todaySave = ""
+    , menus = []
     , resultForm = 
             {
                 data = [],
@@ -109,7 +127,8 @@ init session=
     , Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
-        , managelist listInit session ]
+        , managelist listInit session 
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
     )
 
 
@@ -178,8 +197,19 @@ manageEncode form =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            let
+                serverErrors =
+                    Api.decodeErrors error
+            in
+            ( { model | problems = "Err" }
+            , Cmd.none
+            )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PageBtn (idx, str) ->
-            let _ = Debug.log "str" idx
+            let
                 old = model.listForm
                 list = 
                     {
@@ -223,7 +253,7 @@ update msg model =
         DateValue str->
             ({model | dateModel = str},Cmd.none)
         GetList (Err error) ->
-            let _ = Debug.log "item" error
+            let
                 serverErrors =
                     Api.decodeErrors error  
             in  
@@ -239,7 +269,9 @@ update msg model =
             ( {model | show = not model.show, endShow = False }, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , Cmd.batch 
+            [ managelist listInit session
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
             )
         EndDatePickerMsg datePickerMsg ->
             DatePicker.update datePickerMsg model.endDatePickerData
@@ -314,18 +346,18 @@ update msg model =
                 
                     Err _  ->
                         (model,Cmd.none)
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, managelist listInit model.session)
-                    Err _ ->
-                        (model, Cmd.none)
+        -- SessionCheck check ->
+        --     let
+        --         decodeCheck = Decode.decodeValue Decode.string check
+        --     in
+        --         case decodeCheck of
+        --             Ok continue ->
+        --                 (model, managelist listInit model.session)
+        --             Err _ ->
+        --                 (model, Cmd.none)
             
         Nickname str ->
-            let _ = Debug.log "nickname" str
+            let 
                 listFirst =model.listForm
                 new = 
                     {listFirst | nickname = str}
@@ -390,7 +422,7 @@ subscriptions model =
     Sub.batch[
     Session.changes GotSession (Session.navKey model.session),
     Api.saveCheck Check
-    , Api.onSucceesSession SessionCheck
+    -- , Api.onSucceesSession SessionCheck
     ]
 
 
@@ -405,14 +437,14 @@ viewProblem problem =
     in
     li [] [ text errorMessage ]
 
-view : Model -> {title: String , content :Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     {
         title = "사용자 관리",
         content = 
-            div [ class "container is-fluid" ]
+            div []
                 [               
-                    columnsHtml [pageTitle "사용자 관리"]
+                    columnsHtml [pageTitle "사용자 관리" ]
                     , div [ class "searchWrap" ] [
                         columnsHtml [
                             searchDate 
@@ -450,6 +482,12 @@ view model =
                     ]
                 , Pagenation.pagination PageBtn model.resultForm.pagenate
             ]
+            , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
         }
 
 

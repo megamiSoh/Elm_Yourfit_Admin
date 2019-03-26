@@ -164,7 +164,7 @@ subscriptions model =
         FoodCmodel food ->
             Sub.none
         UserImodel useri ->
-            Sub.none
+            Sub.map UserImsg (UserI.subscriptions useri)
         UsermDmodel usermd->
             Sub.map UsermDmsg (UserMDetail.subscriptions usermd)
         AdminRmodel adminr ->
@@ -182,7 +182,7 @@ subscriptions model =
         VideoDmodel videod ->
             Sub.map VideoDmsg (VideoDetail.subscriptions videod)
         VideoRmodel videor ->
-            Sub.none
+            Sub.map VideoRmsg (VideoRegist.subscriptions videor)
         VideoEmodel videoe ->
             Sub.none
         ApiRmodel apir ->
@@ -574,7 +574,7 @@ view model =
         viewPage page toMsg config =
             let
                 { title, body } =
-                    Page.view (Session.cred (toSession model)) page config
+                    Page.view (Session.cred (toSession model)) page config 
             in
             { title = title
             , body = List.map (Html.map toMsg) body
@@ -727,3 +727,4 @@ view model =
                         viewPage Page.FaqDetail FaqDmsg (FaqD.view itemModel)
                     LoginModel itemModel ->
                         viewPage Page.Login LoginMsg (Login.view itemModel)
+                    

@@ -20,6 +20,8 @@ import Api.Endpoint as Endpoint
 import Api as Api
 import Http exposing (..)
 import Json.Encode as Encode
+import Page as Page
+import Api.Decode as Decoder
 
 defaultOptions =
     { softAsHardLineBreak = False
@@ -38,8 +40,15 @@ type alias Model =
     , content : String
     , validErrShow : Bool
     , validationErr : String
+    , menus : List Menus
     }
 
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
 
 type alias ResultForm =
     { result : String }
@@ -48,6 +57,7 @@ init : Session -> (Model, Cmd Msg)
 init session=
     ({ textarea = ""
     , onDemandText = ""
+    , menus = []
     , options = defaultOptions
     , showToC = False
     , selectedTab = Editor
@@ -57,7 +67,7 @@ init session=
     , content = ""
     , validErrShow = False
     , validationErr = ""
-    }, Cmd.none)
+    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 infoRegist model =
     let
@@ -96,10 +106,16 @@ type Msg
     | Title String
     | SessionCheck Encode.Value
     | GotSession Session
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.none
@@ -122,7 +138,7 @@ update msg model =
         GetList (Ok item)->
             (model , Route.pushUrl(Session.navKey model.session) Route.Info  )
         GetList (Err error) ->
-            let _ = Debug.log "item" error
+            let
                 serverErrors =
                     Api.decodeErrors error
             in
@@ -136,7 +152,7 @@ update msg model =
                 ({model | validErrShow = False}, infoRegist model)
 
 
-view : Model -> {title : String, content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "공지사항 등록"
     , content = 
@@ -155,7 +171,11 @@ view model =
                 ]
             , validationErr model.validationErr model.validErrShow
         ]
-        
+        , menu =  
+    aside [ class "menu"] [
+        ul [ class "menu-list yf-list"] 
+            (List.map Page.viewMenu model.menus)
+    ]
     }
    
 subscriptions : Model -> Sub Msg

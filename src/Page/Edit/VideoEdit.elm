@@ -11,6 +11,11 @@ import Json.Decode
 import String
 import Session exposing (Session)
 import Route exposing(..)
+import Page as Page
+import Api as Api
+import Http as Http
+import Api.Endpoint as Endpoint
+import Api.Decode as Decoder
 
 type alias SelectModel = 
     {
@@ -50,6 +55,13 @@ type alias Model =
         -- fileName : String,
         -- disabled : Bool,
         session: Session
+        , menus : List Menus
+    }
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 
@@ -77,14 +89,17 @@ init session =
         -- in
             ({
                 --  exerciseInfo = info , choiceItem = [], filterEvent = False, exer = exers exerPart, selectItem = [], level = exers level, exerItem = exers exeritem, exerTool = exers exerTool, levelItem = [], emptyexerType = [], emptytool = [], total = [], setting = False, fileName = "", disabled = False, 
-                 session = session}, Cmd.none)
+                 menus = []
+                 , session = session}, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 
 toSession: Model -> Session
 toSession model = 
     model.session
 
-type Msg = NoOp
+type Msg 
+    = NoOp
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 --  ChoiceItem Int | BackItem Int | FilterOpen | FilterClose | Check Int | Level Int | Exer Int | Tool Int | Total | SwitchItem Int | Setting Int | SettingInput String | SetCal (String, String, Int) | SetSave (Int, String) | GetFile String
 
            
@@ -93,6 +108,11 @@ update msg model =
     case msg of
         NoOp ->
             (model, Cmd.none)
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
         -- ChoiceItem idx ->
         --         ({model | choiceItem = model.choiceItem ++ getItem idx model.exerciseInfo 1}, Cmd.none)
         -- BackItem index ->
@@ -324,6 +344,11 @@ view model=
             -- (choiceItemAll model)
             -- (routeRegist Route.Video)
             -- "유어핏 영상 등록"
+        ]
+        , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menus)
         ]
     }
 

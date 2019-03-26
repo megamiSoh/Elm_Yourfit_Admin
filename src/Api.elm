@@ -40,9 +40,7 @@ credInDecoder (Cred token) =
 
 -- PERSISTENCE
 
--- port receiveRefreshToken : (Value -> msg) -> Sub msg
--- port callApi : (Value -> msg) -> Sub msg
-
+port receiveData : (Value -> msg) -> Sub msg
 port onStoreChange : (Value -> msg) -> Sub msg
 port retryR : (Value -> msg) -> Sub msg
 port params : (Value -> msg) -> Sub msg
@@ -50,7 +48,7 @@ port infoCheck : (Value -> msg) -> Sub msg
 port saveCheck : (Value -> msg) -> Sub msg
 port getInfoParams : (Value -> msg) -> Sub msg
 port onSucceesSession : (Value -> msg) -> Sub msg
--- viewerChanges : (Maybe viewer -> msg) -> Decoder (Cred -> viewer) -> Sub msg
+port onfourChange : (Value -> msg) -> Sub msg 
 viewerChanges toMsg decoder =
     onStoreChange (\value -> toMsg (decodeFromChange decoder value))
 
@@ -66,10 +64,11 @@ decodeFromChange viewerDecoder val =
     Decode.decodeValue(viewerDecoder)val
         |> Result.toMaybe
 
+secRetryRequest toMsg decoder = 
+    onfourChange (\value -> toMsg (decodeFromChange decoder value))
 
--- storeCredWith : Cred -> Cmd msg
 storeCredWith (Cred token)  =
-    let _ = Debug.log "storeCredWith"
+    let 
         json =
             Encode.object
             [ 
@@ -79,33 +78,25 @@ storeCredWith (Cred token)  =
     storeCache (Just json)
 
 
--- storeRefresh (Cred token) = 
---     let
---         json =
---             Encode.object
---                 [
---                     ("token", Encode.string token)
---                 ]    
---     in
---     saveRefresh (Just json)
 
 logout : Cmd msg
 logout =
     storeCache Nothing
 
 
--- port saveRefresh : Maybe Encode.Value -> Cmd msg
 port storeCache : Maybe Value -> Cmd msg
--- port getItem : () -> Cmd msg
 port refreshFetchData : () -> Cmd msg
 port secRefreshFetch : () -> Cmd msg
--- port getToken : () ->  Cmd msg
 port getRefreshToken :  () -> Cmd msg
 port getParams : () -> Cmd msg
 port saveData : Value -> Cmd msg
 port infodata : Value -> Cmd msg
 port getInfo : () -> Cmd msg
 port thirdRefreshFetch : () -> Cmd msg
+port fourRefreshFetch : () -> Cmd msg
+port sendData : Value -> Cmd msg
+port heightControll : Bool -> Cmd msg
+port validationHeight : Bool -> Cmd msg
 -- application :
     -- Decoder (Cred -> viewer)
     -- ->
@@ -120,7 +111,7 @@ port thirdRefreshFetch : () -> Cmd msg
 application viewerDecoder config =
     let
         init flags url navKey =
-            let _ = Debug.log "flags" flags
+            let
                 maybeViewer =
                     Decode.decodeValue Decode.string flags
                         |> Result.andThen (Decode.decodeString (credDecoder))
@@ -145,17 +136,7 @@ storageDecoder  =
 
 
 
--- HTTP
--- refreshGet msg url maybeCred headerAuth= 
---     Endpoint.request
---         { method = "GET"
---         , url = url
---         , expect = Http.expectJson msg decoder
---         , header = Just headerAuth
---         , body = Http.emptyBody
---         , timeout = Nothing
---         , tracker = Nothing
---         }
+
 
 -- get : tag ->Endpoint -> Maybe Cred -> Decoder success -> Cmd msg
 get msg url maybeCred decoder =
@@ -243,9 +224,6 @@ delete tagger url cred body decoder =
         }
 
 
--- login : Http.Body -> Decoder (Cred -> a) -> Cmd msg
--- login body decoder msg=
---     post Endpoint.login Nothing msg body (decoderFromCred decoder)
 
 login body msg decoder =
     post Endpoint.login Nothing msg body decoder
@@ -253,12 +231,6 @@ login body msg decoder =
 
 
 
--- settings : Cred -> Http.Body -> Decoder (Cred -> a) -> Cmd msg
--- settings cred body decoder msg =
-    -- put Endpoint.user cred msg body (Decode.field "user" (decoderFromCred decoder))
--- 
--- testCode = 
---     Decode.field "token" Decode.string
 decoderFromCred : Decoder (Cred -> a) -> Decoder a
 decoderFromCred decoder =
     Decode.map2 (\fromCred cred -> fromCred cred)
@@ -270,7 +242,6 @@ decoderFromCred decoder =
 testDecode decoder =
     Decode.map (\fromCred cred -> fromCred cred)
         decoder
-        -- credDecoder
 
 
 -- ERRORS

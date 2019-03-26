@@ -12,7 +12,7 @@ import Session exposing (Session)
 type Page 
     = Home
     | Other
-    | UserManage
+    | UserManage 
     | AdminManage
     | VideoUnit
     | Video
@@ -43,6 +43,7 @@ type Page
     | FaqRegist
     | VideoCall
     | Login
+    | Menus
 
 -- type Maybe login =
 --     Just login |
@@ -54,16 +55,16 @@ type Page
 --     , body = viewHeader page:: contents content page :: [viewFooter]
 --     }
 
-view: Maybe Cred ->  Page -> {title : String, content: Html msg} -> Browser.Document msg
-view maybeViewer page { title, content } =
+view: Maybe Cred ->  Page -> {title : String, content: Html msg, menu: Html msg} -> Browser.Document msg
+view maybeViewer page { title, content, menu } =
     case maybeViewer of
         Nothing ->
             { title = title 
-            , body =  contents content Login maybeViewer :: [viewFooter]
+            , body =  contents content Login maybeViewer menu:: [viewFooter]
             }
         Just _ ->
             { title = title 
-            , body = viewHeader page maybeViewer:: contents content page maybeViewer :: [viewFooter]
+            , body = viewHeader page maybeViewer:: contents content page maybeViewer menu:: [viewFooter]
             }
 
 login content  =
@@ -72,7 +73,7 @@ login content  =
         content 
     ]
 -- contents : Model ->Html Msg
-contents content page maybeViewer =
+contents content page maybeViewer menu=
     case maybeViewer of
         Nothing ->
             div [ class "tile is-parent" ]
@@ -89,7 +90,7 @@ contents content page maybeViewer =
                 [ div [ class "tile is-4 is-vertical is-parent" ]
                     [ div [ class "tile is-child box" ]
                         [ p []
-                            [ viewAside page ]
+                            [ menu ]
                         ]
                     ]
                 , div [ class "tile is-parent" ]
@@ -128,47 +129,78 @@ viewHeader page maybeViewer =
                         []
                     ]
                 ]
-            , div [ id "navbarBasicExample", class "navbar-menu" ]
-                [ div [ class "navbar-end" ]
-                    [ i [ class "fa fa-user-circle" ]
-                                [], div [ class "navbar-item" ]
-                        [ div []
-                            [ 
-                                a [ Route.href  ( Just Route.UserInfo)] [text "FinalCompany"]
-                            ]
-                        ]
-                    ]
-                ]
+            -- , div [ id "navbarBasicExample", class "navbar-menu" ]
+            --     [ div [ class "navbar-end" ]
+            --         [ i [ class "fa fa-user-circle" ]
+            --                     [], div [ class "navbar-item" ]
+            --             [ div []
+            --                 [ 
+            --                     a [ Route.href  ( Just Route.UserInfo )] [text "FinalCompany"]
+            --                 ]
+            --             ]
+            --         ]
+            --     ]
             ]
+header username = 
+    div [class  "userprofile" ] [
+        -- i [class "fa fa-user-circle"] []
+        -- ,
+            a [ Route.href  ( Just Route.UserInfo ), class "userProfileInside cursor"] [text username]
+            , a [class "button", Route.href (Just Route.Logout) ] [text "로그아웃"]
+        ]
+
 navbarLink : Page -> Maybe Route -> List (Html msg) -> Html msg
 navbarLink page route linkContent =
-    li [ ]
+    li [ classList [ ( "nav-item", True ), ( "active", isActive page route ) ] ]
         [ a [ class "nav-link", Route.href route ] linkContent ]
+viewMenu item  =
+    case item.menu_id of
+        1 ->
+            li [] [ a [ class "nav-link", Route.href (Just Route.UserManage )][text item.menu_name]]
+        2 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.AdminManage) ][text item.menu_name]]
+        3 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.VideoUnit) ][text item.menu_name]]
+        4 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.Video) ][text item.menu_name]]
+        5 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.ApiVideo) ][text item.menu_name]]
+        6 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.FoodCalorie) ][text item.menu_name]]
+        7 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.UserPost) ][text item.menu_name]]
+        8 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.Info) ][text item.menu_name]]
+        9 ->  
+            li [] [ a [ class "nav-link", Route.href(Just Route.Faq) ][text item.menu_name]]
+        _ ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.UserManage) ][text item.menu_name]]
 
-
-viewAside : Page -> Html msg
+-- viewAside : Page -> Html msg
 viewAside page =
     aside [ class "menu"] [
-        ul [ class "menu-list yf-list"] <|
-            navbarLink page (Just Route.UserManage) [ text "사용자 관리" ]
-            :: viewMenu page
+        ul [ class "menu-list yf-list"] 
+        -- <|
+            -- navbarLink page (Just Route.UserManage) [ text "사용자 관리" ]
+             [viewMenu page]
     ]
-viewMenu : Page -> List (Html msg)
-viewMenu page  =
-    let
-        linkTo =
-            navbarLink page
-    in
-    [ linkTo (Just Route.AdminManage) [ div [] [ text "관리자 관리" ] ]
-    , linkTo (Just Route.VideoUnit) [ div [] [ text "유어핏 단위 영상" ] ]
-    , linkTo (Just Route.Video) [ div [] [ text "유어핏 영상" ] ]
-    , linkTo (Just Route.ApiVideo) [ div [] [ text "외부 API영상" ] ]
-    , linkTo (Just Route.FoodCalorie) [ div [] [ text "음식칼로리 관리" ] ]
-    , linkTo (Just Route.UserPost) [ div [] [ text "사용자 게시물" ] ]
-    , linkTo (Just Route.Info) [ div [] [ text "공지사항" ] ]
-    , linkTo (Just Route.Faq) [ div [] [ text "1:1 문의" ] ]
+-- viewMenu : Page -> List (Html msg)
+-- viewMenu page  =
+--     li [] [text page.menu_name ]
+    -- let
+    --     linkTo =
+    --         navbarLink page
+    -- in
+    -- [ linkTo (Just Route.AdminManage) [ div [] [ text "관리자 관리" ] ]
+    -- , linkTo (Just Route.VideoUnit) [ div [] [ text "유어핏 단위 영상" ] ]
+    -- , linkTo (Just Route.Video) [ div [] [ text "유어핏 영상" ] ]
+    -- , linkTo (Just Route.ApiVideo) [ div [] [ text "외부 API영상" ] ]
+    -- , linkTo (Just Route.FoodCalorie) [ div [] [ text "음식칼로리 관리" ] ]
+    -- , linkTo (Just Route.UserPost) [ div [] [ text "사용자 게시물" ] ]
+    -- , linkTo (Just Route.Info) [ div [] [ text "공지사항" ] ]
+    -- , linkTo (Just Route.Faq) [ div [] [ text "1:1 문의" ] ]
   
-    ]
+    -- ]
 
 
 viewFooter : Html msg
@@ -184,68 +216,68 @@ viewFooter =
 
 
 
-isActive : Page -> Route -> Bool
+isActive : Page -> Maybe Route -> Bool
 isActive page route =
     case ( page, route ) of
-        (Home, Route.Home) -> 
+        (Home, (Just Route.Home)) -> 
             True
-        (UserManage, Route.UserManage) -> 
+        (UserManage, (Just Route.UserManage)) -> 
             True
-        (AdminManage, Route.AdminManage) ->
+        (AdminManage, (Just Route.AdminManage)) ->
             True
-        (VideoUnit, Route.VideoUnit) ->
+        (VideoUnit, (Just Route.VideoUnit)) ->
             True
-        (Video, Route.Video) ->
+        (Video, (Just Route.Video)) ->
             True
-        (ApiVideo, Route.ApiVideo) ->
+        (ApiVideo, (Just Route.ApiVideo)) ->
             True
-        (FoodCalorie, Route.FoodCalorie)->
+        (FoodCalorie, (Just Route.FoodCalorie))->
             True
-        (UserPost, Route.UserPost)->
+        (UserPost, (Just Route.UserPost))->
             True
-        (Info, Route.Info)->
+        (Info, (Just Route.Info))->
             True
-        (Faq, Route.Faq)->
+        (Faq, (Just Route.Faq))->
             True
-        (UserInfo, Route.UserInfo)->
+        (UserInfo, (Just Route.UserInfo))->
             True
-        (UserDetail, Route.UserMDetail)->
+        (UserDetail, (Just Route.UserMDetail))->
             True
-        (AdminRegist, Route.AdminRegist)->
+        (AdminRegist, (Just Route.AdminRegist))->
             True
-        (AdminDetail, Route.AdminDetail ) ->
+        (AdminDetail, (Just Route.AdminDetail) ) ->
             True
-        (AdminEdit, (Route.AdminEdit "detail" "edit"))->
+        (AdminEdit, (Just (Route.AdminEdit "detail" "edit")) )->
             True
-        (UnitVideoEdit, Route.UvideoEdit)->
+        (UnitVideoEdit, (Just Route.UvideoEdit))->
             True
-        (UnitVideoDetail, Route.UvideoDetail)->
+        (UnitVideoDetail, (Just Route.UvideoDetail))->
             True
-        (UnitVideoRegist, Route.UvideoRegist)->
+        (UnitVideoRegist, (Just Route.UvideoRegist))->
             True
-        (VideoRegist, Route.VideoRegist)->
+        (VideoRegist, (Just Route.VideoRegist))->
             True
-        (VideoEdit, Route.VideoEdit)->
+        (VideoEdit, (Just Route.VideoEdit))->
             True
-        (VideoDetail, Route.VideoDetail)->
+        (VideoDetail, (Just Route.VideoDetail))->
             True
-        (ApiVideoRegist, Route.ApiVideoRegist)->    
+        (ApiVideoRegist, (Just Route.ApiVideoRegist))->    
             True
-        (ApiVideoDetail, Route.ApiDetail)->
+        (ApiVideoDetail, (Just Route.ApiDetail))->
             True
-        (ApiVideoEdit, Route.ApiEdit)->
+        (ApiVideoEdit, (Just Route.ApiEdit))->
             True
-        (InfoRegist, Route.InfoRegist )->
+        (InfoRegist, (Just Route.InfoRegist) )->
             True
-        (InfoDetail, Route.InfoDetail)->
+        (InfoDetail, (Just Route.InfoDetail))->
             True
-        (InfoEdit, Route.InfoEdit)->
+        (InfoEdit, (Just Route.InfoEdit))->
             True
-        (FaqDetail, Route.FaqDetail)->
+        (FaqDetail, (Just Route.FaqDetail))->
             True
-        (FaqRegist, Route.FaqRegist)->
+        (FaqRegist, (Just Route.FaqRegist))->
             True
-        (FaqEdit,Route.FaqEdit)->
+        (FaqEdit,(Just Route.FaqEdit))->
             True
 
         _ ->

@@ -21,7 +21,7 @@ targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
 registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit =
-    div[ class "container is-fluid"] [
+    div[ ] [
         columnsHtml [pageTitle "유어핏영상 등록"],
         columnsHtml [
             labelWrap "기본설정" 
@@ -65,7 +65,7 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
                                 [ p [ class "title is-4" ]
                                     [ text "휴식" ]
                                 , p [ class "subtitle is-6" ]
-                                    [ text "2" ]
+                                    [ text "1 분" ]
                                 ]
                             ],
                             exercise
@@ -98,7 +98,7 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
 
 
 formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit=
-    div[ class "container is-fluid"] [
+    div[] [
         columnsHtml [pageTitle toptitle],
         columnsHtml [
             labelWrap "기본설정" 
@@ -146,7 +146,7 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
                                 [ p [ class "title is-4" ]
                                     [ text "휴식" ]
                                 , p [ class "subtitle is-6" ]
-                                    [ text "2" ]
+                                    [ text "1 분" ]
                                 ]
                             ],
                             exercise
@@ -243,12 +243,15 @@ exerciseItem idx item addItem=
                    ]
                ]
             , p [class "subtitle is-6"] [
+                text ""
+            ]
+            , p [class "subtitle is-6"] [
                 text (String.join "  " item.part_detail_name)
             ]
             ]
         ]
 
-exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowIdx rest setModel restModel pmd=
+exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowIdx rest setModel restModel pmd valueWarn=
     div [ class "restStyle"] [
         div [ class "media" ] [
             div [] [
@@ -280,7 +283,7 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
                                     "휴식 - " ++ String.fromInt(x)  ++ " 분"
                             
                                 Nothing ->
-                                   "휴식 - " ++ "3 분"
+                                   "휴식 - " ++ "1 분"
                         )
                     ]
 
@@ -314,7 +317,7 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
             , p [] [
                 i [ 
                     class "fas fa-chevron-down"
-                , onClick (settingShow (String.fromInt(idx))) 
+                , onClick (settingShow idx) 
                 ]
                 []
             ]
@@ -323,17 +326,17 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
             if String.fromInt(idx) == settingShowIdx then
                 if item.title == "" then
                    div [ class ("overlay  settingStyle " ++ newStyle) ] [
-                        setRest rest restModel idx item.value pmd backItem settingShow
+                        setRest rest restModel idx item.value pmd backItem settingShow valueWarn
                         ] 
                 else
                     div [ class ("overlay  settingStyle " ++ newStyle) ] [
-                        setSetting rest restModel idx item.value pmd backItem settingShow
+                        setSetting rest restModel idx item.value pmd backItem settingShow valueWarn
                         ]
             else
             div [ class ("overlay  settingStyle ")] []
             ]
 
-setRest rest restModel idx val pmd backItem show=
+setRest rest restModel idx val pmd backItem show valueWarn=
         div [ class ("is-small content " ) ]
         [
            div [ class "settingItem" ] [
@@ -354,16 +357,16 @@ setRest rest restModel idx val pmd backItem show=
                     , placeholder "휴식시간을 설정해 주세요."
                     , onInput (rest idx)
                     , value 
-                       ( case val of
+                    ( case val of
                             Just n ->
                                 String.fromInt (n)
                             Nothing ->
-                                "3" 
+                                "" 
                         )
                     ]
                     []
-                ],
-                div [ class "level-item" ] [
+                ]
+                , div [ class "level-item" ] [
                     
                     text " Min "
                 ],
@@ -377,10 +380,11 @@ setRest rest restModel idx val pmd backItem show=
                      ]
                  ]
             ],
-            div[ class "level"] [
+            div [class "setWarn"] [text valueWarn]
+            , div[ class "level"] [
                 div [ class "level-item"] [
                     div [class "button is-primary"
-                    , onClick (show (String.fromInt(idx))) 
+                    , onClick (show idx) 
                     ] [text "닫기"]
                 ],
                 div [ class "level-item"] [
@@ -392,7 +396,7 @@ setRest rest restModel idx val pmd backItem show=
            ]
         ]
 
-setSetting rest restModel idx val pmd backItem show=
+setSetting rest restModel idx val pmd backItem show valueWarn=
         div [ class ("is-small content " ) ]
         [
            div [ class "settingItem" ] [
@@ -416,7 +420,7 @@ setSetting rest restModel idx val pmd backItem show=
                             Just n ->
                                 String.fromInt (n)
                             Nothing ->
-                                "3" 
+                                "" 
                         )
                     ]
                     []
@@ -433,10 +437,11 @@ setSetting rest restModel idx val pmd backItem show=
                      ]
                  ]
             ],
-           div[ class "level"] [
+            div [class "setWarn"] [text valueWarn]
+            , div[ class "level"] [
                 div [ class "level-item"] [
                     div [class "button is-primary"
-                    , onClick (show (String.fromInt(idx))) 
+                    , onClick (show idx ) 
                     ] [text "닫기"]
                 ],
                 div [ class "level-item"] [
@@ -448,6 +453,7 @@ setSetting rest restModel idx val pmd backItem show=
            ]
         ]
         
+
 restMark item = 
     span [] [text (item ++ ",")]
 hypen item = 

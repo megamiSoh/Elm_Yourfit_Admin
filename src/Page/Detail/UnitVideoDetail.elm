@@ -17,6 +17,7 @@ import Api as Api
 import Http exposing(..)
 import Json.Encode as Encode exposing (..)
 import Json.Decode as Decode
+import Page as Page
 
 type alias Model =
     { session : Session
@@ -29,6 +30,7 @@ type alias Model =
     , contentsId: String
     , editData : EditData
     , checkModel : String
+    , menus : List Menus
     }
 
 type alias EditData = 
@@ -72,6 +74,13 @@ type alias ResultDecoder =
     {result : String}
 
 
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
+
 init: Session -> (Model, Cmd Msg)
 init session = 
     ({
@@ -80,6 +89,7 @@ init session =
     , session = session
     , levels = []
     , instrument = []
+    , menus = []
     , part = []
     , exerCode = []
     , checkModel = ""
@@ -110,6 +120,7 @@ init session =
       Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
     ]
     )
 
@@ -159,31 +170,27 @@ type Msg
     | SucceesEdit (Result Http.Error ResultDecoder)
     | GoEdit
     | AreaMsg String
-    | SessionCheck Encode.Value
+    | RetryRequest Session
     | GotSession Session
+    | GetMyInfo (Result Http.Error D.DataWrap)
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        RetryRequest session ->
+            ({model | session = session}, editEncoder model.editData session model.contentsId)
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , Cmd.batch [
+                Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.instrument (Session.cred session) GetTool
+                Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                , Api.get GetData (Endpoint.unitDetail model.contentsId)(Session.cred session) (D.unitDetailDecoder Data DetailList PartDetail)
+            ]
             )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.batch [
-                            Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                            , Api.post Endpoint.instrument (Session.cred model.session) GetTool
-                            Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                            , Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                            , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                        ])
-                    Err _ ->
-                        (model, Cmd.none)
         AreaMsg str ->
             let
                 old = model.editData
@@ -192,12 +199,6 @@ update msg model =
             
             ({model | editData = new} , Cmd.none)
         GoEdit ->
-            let
-                old = model.editData
-                new = 
-                    { }
-            in
-            
             ({model | edit = not model.edit}
             , editEncoder model.editData model.session model.contentsId)
         SucceesEdit (Ok ok )->
@@ -206,8 +207,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401" then
+                (model, Api.thirdRefreshFetch ())
+            else 
+                (model, Cmd.none)
         DetailOrEdit ->
             ({model | edit = not model.edit}, Cmd.none)
         VideoId str ->
@@ -266,35 +269,19 @@ update msg model =
         ExerCode (Ok ok) -> 
             ({model | exerCode = ok.data} ,Cmd.none)
         ExerCode (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model, Session.changeInterCeptor(Just error))
+            (model, Cmd.none)
         GetPart (Ok ok) -> 
             ({model | part = ok.data} ,Cmd.none)
         GetPart (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model, Session.changeInterCeptor(Just error))
+            (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-                (model, Session.changeInterCeptor (Just error))
-            
+            (model, Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levels = ok.data}, Cmd.none)
         GetLevel (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
         TitleText str ->
             let
                 old = model.editData
@@ -328,10 +315,7 @@ update msg model =
             
             ({model | detailList = ok.data, editData = new}, Cmd.none)
         GetData (Err err) ->
-            let
-                error = Api.decodeErrors err  
-            in
-            (model, Session.changeInterCeptor (Just error) )
+            (model, Cmd.none)
 
         GetId id ->
             let
@@ -343,15 +327,19 @@ update msg model =
             
                 Err _ ->
                     (model, Cmd.none)
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err  
+            in
+            (model, Session.changeInterCeptor (Just error) )
 
--- inputBtnx btn model thumb title =
---     Unit.inputBtnx btn model.disabled GetFile thumb title
-
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
             
 
 
 
-view : Model -> {title : String ,content : Html Msg}
+view : Model -> {title : String ,content : Html Msg, menu : Html Msg}
 view model =
     { title = "유어핏 단위 영상 상세"
     , content = 
@@ -392,7 +380,11 @@ view model =
                 , 
                 Page.detailEventBtn "수정" DetailOrEdit Route.VideoUnit
             ]
-       
+       , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menus)
+        ]
 
         
     }
@@ -402,8 +394,8 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
-    [ Api.onSucceesSession SessionCheck
-    , Session.changes GotSession (Session.navKey model.session)
+    [ Session.changes GotSession (Session.navKey model.session)
     , Api.params GetId
+    , Session.retryChange RetryRequest (Session.navKey model.session)
     ]
     

@@ -2,9 +2,9 @@ module Page.UserInfo exposing (..)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (class)
+import Html.Attributes as Attr exposing (class, value, checked, type_, disabled)
 import Page.Page exposing (..)
-import ExpandEvent as Exevent
+import Html.Events exposing (..)
 import Session exposing (Session)
 import Http exposing (..)
 import Json.Encode as Encode
@@ -12,19 +12,35 @@ import Api.Endpoint as Endpoint
 import Json.Decode as Decode exposing (..)
 import Json.Decode.Pipeline as JsonDecodePipeline exposing (..)
 import Api as Api
+import Api.Decode as Decoder
+import Page.Origin.AdminManage as AdminManage
+import Page as Page
+
 
 
 type alias Model =
     {
-        popEvent : Exevent.Model,
-        passwordEvent : Exevent.Model,
-        session: Session,
-        data : Data,
-        problems : String
+        session: Session
+        , data : Data
+        , problems : String
+        , authMenus : List Authmenu
+        , authCode : List AuthCode
+        , menus : List Menus
+        , menuss : List Menuss
     }
 type Problem
     = InvalidEntry String
     | ServerError String
+
+type alias Menuss =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
+
+type alias DataWrap = 
+    { data : Data }
 
 type alias Data = 
     {
@@ -42,17 +58,35 @@ type alias Admin =
 type alias Menus =
     {
         menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+        menu_id : Int
+        -- menu_name : String
+    }
+
+type alias Authmenus = 
+    { data : List Authmenu}
+
+type alias Authmenu =
+    { id : Int
+    , name : String}
+
+type alias AuthCodes =  
+    { data: List AuthCode}
+
+type alias AuthCode = 
+    { code : String
+    , name : String
     }
 
 
 init : Session -> (Model, Cmd Msg)
 init session = 
     (
-    {popEvent = Exevent.init,
-    passwordEvent = Exevent.init,
-    data = {
+    {
+     menus = []
+    , menuss = []
+    , authMenus = []
+    , authCode = []
+    , data = {
         admin = {
             connected_at = "",
             id = 0,
@@ -60,17 +94,19 @@ init session =
             nickname = Nothing,
             username = "" 
         } ,
-        menus = [{
-            menu_auth_code = [],
-            menu_id = 0,
-            menu_name = ""
-        }]
+        menus = []
     },
     problems = "" ,
-    session = session}, managelist session
+    session = session}, 
+    Cmd.batch[ managelist session
+    , Api.post Endpoint.authCode (Session.cred session)
+        GetCode Http.emptyBody (Decoder.authCodeDecoder AuthCodes AuthCode)
+    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+        ]
     )   
-
-
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
 
 toSession : Model -> Session
 toSession model = 
@@ -78,37 +114,41 @@ toSession model =
 
 
 managelist session =
-    Api.post Endpoint.myInfo (Session.cred session) GetList Http.emptyBody userDecoder 
+    Api.post Endpoint.myInfo (Session.cred session) GetList Http.emptyBody (Decoder.userInfo DataWrap Data Admin Menus) 
 
 
-userDecoder = 
-    map2 Data
-        (field "admin" decoderAdmin)
-        (field "menu" (list decoderMenu))
-
-decoderAdmin = 
-    map5 Admin
-        (field "connected_at" string) 
-        (field "id" int) 
-        (field "joined_at" string) 
-        (field "nickname" (nullable string)) 
-        (field "username" string) 
-
-decoderMenu = 
-    map3 Menus
-        (field "menu_auth_code" (list string) )
-        (field "menu_id" int)
-        (field "menu_name" string)
-
--- decoderAuthCode =
---     decodeString (list string) 
-
-
-type Msg = PopEvent Exevent.Msg | PasswordEvent Exevent.Msg | GetList (Result Http.Error Data)
+type Msg
+    = GetList (Result Http.Error DataWrap)
+    | GetMenus (Result Http.Error Authmenus)
+    | GetCode (Result Http.Error AuthCodes)
+    | GotSession Session
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menuss = item.data.menus}, Cmd.none )
+        GotSession session ->
+            ({model | session = session}
+            , Cmd.batch [
+            managelist session
+            , Api.post Endpoint.authCode (Session.cred session)
+                GetCode Http.emptyBody (Decoder.authCodeDecoder AuthCodes AuthCode)
+            , Api.post Endpoint.authMenu (Session.cred session) GetMenus Http.emptyBody (Decoder.authMenusDecoder Authmenus Authmenu)
+            ]
+            )
+        GetMenus (Ok menu) ->
+            ({model| authMenus = menu.data }, Cmd.none)
+        GetMenus (Err err) ->
+            (model,  Cmd.none)
+        GetCode (Ok menu) ->
+            ({model| authCode =[{code = "메뉴", name = "메뉴"}] ++ menu.data}, Cmd.none)
+        GetCode (Err err) ->
+            (model,  Cmd.none)
         GetList (Err error) ->
             let
                 serverErrors =
@@ -119,23 +159,15 @@ update msg model =
             )
 
         GetList (Ok item) ->
-            ( {model | data = item}, Cmd.none )
-        PopEvent subMsg ->
             let
-                updateEventModel =
-                    Exevent.update subMsg model.popEvent    
+                old = model.data
+                new = {old | admin = item.data.admin, menus = item.data.menus}
             in
-                ({model | popEvent = updateEventModel }, Cmd.none)
-        
-        PasswordEvent subMsg ->
-            let
-                updateEventModel =
-                    Exevent.update subMsg model.passwordEvent
-            in
-                ({model | passwordEvent = updateEventModel}, Cmd.none)
             
+            ( {model | data = new}, Api.post Endpoint.authMenu (Session.cred model.session) GetMenus Http.emptyBody (Decoder.authMenusDecoder Authmenus Authmenu) )
 
-view : Model -> {title : String , content : Html Msg}
+
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "내 정보"
     , content =
@@ -148,39 +180,112 @@ view model =
                         i [ class "fas fa-user-circle" ]
                         []
                     ]
-                     , popEvent model "is-small" "사진삭제" "사진을 삭제 하시겠습니까?" False
                 ]
             , div [ class "media-content" ]
                 [ 
-                    passwordEvent model "is-info is-small"  "비밀번호 변경" "비밀번호를 변경하시겠습니까?" True "비밀번호 입력" "새로운 비밀번호를 입력 해 주세요." "비밀번호 확인" "비밀번호를 한번 더 입력 해 주세요." False,
-                    p [ class "adminId" ] [
-                        text "어드민 아이디 : FinalCompany"
-                    ],
-                    div [ class "content" ]
+                    div [ class "content marginTop" ]
                     [ 
-                         userInfoData
+                         userInfo model.data.admin.nickname model.data.admin.username model.data.admin.joined_at model.data.admin.connected_at
                     ]
                 ]
             ]
             ,
             div [ class " menuAuth" ] [
-                pageTitle "메뉴 권한",
-            article [ class "media" ]
-                [ 
-                    columns ["사용자 관리", "관리자 관리", "유어핏 단위 영상" , "유어핏 영상", "외부 API 영상"]
-                ]
-            ,article [ class "media"]
-            [
-                columns ["음식 칼로리 관리", "사용자 게시물", "공지사항" , "1:1 문의"]
-            ]
-            ]
+               adminLayout
+                True 
+                model.authMenus
+                model.authCode
+                model.data.menus
+                model            ]
         ]
+        , menu =  
+        aside [ class "menu"] [
+        ul [ class "menu-list yf-list"] 
+            (List.map Page.viewMenu model.menuss)
+    ]
     }
 
-popEvent : Model -> String -> String -> String-> Bool -> Html Msg
-popEvent model style title phrase icon= 
-    Html.map PopEvent ( Exevent.layoutPop model.popEvent style title phrase icon)
+adminLayout disabled menu code menuId model=
+        div [ class "box" ]
+        [ 
+            div [] [
+                pageTitle "나의 메뉴 권한",
+            article [ class "media adminMediaWrap" ]
+                [  
+                div [class "table"] [
+                        thead [] [AdminManage.authTable code],
+                        tbody [] ( 
+                            List.map (\i ->
+                                authTableContent i disabled (
+                                    let
+                                        get = List.head (List.filter (\x ->
+                                                x.menu_id == i.id 
+                                                    ) menuId)
+                                    in
+                                    case get of
+                                        Just g ->
+                                            g
+                                        Nothing ->
+                                            { menu_id = 0, menu_auth_code = [] }
+                                ) 
+                            ) menu 
+                        )
+                    ]
+                        
+                ]
+            ]
+        ]
 
-passwordEvent : Model -> String -> String -> String -> Bool -> String -> String -> String -> String -> Bool -> Html Msg
-passwordEvent model style title phrase icon input inputh inputr inputrh disabled= 
-    Html.map PasswordEvent ( Exevent.passwordPop model.passwordEvent style title phrase icon input inputh inputr inputrh disabled)
+authTableContent authMenu d x= 
+    let
+        checkFilter check = List.member check x.menu_auth_code
+    in
+    
+    div[ class "tableRow"][
+        div [class "tableCell"] [text authMenu.name ],
+        div [class "tableCell"] [
+            label [] [
+                input 
+                    [ type_ "checkbox"
+                    , checked (checkFilter "10")
+                    , disabled d 
+                    ][]
+            ]
+        ],
+        div [class "tableCell"] [
+            label [] [
+                input 
+                    [ type_ "checkbox"
+                    , checked (checkFilter "20")
+                    , disabled d 
+                    ][]
+            ]
+        ],
+        div [class "tableCell"] [
+            label [] [
+                input 
+                    [ type_ "checkbox"
+                    , checked (checkFilter "30")
+                    , disabled d 
+                    ][]
+            ]
+        ],
+        div [class "tableCell"] [
+            label [] [
+                input 
+                    [ type_ "checkbox"
+                    , checked (checkFilter "40")
+                    , disabled d 
+                    ][]
+            ]
+        ],
+        div [class "tableCell"] [
+            label [] [
+                input 
+                    [ type_ "checkbox"
+                    , checked (checkFilter "50")
+                    , disabled d 
+                    ][]
+            ]
+        ]
+    ]

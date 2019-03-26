@@ -18,7 +18,8 @@ import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
 import Json.Encode as Encode
 import Api.Endpoint as Endpoint
 import Api.Decode as D
-import Debug exposing(..)
+import Page as Page
+
 type alias Model =
     { 
      disabled : Bool
@@ -35,7 +36,7 @@ type alias Model =
     , partDetail : List SelectItem
     , filterName : List String
     , gofilter : List String
-    , editItem : List EditItem
+    , editItem : List EditItems
     , resultFilterItem : List FilterItem
     , newStyle : String
     , settingShowIdx : String
@@ -45,7 +46,21 @@ type alias Model =
     , btnTitle : String
     , topTitle : String
     , getId : String
+    , menus : List Menus
+    , valueWarn: String
     }
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
+
+type alias EditItems =
+    { action_id :  String
+    , is_rest :  String
+    , value :  String}
+
 type alias Value = 
     { id : Maybe Int
     , value : Int}
@@ -225,6 +240,8 @@ init session =
             , detaildata = d
             , filterData = []   
             , partData = []
+            , valueWarn =""
+            , menus = []
             , levelData = []
             , disabledMask = False
             , exerCode = []
@@ -238,8 +255,8 @@ init session =
             , newStyle = ""
             , settingShowIdx = ""
             , value = []
-            , setSet = "3"
-            , setRest = "1"
+            , setSet = "0"
+            , setRest = "0"
             , btnTitle = "수정"
             , topTitle = "유어핏영상 상세"
             , getId = ""
@@ -253,6 +270,7 @@ init session =
             Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
             ]
             )
 
@@ -281,14 +299,16 @@ type Msg
     | AddItem (Maybe Int)
     | BackItem Int
     | SwitchItem Int
-    | SettingShow String
-    -- | SetSetting String
+    | SettingShow Int
+    | GetMyInfo (Result Http.Error D.DataWrap)
     | RestSetting Int String
     | PlusMinusDeleteSet Int String Int
     | GoEdit 
     | GoEditApi(Result Http.Error Success)
-    | SessionCheck Encode.Value
+    | RetryRequest Session
+    -- | SessionCheck Encode.Value
     | GotSession Session
+    | VideoRetry Session
 
 
 takeLists idx model = 
@@ -300,35 +320,41 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        VideoRetry session ->
+            ({model | session = session}, editVideo model.detaildata model.editItem session model.getId )
+        RetryRequest session ->
+            ({model | session = session }, videoFilterResult model.filter session)
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            (model,Session.changeInterCeptor (Just error))
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
-            )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.batch [
-                             Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                            , Api.post Endpoint.exerPartCode (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                            , Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                            , Api.post Endpoint.instrument (Session.cred model.session) GetTool
-                            Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                            , Api.post Endpoint.part (Session.cred model.session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                            , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                        ])
-                    Err _ ->
-                        (model, Cmd.none)
+            , Cmd.batch 
+            [
+            Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.exerPartCode (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.instrument (Session.cred session) GetTool
+            Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem)
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            ])
         GoEditApi (Ok ok) ->
-            (model, Cmd.none)
+            update DetailOrEdit model
         GoEditApi (Err err) ->
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401" then
+                (model, Api.fourRefreshFetch ())
+            else
+                (model, Cmd.none)
         GoEdit ->
             let
                 old = model.editItem
@@ -352,15 +378,9 @@ update msg model =
                                     String.fromInt (3)
                         }
                         ) model.resultFilterItem
-                -- new = {model | editItem = result}
             in
-                let _ = Debug.log "result" model.editItem
-                in
             (
-                model
-                -- {model | editItem = result}
-                -- ,Cmd.none
-
+                {model | editItem = result}
             , editVideo model.detaildata result model.session model.getId
             )
         PlusMinusDeleteSet idx pattern num->
@@ -374,9 +394,16 @@ update msg model =
                             Just 
                             (case x.value of
                                 Just n ->
-                                    n + num
+                                    if num == -1 then
+                                        if n < 1 then
+                                            0
+                                        else 
+                                            n +num
+                                    else
+                                        n +num
+                                    
                                 Nothing ->
-                                    3 + num
+                                    0
                             )
                         }
                         ) current
@@ -391,7 +418,7 @@ update msg model =
                 _ ->
                     (model, Cmd.none)
         RestSetting id val ->
-            let _ = Debug.log "id" val
+            let
                 parseVal = 
                     String.toInt (val)
                 target = model.resultFilterItem
@@ -410,16 +437,24 @@ update msg model =
             in
             ({model | resultFilterItem = result} , Cmd.none)
         SettingShow idx->
-            let _ = Debug.log "show" model.resultFilterItem
+            let
+                f = List.filter (\x -> 
+                        x.value == Just 0 || x.value == Nothing
+                    ) model.resultFilterItem
+                    
+            in 
+            if List.length (f) > 0 then
+                    ({model | valueWarn = "1 이상 숫자를 입력 해 주세요.", newStyle = "newStyle"}, Cmd.none)
+            else 
+                if model.newStyle == "" then
+                ({model | newStyle = "newStyle" , settingShowIdx = String.fromInt(idx), valueWarn = ""}, Cmd.none)
+                else
+                ({model | newStyle = "", settingShowIdx = "",  valueWarn = ""}, Cmd.none)
                 
-            in
+                    
             
-            if model.newStyle == "" then
-                ({model | newStyle = "newStyle" , settingShowIdx = idx}, Cmd.none)
-            else
-                ({model | newStyle = "", settingShowIdx = ""}, Cmd.none)
         SwitchItem idx ->
-            let _ = Debug.log "idx" idx
+            let
                 before = 
                     takeLists (len - 2) model.resultFilterItem
                 after =
@@ -434,7 +469,7 @@ update msg model =
             ({model | resultFilterItem = before ++ List.reverse getVal ++ after} , Cmd.none)
 
         BackItem idx ->
-            let _ = Debug.log "idx" idx
+            let
                 before = List.take idx model.resultFilterItem
                 after = List.drop (idx + 1) model.resultFilterItem
                 result = before ++ after
@@ -449,12 +484,11 @@ update msg model =
                         Nothing ->
                             0
                 f = List.filter (\x -> x.id == result)model.filterData
+                new = List.map (\x ->
+                        {x | value = Just 3}
+                    ) f
             in
-            
             if id == Nothing then
-            let _ = Debug.log "filterDat" model.resultFilterItem
-                
-            in
             ({model | resultFilterItem = 
             model.resultFilterItem ++
             [
@@ -464,16 +498,16 @@ update msg model =
                 , instrument_name = ""
                 , part_detail_name = []
                 , title = ""
-                , value = Nothing
+                , value =  Just 1
                 , is_rest = Just True
                 }
             ]},Cmd.none)
             else
-            ({model | resultFilterItem =  model.resultFilterItem ++ f},Cmd.none)
+            ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
         FilterResultData ->
             ({model | openFilter = False,gofilter = model.filterName}, videoFilterResult model.filter model.session)
         GetFilterItem (str, category, n) ->
-            let _ = Debug.log "str" model.filterName
+            let
                 old = model.filter
                 compare item = List.filter (\x -> x /= str) item
                 name = List.filter (\x -> x /= n) model.filterName
@@ -521,31 +555,21 @@ update msg model =
         GetPartDetail (Ok ok) -> 
             ({model|partDetail = ok.data}, Cmd.none)
         GetPartDetail (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
         OpenFilter ->
             ({model | openFilter = not model.openFilter} , Cmd.none)
         ExerCode (Ok ok) -> 
             ({model | exerCode = ok.data} ,Cmd.none)
         ExerCode (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model, Session.changeInterCeptor(Just error))
+            (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-                (model, Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
         DetailOrEdit ->
             ({model | disabledMask = not model.disabledMask
             , disabled = not model.disabled
+            , newStyle = ""
             , btnTitle = 
                 if model.btnTitle == "수정" then
                     "저장"
@@ -577,7 +601,7 @@ update msg model =
                                 c
                         
                             Nothing ->
-                                { difficulty_name = "", exercise_name = "", id = 0, instrument_name = "", part_detail_name = [], title = "", value = Nothing , is_rest = Just True}
+                                { difficulty_name = "", exercise_name = "", id = 0, instrument_name = "", part_detail_name = [], title = "", value = Just 1 , is_rest = Just True}
                         ) model.detaildata.exercise_items
                 new = 
                     List.map2 (\x i->
@@ -585,14 +609,17 @@ update msg model =
                     ) result model.value
                     
             in
+            
             ({model | filterData = ok.data, 
             resultFilterItem = model.resultFilterItem ++ new}, Cmd.none)
         SucceesEdit (Err err) ->
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401" then
+            (model, Api.thirdRefreshFetch ())
+            else
+            (model, Cmd.none)
         TitleChange str ->
             let
                 old = model.detaildata
@@ -603,31 +630,23 @@ update msg model =
         PartSelect str ->
             let
                 old = model.detaildata
-                new = {old |difficulty_code = str}
+                new = {old | exercise_part_code = str}
             in
             ({model | detaildata = new}, Cmd.none)
         LevelSelect str ->
-            let
+            let 
                 old = model.detaildata
-                new = {old | exercise_part_code = str}
+                new = {old | difficulty_code = str}
             in
             ({model | detaildata = new}, Cmd.none)
         GetPart (Ok ok ) ->
             ({model | partData = ok.data}, Cmd.none)
         GetPart (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levelData = ok.data}, Cmd.none)
         GetLevel (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
         GetId id ->
             let
                 idDecode = Decode.decodeValue Decode.string id
@@ -641,18 +660,14 @@ update msg model =
                     (model , Cmd.none)    
 
         GetData (Ok ok) ->
-            let _ = Debug.log "ok" 
+            let
                 result = List.indexedMap (\idx x ->
                        {value = x.value, id = Just idx}
                     )ok.data.exercise_items
             in
             ({model | detaildata = ok.data, value = result}, videoFilterResult model.filter model.session)
         GetData(Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
             
             
 -- helperFunction
@@ -671,12 +686,13 @@ emptyList model=
             \idx item ->
                 (Video.exerciseBackItem idx item BackItem SwitchItem model.newStyle SettingShow model.settingShowIdx 
                  RestSetting model.setSet model.setRest PlusMinusDeleteSet
+                 model.valueWarn
                 )
         ) model.resultFilterItem
         )
     
 
-view: Model -> {title: String, content: Html Msg}
+view: Model -> {title: String, content: Html Msg, menu : Html Msg}
 view model=
         { title = ""
         , content =
@@ -703,6 +719,11 @@ view model=
             model.topTitle
             GoEdit
             ]
+        , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menus)
+        ]
         }
 
 
@@ -711,8 +732,9 @@ view model=
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
-        [ Api.onSucceesSession SessionCheck
-        , Session.changes GotSession (Session.navKey model.session)
+        [  Session.changes GotSession (Session.navKey model.session)
         , Api.params GetId
+        , Session.retryChange RetryRequest (Session.navKey model.session)
+        , Session.secRetryChange VideoRetry (Session.navKey model.session)
         ]
     

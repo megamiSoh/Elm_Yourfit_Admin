@@ -16,6 +16,7 @@ import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
 import Api.Endpoint as Endpoint
 import Api as Api
 import Api.Decode as D
+import Page as Page
 
 type alias Model =
     { pop : Bool
@@ -28,6 +29,7 @@ type alias Model =
     , registData : List RegistData
     , registItem : RegistData
     , checkModel : Bool
+    , menus : List Menus
     }
 
 type alias RegistData = 
@@ -74,6 +76,13 @@ type alias GetBody =
     , username : String
     }
 
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
+
 type alias Authmenus = 
     { data : List Authmenu}
 
@@ -94,6 +103,7 @@ init session =
             , menu_auth_code = []}
         , registData = []
         , authCode = [] 
+        , menus = []
         , authMenus = []
         , userData = 
             { data = []
@@ -122,7 +132,8 @@ init session =
         }
         , Cmd.batch[ 
         Api.post Endpoint.authCode (Session.cred session) GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
-        , Api.post Endpoint.authMenu (Session.cred session) GetMenu Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)]
+        , Api.post Endpoint.authMenu (Session.cred session) GetMenu Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
         )
 
 encoderSendBody model session= 
@@ -176,10 +187,16 @@ type Msg
     | Regist
     | SessionCheck Encode.Value
     | GotSession Session
+    | GetMyInfo (Result Http.Error D.DataWrap)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.none
@@ -203,13 +220,13 @@ update msg model =
         RegistSuccess (Ok ok)->
             (model,  Route.pushUrl (Session.navKey model.session) Route.AdminManage)
         RegistSuccess (Err err) ->
-            let _ = Debug.log "GetData" err
+            let
                 serverErrors =
                     Api.decodeErrors err
             in
             (model, Session.changeInterCeptor (Just serverErrors))
         AdminRegist(menu, code) -> 
-            let _ = Debug.log "adminRegist" model.registData
+            let
                 old = model.registItem
                 match= List.filter(\x ->
                         x.menu_id == menu 
@@ -288,7 +305,7 @@ update msg model =
         GetUser (Ok ok)->
             ({model | choiceData = ok.data.user, pop = False}, Cmd.none)
         GetUser (Err err) ->
-            let _ = Debug.log "GetData" err
+            let 
                 serverErrors =
                     Api.decodeErrors err
             in
@@ -296,7 +313,7 @@ update msg model =
         GetData (Ok ok)->
             ({model | userData = ok}, Cmd.none)
         GetData (Err err) ->
-            let _ = Debug.log "GetData" err
+            let
                 serverErrors =
                     Api.decodeErrors err
             in
@@ -304,7 +321,7 @@ update msg model =
         ChoiceItem id ->
             (model , Api.get  GetUser (Endpoint.userDetail id) (Session.cred model.session) (D.userdataDecoder Data User GetBody) )
 
-view : Model -> {title : String, content: Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "관리자 등록"
     , content = 
@@ -326,6 +343,11 @@ view model =
             a [ class "button is-warning", Route.href (Just Route.AdminManage) ] [text "취소"]
         ]
        ]
+       , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menus)
+        ]
     }
 -- menu codemenuId
 adminLayout popEvent title disabled popModel nickModel idModel userData choiceMsg choiceData code menus=

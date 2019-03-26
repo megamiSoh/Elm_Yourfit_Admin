@@ -38,6 +38,7 @@ module Api.Endpoint exposing
     , videoRegistRegist
     , videoActive
     , unitVideoShow
+    , yourfitVideoShow
     )
 
 import Http
@@ -207,4 +208,5 @@ unitVideoShow id =
     url ["admin","actions","preview",id] []
 
 
-    
+yourfitVideoShow id = 
+    url ["admin", "exercises", "preview", id] []

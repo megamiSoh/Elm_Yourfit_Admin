@@ -10,6 +10,11 @@ import String
 import Page.Origin.ApiVideo as ApiVideo
 import Session exposing (Session)
 import Route exposing(..)
+import Page as Page
+import Api as Api
+import Http as Http
+import Api.Endpoint as Endpoint
+import Api.Decode as Decoder
 
 type alias VideoItem = {
     check : Bool,
@@ -27,6 +32,15 @@ type alias Model =
         originVideo : List VideoItem,
         videoShow : List VideoItem,
         session: Session
+        , menus : List Menus
+    }
+
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 init : Session -> (Model, Cmd Msg)
@@ -48,20 +62,26 @@ init session =
         popup = False,
         videoSelected = [],
         originVideo = initMapVideo,
-        videoShow = [],
-        session = session
-    }, Cmd.none)
+        videoShow = []
+        , menus = []
+        , session = session
+    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 toSession : Model -> Session
 toSession model =
     model.session
 
 
-type Msg = PopUpOpen | PopUpClose | SelectVideo Int | VideoResult | DeleteItem Int
+type Msg = PopUpOpen | PopUpClose | SelectVideo Int | VideoResult | DeleteItem Int | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
         PopUpOpen ->
             ({model | popup = True}, Cmd.none)
         PopUpClose ->
@@ -87,7 +107,7 @@ update msg model =
                 ({model | videoShow = after ++ before, videoSelected = after++before}, Cmd.none)
 
 
-view : Model -> {title : String, content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "외부 API 영상 등록"
     , content = 
@@ -105,6 +125,11 @@ view model =
             layerPop model
         ]
         ]
+        , menu =  
+    aside [ class "menu"] [
+        ul [ class "menu-list yf-list"] 
+            (List.map Page.viewMenu model.menus)
+    ]
     }
     
 

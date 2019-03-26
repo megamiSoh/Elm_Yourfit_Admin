@@ -16,9 +16,9 @@ import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
 import Json.Encode as Encode
 import Api.Endpoint as Endpoint
 import Api.Decode as D
-import Debug exposing(..)
 import Date exposing (..)
 import DatePicker exposing (Msg(..))
+import Page as Page
 
 type alias Model = {
     session: Session,
@@ -36,10 +36,49 @@ type alias Model = {
     , endShow : Bool
     , dateModel : String
     , show : Bool
+    , videoShow : Bool
+    , username: String
     , todaySave : String
     , paginate : Paginate
+    , activeId : String
+    , showId : String
+    , yfvideo : YfVideoData
+    , sort : String
+    , menus : List Menus
     }
 
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
+
+type alias YfVideo = 
+    { data : YfVideoData }
+
+type alias YfVideoData = 
+    { difficulty_name : String
+    , duration : String
+    , exercise_items : List YFVideoItems
+    , exercise_part_name : String
+    , id : Int
+    , pairing : List Fairing
+    , title : String
+    }
+type alias YFVideoItems = 
+    { descriptions : Maybe String
+    , duration : String
+    , exercise_id: Int
+    , is_rest : Bool
+    , sort : Int
+    , title : String
+    , value : Int
+    }
+type alias Fairing = 
+    { file : String
+    , image : String
+    , title : String}
 type alias Success = 
     { result : String}
 
@@ -83,6 +122,7 @@ type alias VideoData =
     , inserted_at:String
     , is_use: Bool
     , title: String
+    , duration: String
     }
 
 listInit = 
@@ -114,23 +154,38 @@ init session =
             , start_date = ""
             , title = ""
             , total_count = 0
-            },
-        session = session,
-        isActive = False
+            }
+        , yfvideo = 
+            { difficulty_name = ""
+            , duration = ""
+            , exercise_items = []
+            , exercise_part_name = ""
+            , id = 0
+            , pairing = []
+            , title = ""
+            }
+        , session = session
+        , isActive = False
+        , menus = []
         , sendBody = listInit
         , videoData = []
         , partData = []
         , levelData = []
+        , sort = "영상 x 세트 탭을 클릭하시면 설명글이 나타납니다."
+        , showId = ""
         , datePickerData = datePickerData
         , endDatePickerData = endDatePickerData
         , firstSelectedDate = Nothing
         , secondSelectedDate = Nothing
         , show = False
+        , username = ""
         , today = Nothing
         , endShow = False
         , endday = Nothing
         , dateModel = "all"
         , todaySave = ""
+        , activeId = ""
+        , videoShow = False
     }, 
     Cmd.batch
     [ videoEncoder listInit session
@@ -138,6 +193,7 @@ init session =
     , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
+    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
         ])
 
 toSession : Model -> Session
@@ -161,7 +217,10 @@ videoEncoder model session=
  
     in
     Api.post Endpoint.videoRegist (Session.cred session) Getbody body (D.videoDecoder GetBody VideoData Paginate)
+
+
     
+-- yourfitVideoShow id
 
 type Msg 
     = IsActive (Bool, String)
@@ -176,7 +235,7 @@ type Msg
     | DetailGo String
     | Complete Encode.Value
     | GoActive (Result Http.Error Success)
-    | SessionCheck Encode.Value
+    | RetryRequest Session
     | GotSession Session
     | EndDatePickerMsg DatePicker.Msg
     | DatePickerMsg DatePicker.Msg
@@ -184,52 +243,126 @@ type Msg
     | EndShow
     | DateValue String
     | PageBtn (Int, String)
+    | VideoIsShow String
+    | VideoShowResult (Result Http.Error YfVideo)
+    | VideoShowClose
+    | Sort Int
+    | VideoRetry Session
+    | GetMyInfo (Result Http.Error D.DataWrap)
 
+oldModel model =
+    model.sendBody
+listDataSet idx old= 
+    { page = idx
+    , per_page = 10
+    , title = old.title
+    , difficulty_code = old.difficulty_code
+    , exercise_part_code = old.exercise_part_code
+    , start_date = old.start_date
+    , end_date = old.end_date
+    }
+allListDataSet idx old = 
+    { page = idx
+    , per_page = 10
+    , title = old.title
+    , difficulty_code = old.difficulty_code
+    , exercise_part_code = old.exercise_part_code
+    , start_date = ""
+    , end_date = ""
+    }
+
+allListDataSetComplete old = 
+    { page = old.page
+    , per_page = 10
+    , title = old.title
+    , difficulty_code = old.difficulty_code
+    , exercise_part_code = old.exercise_part_code
+    , start_date = ""
+    , end_date = ""
+    }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PageBtn (idx, str) ->
-            let _ = Debug.log "str" idx
-                old = model.sendBody
-                list = 
-                    { page = idx
-                    , per_page = 10
-                    , title = old.title
-                    , difficulty_code = old.difficulty_code
-                    , exercise_part_code = old.exercise_part_code
-                    , start_date = old.start_date
-                    , end_date = old.end_date
-                    }
-                allList = 
-                    { page = idx
-                    , per_page = 10
-                    , title = old.title
-                    , difficulty_code = old.difficulty_code
-                    , exercise_part_code = old.exercise_part_code
-                    , start_date = ""
-                    , end_date = ""
-                    }
-                
+        GetMyInfo (Err err) ->
+           (model, Cmd.none)
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+        VideoRetry retry ->
+            ({model | session = retry},
+                Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred retry) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
+            )
+        Sort id ->
+            let
+                s = List.head (
+                    List.filter(\x ->
+                        x.sort == id
+                    ) model.yfvideo.exercise_items
+                    )
             in
+            case s of
+                Just v ->
+                    ({model | sort = 
+                        case v.descriptions of
+                                Just d ->
+                                    d
+                                Nothing ->
+                                    "휴식"
+                            }, Cmd.none)
+                Nothing ->
+                    ({model | sort = "영상 x 세트 탭을 클릭하시면 설명글이 나타납니다."}, Cmd.none)
+            
+        VideoShowResult (Ok ok) ->
+            let
+                videoList = 
+                    Encode.object 
+                        [("pairing", (Encode.list videoEncode) ok.data.pairing) ]
+
+                videoEncode p=
+                    Encode.object
+                        [ ("file", Encode.string p.file)
+                        , ("image", Encode.string p.image)
+                        , ("title", Encode.string p.title)
+                        ]
+            in
+            ({model | yfvideo = ok.data}, Api.sendData videoList)
+        VideoShowClose ->
+            ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
+        VideoShowResult (Err err) ->
+            let 
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.fourRefreshFetch ())
+            else 
+            (model, Cmd.none)
+        VideoIsShow id ->
+            ({model | videoShow = not model.videoShow , showId = id}
+            , Cmd.batch [
+            Api.get VideoShowResult (Endpoint.yourfitVideoShow id) (Session.cred model.session) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
+            , Api.heightControll (not model.videoShow)
+            ]
+            )
+        PageBtn (idx, str) ->
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        ({model | sendBody = allList}, videoEncoder allList model.session)
+                        (model, videoEncoder (allListDataSet idx (oldModel model)) model.session)
                     "next" ->
-                        ({model | sendBody = allList}, videoEncoder allList model.session)
+                        (model, videoEncoder (allListDataSet idx (oldModel model)) model.session)
                     "go" -> 
-                        ({model | sendBody = allList}, videoEncoder allList model.session)
+                        (model, videoEncoder (allListDataSet idx (oldModel model)) model.session)
                     _ ->
                         (model, Cmd.none)
             else
                 case str of
                 "prev" ->
-                    ({model | sendBody = list}, videoEncoder list model.session)
+                    (model, videoEncoder (listDataSet idx (oldModel model)) model.session)
                 "next" ->
-                    ({model | sendBody = list}, videoEncoder list model.session)
+                    (model, videoEncoder (listDataSet idx (oldModel model)) model.session)
                 "go" -> 
-                    ({model | sendBody = list}, videoEncoder list model.session)
+                    (model, videoEncoder (listDataSet idx (oldModel model)) model.session)
                 _ ->
                     (model, Cmd.none)
         EndShow ->
@@ -303,35 +436,30 @@ update msg model =
                    )
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
-            )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, videoEncoder model.sendBody model.session)
-                    Err _ ->
-                        (model, Cmd.none)
-        GoActive (Ok ok) ->
-            let 
-                old = model.sendBody 
-                list = 
-                    {start_date = "", end_date = "", page = old.page, per_page = old.per_page, title = old.title, difficulty_code = old.difficulty_code, exercise_part_code = old.exercise_part_code}
-                -- resultactive = {model | sendBody = list}
-
-            in
+            , Cmd.batch [
             if model.dateModel == "all" then
-                (model, videoEncoder list model.session)
+                videoEncoder (allListDataSetComplete(oldModel model)) session
+            else 
+                videoEncoder model.sendBody session
+            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            ]
+            )
+        RetryRequest retry ->
+            ({model | session = retry}, 
+            Cmd.batch[
+            activeEncode retry model.isActive model.activeId
+            ]
+            )
+
+        GoActive (Ok ok) ->
+            if model.dateModel == "all" then
+                (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session)
             else
             (model, videoEncoder model.sendBody model.session)
         GoActive (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Api.thirdRefreshFetch ())
         Complete str ->
             let
                 result = Decode.decodeValue Decode.string str
@@ -348,21 +476,8 @@ update msg model =
             in
             (model, Api.saveData new)
         Search ->
-            let
-                old = model.sendBody
-                list = 
-                    { page = 1
-                    , per_page = 10
-                    , title = old.title
-                    , difficulty_code = old.difficulty_code
-                    , exercise_part_code = old.exercise_part_code
-                    , start_date = ""
-                    , end_date = "" 
-                    }
-            in
-            
             if model.dateModel == "all" then
-            (model, videoEncoder list model.session)
+            (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session)
             else
             (model, videoEncoder model.sendBody model.session)
         Reset ->
@@ -401,52 +516,45 @@ update msg model =
         GetPart (Ok ok ) ->
             ({model | partData = ok.data}, Cmd.none)
         GetPart (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model,Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levelData = ok.data}, Cmd.none)
         GetLevel (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model,Cmd.none)
         GetTitle str ->
             let
                 old = model.sendBody
                 new = {old | title = str}
             in
-            
             ({model| sendBody = new}, Cmd.none)
-        IsActive (avtive, id) ->
-            let
-                encodieng = 
-                    Encode.object   
-                        [("is_use", Encode.bool (not avtive))]
-                    |> Http.jsonBody
-            in
-            ( {model | isActive = not model.isActive}, Api.post( Endpoint.videoActive id) (Session.cred model.session) GoActive encodieng (D.resultDecoder Success) )
+
+        IsActive (active, id) ->
+            ( {model | isActive = not active, activeId = id}, 
+            Cmd.batch [
+                activeEncode model.session (not active) id
+            ])
         Getbody (Ok ok) ->
-            ({model | videoData = ok.data , paginate = ok.paginate} , Cmd.none)
+            ({model | videoData = ok.data ,  paginate = ok.paginate} , Cmd.none)
         Getbody (Err err) ->
             let
                 error = Api.decodeErrors err
             in
-            
             (model,Session.changeInterCeptor (Just error))
 
             
 
 
-view : Model -> {title : String , content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "유어핏 영상"
     , content = 
-        div [ class "container is-fluid" ]
+        div [ class "" ]
         [ 
+            if model.videoShow then
+            div [class "adminAuthMask"] []
+            else
+            div [] []
+            , 
             columnsHtml [pageTitle "유어핏 영상"],
             div [class "searchWrap"] [
                 columnsHtml [
@@ -488,9 +596,27 @@ view model =
             else
             div [ class "table" ] 
                 ([headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.videoData))
-            ,  Pagenation.pagination PageBtn model.paginate
+            , Pagenation.pagination PageBtn model.paginate
+            , (yfVideoShow model.videoShow VideoShowClose model.yfvideo model.sort Sort)
         ]  
+        , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
     }
+
+
+activeEncode session active id= 
+    let
+        list = 
+            Encode.object   
+                [("is_use", Encode.bool active)]
+                    |> Http.jsonBody
+    in
+    Api.post( Endpoint.videoActive id) (Session.cred session) GoActive list (D.resultDecoder Success)
+
 
 headerTable = 
      div [ class "tableRow headerStyle"] [
@@ -513,7 +639,7 @@ tableLayout idx item model=
                 div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.title],
                 div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.exercise_part_name],
                 div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.difficulty_name],
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text "ㅡ"],
+                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.duration],
                 div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.inserted_at],
                 div [ class "tableCell" ] [
                     if item.is_use then
@@ -521,9 +647,12 @@ tableLayout idx item model=
                     else 
                     div [class "button is-small", onClick (IsActive( item.is_use,  String.fromInt(item.id)))] [text "비활성화"]
                 ],
+                if item.is_use then
                 div [ class "tableCell" ] [
-                    div [class "button is-small"] [text "미리보기"]
+                    div [class "button is-small", onClick (VideoIsShow (String.fromInt(item.id)))] [text "미리보기"]
                 ]
+                else
+                div [ class "tableCell" ] []
         ]
 
 subscriptions : Model -> Sub Msg
@@ -531,4 +660,6 @@ subscriptions model =
     Sub.batch 
     [ Api.saveCheck Complete
     , Session.changes GotSession (Session.navKey model.session)
-    , Api.onSucceesSession SessionCheck]
+    , Session.retryChange RetryRequest (Session.navKey model.session)
+    , Session.secRetryChange VideoRetry (Session.navKey model.session)
+    ]

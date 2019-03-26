@@ -18,7 +18,9 @@ import Api as Api
 import Json.Encode as Encode
 import Json.Decode as Decode exposing (..)
 import Http exposing(..)
+import Page as Page
 import Api.Endpoint as Endpoint
+import Api.Decode as Decoder
 import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
 
 defaultOptions =
@@ -35,8 +37,15 @@ type alias Model =
     , selectedPreviewTab : PreviewTab
     , session: Session
     , data : DataWrap
+    , menus : List Menus
     }
 
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
 type alias Data = 
     { content : String
     , id : Int
@@ -66,6 +75,7 @@ init session =
     , selectedTab = Editor
     , selectedPreviewTab = RealTime
     , session = session
+    , menus = []
     , data = 
             {
                 data = 
@@ -73,7 +83,11 @@ init session =
                 , id = 0
                 , title = ""}
                 }
-        }, Api.getInfo())
+        }, Cmd.batch [
+            Api.getInfo()
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+        ]
+        )
 
 toSession : Model -> Session
 toSession model =
@@ -97,6 +111,7 @@ type Msg
     | GetId Encode.Value
     | GetData (Result Http.Error DataWrap)
     | NoOp String
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 
 update : Msg -> Model ->  (Model, Cmd Msg)
@@ -124,9 +139,14 @@ update msg model =
             (model, Cmd.none)
         NoOp str->
             (model, Cmd.none)
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
 
 
-view : Model -> {title : String, content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "공지사항 수정"
     , content = 
@@ -140,5 +160,11 @@ view model =
         NoOp
         model.data.data.title
         model.data.data.content
+    , menu =  
+    aside [ class "menu"] [
+        ul [ class "menu-list yf-list"] 
+            (List.map Page.viewMenu model.menus)
+    ]
+
     }
    

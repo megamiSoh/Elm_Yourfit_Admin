@@ -16,11 +16,13 @@ import Api.Endpoint as Endpoint
 import Task exposing(..)
 import Route exposing(..)
 import Api.Decode as D
+import Page as Page
 
 type alias Model = {
     session: Session
     , getData : Data
-    -- , user : User
+    , menus : List Menus
+    , getId : String
     }
 
 
@@ -38,6 +40,12 @@ type alias UserData =
     , username : String
     }
 
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
 
 -- userdataDecoder = 
 --     D.userdataDecoder Data User UserData
@@ -46,6 +54,8 @@ type alias UserData =
 init : Session -> (Model, Cmd Msg)
 init session = ({
         session = session
+        , menus = []
+        , getId = ""
         , getData =  {
          data = {
             user = { connected_at = ""
@@ -58,7 +68,8 @@ init session = ({
             
     } 
     , Cmd.batch[ 
-        Api.getParams() 
+        Api.getParams()
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo) 
     ]
     )
 
@@ -70,6 +81,7 @@ type Msg
     | GetData (Result Http.Error Data)
     | GotSession Session
     | SessionCheck E.Value
+    | GetMyInfo (Result Http.Error D.DataWrap)
 
 
 
@@ -81,29 +93,24 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GetId id ->
-            let _ = Debug.log "decode" id
+            let
                 decodeId = Decode.decodeValue Decode.string id
             in
                 case decodeId of
                     Ok strId ->
-                        let _ = Debug.log "decode" strId
-                        in
-                        (model , Api.get  GetData (Endpoint.userDetail strId) (Session.cred model.session) (D.userdataDecoder Data User UserData) ) 
+                        ({model | getId = strId} , Api.get  GetData (Endpoint.userDetail strId) (Session.cred model.session) (D.userdataDecoder Data User UserData) ) 
                 
                     Err _  ->
-                        let _ = Debug.log "decode" decodeId
-                        in
                         (model,Cmd.none)
         GetData (Ok item) ->
             ({model | getData = item}, Cmd.none)
         GetData (Err error) ->
-            let _ = Debug.log "err" error
-                
-            in
             (model, Cmd.none)
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , Cmd.batch 
+            [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            , Api.get  GetData (Endpoint.userDetail model.getId) (Session.cred session) (D.userdataDecoder Data User UserData) ]
             )
         NoOp ->
             ( model, Cmd.none)
@@ -116,9 +123,16 @@ update msg model =
                         (model, Cmd.none)
                     Err _ ->
                         (model, Cmd.none)
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err  
+            in
+            (model, Session.changeInterCeptor (Just error) )
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
                         
   
-view : Model -> {title : String , content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "사용자 관리 상세"
     , content = 
@@ -146,6 +160,11 @@ view model =
             , div [ class "backArea"] [
                 goNormalBtn "리스트로 돌아가기" " is-primary"  (Just Route.UserManage)
             ]
+        ]
+        , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menus)
         ]
     }
 

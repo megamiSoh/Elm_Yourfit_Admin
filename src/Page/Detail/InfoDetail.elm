@@ -17,6 +17,8 @@ import Json.Decode as Decode exposing (..)
 import Http exposing(..)
 import Api.Endpoint as Endpoint
 import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
+import Page as Page
+import Api.Decode as Decoder
 
 defaultOptions =
     { softAsHardLineBreak = False
@@ -35,6 +37,7 @@ type alias Model =
     , isEdit : Bool
     , title : String
     , noticeId : String
+    , menus : List Menus
     }
 
 type alias Data = 
@@ -46,6 +49,12 @@ type alias Data =
 type alias DataWrap = 
     { data : Data }
 
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
 
 dataWrapDecoder =
     Decode.succeed DataWrap
@@ -69,6 +78,7 @@ init session =
     , session = session
     , isEdit = False
     , title = ""
+    , menus = []
     , noticeId =""
     , data = 
         {
@@ -77,7 +87,10 @@ init session =
             , id = 0
             , title = ""}
             }
-    }, Api.getInfo())
+    }, Cmd.batch[
+        Api.getInfo()
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+        ])
 
 toSession : Model -> Session
 toSession model =
@@ -109,10 +122,16 @@ type Msg
     | HttpResult(Result Http.Error Code)
     | SessionCheck Encode.Value
     | GotSession Session
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.none
@@ -189,7 +208,7 @@ resultDecoder =
 type alias Code = 
     { result : String}
 
-view : Model -> {title : String, content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "공지사항"
     , content = 
@@ -227,6 +246,10 @@ view model =
                     a [ class "button is-warning", Route.href (Just Route.Info) ] [text "취소"]
                 ]
             ]
-            
+         , menu =  
+            aside [ class "menu"] [
+                ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+            ]
     }
    

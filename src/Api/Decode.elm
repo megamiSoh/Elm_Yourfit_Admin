@@ -187,6 +187,7 @@ videoGetBody getbody=
         |> required "inserted_at"string
         |> required "is_use" bool
         |> required "title" string
+        |> required "duration" string
     
 videoPage page=
     Decode.succeed page
@@ -262,3 +263,104 @@ videoDataList datalist=
     Decode.succeed datalist
         |> required "file" string
         |> required "image" string
+
+yfVideo videodata data items fairing =
+    Decode.succeed videodata 
+        |> required "data" (yfVideoData data items fairing)
+
+yfVideoData data items fairing= 
+    Decode.succeed data 
+        |> required "difficulty_name" string
+        |> required "duration" string
+        |> required "exercise_items" (Decode.list (yfvideoExercise items))
+        |> required "exercise_part_name" string
+        |> required "id" int
+        |> required "pairing" (Decode.list (yfFairing fairing))
+        |> required "title" string
+
+yfvideoExercise items = 
+    Decode.succeed items
+        |> optional "description" (Decode.map Just string)Nothing
+        |> required "duration" string
+        |> required "exercise_id" int
+        |> required "is_rest" bool
+        |> required "sort" int
+        |> required "title" string
+        |> required "value" int
+
+yfFairing fairing = 
+    Decode.succeed fairing
+        |> required "file" string
+        |> required "image" string
+        |> required "title" string
+
+userInfo dataWrap data admin menus = 
+    Decode.succeed dataWrap 
+        |> required "data" (userInfoData data admin menus)
+
+userInfoData data admin menus= 
+    Decode.succeed data
+        |> required "admin" (userInfoAdmin admin)
+        |> required "menus" (Decode.list (userInfoMenus menus))
+
+userInfoAdmin admin= 
+    Decode.succeed admin
+        |> required "connected_at" string
+        |> required "id" int
+        |> required "joined_at" string
+        |> optional "nickname" (Decode.map Just string) Nothing
+        |> required "username" string
+userInfoMenus menus= 
+    Decode.succeed menus
+        |> required "menu_auth_code" (Decode.list string) 
+        |> required "menu_id" int
+        -- |> required "menu_name" string
+
+muserInfo  = 
+    Decode.succeed DataWrap 
+        |> required "data" muserInfoData
+
+muserInfoData= 
+    Decode.succeed Data
+        |> required "admin" muserInfoAdmin 
+        |> required "menus" (Decode.list muserInfoMenus)
+
+muserInfoAdmin = 
+    Decode.succeed Admin
+        |> required "connected_at" string
+        |> required "id" int
+        |> required "joined_at" string
+        |> optional "nickname" (Decode.map Just string) Nothing
+        |> required "username" string
+muserInfoMenus = 
+    Decode.succeed Menus
+        |> required "menu_auth_code" (Decode.list string) 
+        |> required "menu_id" int
+        |> required "menu_name" string
+
+
+type alias DataWrap = 
+    { data : Data }
+
+
+type alias Data = 
+    {
+        admin : Admin,
+        menus : List Menus
+    }
+
+type alias Admin = 
+    {
+        connected_at : String,
+        id : Int,
+        joined_at : String,
+        nickname : Maybe String,
+        username : String
+    }
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }

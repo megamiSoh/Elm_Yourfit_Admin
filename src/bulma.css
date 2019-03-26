@@ -8896,6 +8896,7 @@ label.panel-block:hover {
 }
 
 @media screen and (max-width: 1087px) {
+  .userprofile {display: none;}
   .columns.is-variable.is-2-touch {
     --columnGap: 0.5rem;
   }

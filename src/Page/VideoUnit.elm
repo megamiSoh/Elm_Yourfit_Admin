@@ -19,6 +19,7 @@ import Http exposing(..)
 import Json.Encode as Encode exposing (..)
 import Date exposing (..)
 import DatePicker exposing (Msg(..))
+import Page as Page
 
 type alias Model = {
      session: Session
@@ -27,6 +28,7 @@ type alias Model = {
     , title : String
     , videoShow : Bool
     , levels : List Level
+    , username : String
     , instrument : List Level
     , part : List Level
     , listmodel : ListModel
@@ -43,7 +45,15 @@ type alias Model = {
     , todaySave : String
     , paginate : Paginate
     , videoId : String
+    , menus : List Menus
      }
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
 type alias VideoData = 
     { data : VideoDetailData }
 
@@ -128,11 +138,13 @@ init  session =
             , total_count= 0
             }
         , listmodel = listInit
-        , session = session,
-         test = "",
+        , session = session
+        , menus = []
+        , test = "",
          fileName = "",
          title = "",
          videoShow = False
+        , username = ""
         , getList= []
         , levels = []
         , instrument = []
@@ -156,7 +168,9 @@ init  session =
     , listEncode listInit session
     , Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
-     ])
+    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+     ]
+    )
 
 listEncode model session= 
     let
@@ -181,7 +195,7 @@ listEncode model session=
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch[
-        receiveData ReceivedDataFromJS
+        Api.receiveData ReceivedDataFromJS
         , Api.saveCheck ReceiveId
         , Session.retryChange RetryRequest (Session.navKey model.session)
         , Session.changes GotSession (Session.navKey model.session)
@@ -208,7 +222,6 @@ type Msg
     | Reset
     | GetId String
     | ReceiveId E.Value
-    -- | SessionCheck Encode.Value
     | RetryRequest Session
     | GotSession Session
     | EndDatePickerMsg DatePicker.Msg
@@ -217,55 +230,79 @@ type Msg
     | EndShow
     | DateValue String 
     | PageBtn (Int, String)
+    | GetMyInfo (Result Http.Error D.DataWrap)
 
+originModel model = 
+    model.listmodel
 
+dataListSet idx old =  
+    { page  = idx
+    , per_page = 10
+    , titleList =  old.titleList
+    , difficulty_code =  old.difficulty_code
+    , exercise_code =  old.exercise_code
+    , instrument_code =  old.instrument_code
+    , start_date =  old.start_date
+    , end_date =  old.end_date
+    , part_detail_code= old.part_detail_code
+    }
+
+alldataListSet idx old=
+    { page  = idx
+    , per_page = 10
+    , titleList =  old.titleList
+    , difficulty_code =  old.difficulty_code
+    , exercise_code =  old.exercise_code
+    , instrument_code =  old.instrument_code
+    , start_date =  ""
+    , end_date =  ""
+    , part_detail_code= old.part_detail_code
+    }
+
+allDataList old = 
+    { page  = old.page
+    , per_page = 10
+    , titleList =  old.titleList
+    , difficulty_code =  old.difficulty_code
+    , exercise_code =  old.exercise_code
+    , instrument_code =  old.instrument_code
+    , start_date =  ""
+    , end_date =  ""
+    , part_detail_code= old.part_detail_code
+    }
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        PageBtn (idx, str) ->
-            let _ = Debug.log "str" idx
-                old = model.listmodel
-                list = 
-                    { page  = idx
-                    , per_page = 10
-                    , titleList =  old.titleList
-                    , difficulty_code =  old.difficulty_code
-                    , exercise_code =  old.exercise_code
-                    , instrument_code =  old.instrument_code
-                    , start_date =  old.start_date
-                    , end_date =  old.end_date
-                    , part_detail_code= old.part_detail_code
-                    }
-                allList = 
-                    { page  = idx
-                    , per_page = 10
-                    , titleList =  old.titleList
-                    , difficulty_code =  old.difficulty_code
-                    , exercise_code =  old.exercise_code
-                    , instrument_code =  old.instrument_code
-                    , start_date =  ""
-                    , end_date =  ""
-                    , part_detail_code= old.part_detail_code
-                    }
+        GetMyInfo (Err error) ->
+            let
+                serverErrors =
+                    Api.decodeErrors error
             in
+            ( model
+            , Cmd.none
+            )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+        PageBtn (idx, str) ->
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        (model, listEncode allList model.session)
+                        (model, listEncode (alldataListSet idx (originModel (model))) model.session)
                     "next" ->
-                        (model, listEncode allList model.session)
+                        (model, listEncode (alldataListSet idx (originModel (model))) model.session)
                     "go" -> 
-                        (model, listEncode allList model.session)
+                        (model, listEncode (alldataListSet idx (originModel (model))) model.session)
                     _ ->
                         (model, Cmd.none)
             else
                 case str of
                     "prev" ->
-                        (model, listEncode list model.session)
+                        (model, listEncode (dataListSet idx (originModel (model))) model.session)
                     "next" ->
-                        (model, listEncode list model.session)
+                        (model, listEncode (dataListSet idx (originModel (model))) model.session)
                     "go" -> 
-                        (model, listEncode list model.session)
+                        (model, listEncode (dataListSet idx (originModel (model))) model.session)
                     _ ->
                         (model, Cmd.none)
         EndShow ->
@@ -338,10 +375,18 @@ update msg model =
                                 ( newModel, cmd )
                    )
         GotSession session ->
-            let _ = Debug.log "session" session
-            in
             ({model | session = session}
-            , listEncode listInit model.session
+            , Cmd.batch [
+            if model.dateModel == "all" then
+                listEncode (allDataList (originModel model)) session
+            else
+                listEncode model.listmodel session
+            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
+            , Api.post Endpoint.instrument (Session.cred session) GetTool
+            Http.emptyBody (D.unitLevelsDecoder Data Level)
+            , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder Data Level)
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            ]
             )
         ReceiveId data ->
             let
@@ -360,22 +405,8 @@ update msg model =
             
             (model, Api.saveData data)
         Search ->
-            let 
-                old = model.listmodel
-                list = 
-                    { page  = 1
-                    , per_page = 10
-                    , titleList =  old.titleList
-                    , difficulty_code =  old.difficulty_code
-                    , exercise_code =  old.exercise_code
-                    , instrument_code =  old.instrument_code
-                    , start_date =  ""
-                    , end_date =  ""
-                    , part_detail_code= old.part_detail_code}
-            in
-            
             if model.dateModel == "all" then
-            (model, listEncode list model.session)
+            (model, listEncode (allDataList (originModel model)) model.session)
             else
             (model, listEncode model.listmodel model.session)
         Reset ->
@@ -427,47 +458,43 @@ update msg model =
         GetList (Ok ok) ->  
             ({model | getList = ok.data, paginate = ok.paginate}, Cmd.none)
         GetList (Err err) ->
-            let _ = Debug.log "err" err
+            let
                 error = Api.newdecodeErrors err
             in
             (model, Api.newdecodeErrors err)
         GetPart (Ok ok) -> 
             ({model | part = ok.data} ,Cmd.none)
         GetPart (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model, Session.changeInterCeptor(Just error))
+            (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-                (model, Session.changeInterCeptor (Just error))
-            
+            (model, Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levels = ok.data}, Cmd.none)
         GetLevel (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
         SendDataToJS (Ok ok)->     
-            ( model, sendData ok.data.file )
-        SendDataToJS (Err err)->     
-             let
-                error = Api.decodeErrors err
+            let
+                data = 
+                    Encode.object
+                        [ ("file", Encode.string ok.data.file)
+                        , ("image", Encode.string ok.data.image)]
             in
+            ( model, Api.sendData data )
+        SendDataToJS (Err err)->     
             (model, Api.thirdRefreshFetch ())
         RetryRequest retry->
             ({model | session = retry}, Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred retry) (D.videoData VideoData VideoDetailData))
         GetVideoFile (title, id)->   
-                ({model | title = title, videoShow = not model.videoShow, videoId = id }, Api.get SendDataToJS (Endpoint.unitVideoShow id) (Session.cred model.session) (D.videoData VideoData VideoDetailData))
+                ({model | title = title, videoShow = not model.videoShow, videoId = id }, 
+                Cmd.batch [
+                Api.get SendDataToJS (Endpoint.unitVideoShow id) (Session.cred model.session) (D.videoData VideoData VideoDetailData)
+                , Api.heightControll (not model.videoShow)
+                ]
+                )
         VideoClose ->
-                ({model | videoShow = not model.videoShow}, Cmd.none)
+                ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
         ReceivedDataFromJS data -> 
             let
                 result =
@@ -480,18 +507,17 @@ update msg model =
                     ({model | test = "Silly JavaScript, you can't kill me!"}, Cmd.none)
                     
 
-port sendData : String -> Cmd msg
-
-port receiveData : (E.Value -> msg) -> Sub msg
-
-
-
-view : Model -> {title : String , content: Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
      {title = "유어핏 단위 영상",
      content = 
-         div [ class "container is-fluid" ]
+         div [ ]
              [ 
+                if model.videoShow then
+                    div [class "adminAuthMask"] []
+                else
+                    div [] []
+                ,
                  columnsHtml [pageTitle "유어핏 단위 영상"],
                  div [ class "searchWrap" ] [
                      columnsHtml [
@@ -538,7 +564,14 @@ view model =
                     ) model.getList) )
                  , Pagenation.pagination PageBtn model.paginate
                  , (videoShow model.title model.videoShow  VideoClose)
-             ] }
+             ] 
+             , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+             }
 
 
   

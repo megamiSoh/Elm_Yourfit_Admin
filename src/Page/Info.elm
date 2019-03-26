@@ -16,6 +16,8 @@ import Api.Endpoint as Endpoint
 import Api as Api
 import Date exposing (..)
 import DatePicker exposing (Msg(..))
+import Page as Page
+import Api.Decode as Decoder
 
 type alias ListForm =
     {
@@ -42,7 +44,15 @@ type alias Model = {
     , dateModel : String
     , show : Bool
     , todaySave : String
+    , menus : List Menus
+    , username : String
     }
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String}
+    
 
 type alias ResultForm = 
     { data : List Data
@@ -120,6 +130,8 @@ init session =
         , endday = Nothing
         , dateModel = "all"
         , todaySave = ""
+        , username = ""
+        , menus = []
         , resultForm = 
             {
                 data = [],
@@ -136,7 +148,8 @@ init session =
     Cmd.batch
     [ managelist listInitial session
     , Cmd.map DatePickerMsg datePickerCmd
-    , Cmd.map EndDatePickerMsg enddatePickerCmd])
+    , Cmd.map EndDatePickerMsg enddatePickerCmd
+    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
 
 
 managelist form session =
@@ -179,10 +192,16 @@ type Msg
     | EndShow
     | DateValue String 
     | PageBtn (Int, String)
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PageBtn (idx, str) ->
             let 
                 old = model.listInit
@@ -291,7 +310,7 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
         GetList (Err error) ->
-            let _ = Debug.log "item" error
+            let
                 serverErrors =
                     Api.decodeErrors error
             in
@@ -350,7 +369,10 @@ update msg model =
 
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , Cmd.batch [
+            managelist listInitial session
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) 
+            ]
             )
         GetId id ->
             let
@@ -360,7 +382,7 @@ update msg model =
                  Api.infodata encode
             ])
         Check id ->
-            let _ = Debug.log "check" id
+            let
                 decodeId = Decode.decodeValue Decode.string id
             in
                 case decodeId of
@@ -389,11 +411,11 @@ update msg model =
                     Err _ ->
                         (model, Cmd.none)
 
-view : Model -> {title : String , content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "공지사항"
     , content =
-        div [ class "container is-fluid" ]
+        div []
         [ 
             columnsHtml [pageTitle "공지사항"],
             div [ class "searchWrap" ] [
@@ -425,6 +447,13 @@ view model =
                 PageBtn
                 model.resultForm.paginate
         ]
+        , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+    
     }
 
 encodeList model idstr=  

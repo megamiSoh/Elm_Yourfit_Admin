@@ -17,6 +17,7 @@ import Api as Api
 import Http exposing(..)
 import Json.Encode as Encode exposing (..)
 import Json.Decode as Decode
+import Page as Page
 
 type alias Model =
     { session : Session
@@ -28,6 +29,7 @@ type alias Model =
     , checkModel : String
     , validationErr : String
     , validErrShow : Bool
+    , menus : List Menus
     }
 
 type alias EditData = 
@@ -38,6 +40,13 @@ type alias EditData =
     , video:String
     , description:String
     , part_details:List String
+    }
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 type alias PartDetail = 
@@ -67,6 +76,7 @@ init session =
     , checkModel = ""
     , validationErr = ""
     , validErrShow = False
+    , menus = []
     , editData =
         { title = "" 
         , difficulty = "H1"
@@ -84,6 +94,7 @@ init session =
       Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
     ]
     )
 
@@ -132,33 +143,33 @@ type Msg
     | SucceesEdit (Result Http.Error ResultDecoder)
     | GoEdit
     | AreaMsg String
-    | SessionCheck Encode.Value
+    | RetryChange Session
     | GotSession Session
+    | GetMyInfo (Result Http.Error D.DataWrap)
 
 
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        RetryChange session ->
+            ({model | session = session}, editEncoder model.editData session)
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , Cmd.batch[
+                Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.instrument (Session.cred session) GetTool
+                Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            ]
             )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.batch [
-                            Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                            , Api.post Endpoint.instrument (Session.cred model.session) GetTool
-                            Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                            , Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                            , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                        ])
-                    Err _ ->
-                        (model, Cmd.none)
         AreaMsg str ->
             let
                 old = model.editData
@@ -176,15 +187,18 @@ update msg model =
                 ({model | validationErr = "운동 부위를 선택 해 주세요.", validErrShow = True}, Cmd.none)
             else
                 ({model | validErrShow = False},editEncoder model.editData model.session)
-            -- (model , editEncoder model.editData model.session)
         SucceesEdit (Ok ok )->
             (model, Route.pushUrl (Session.navKey model.session)Route.VideoUnit)
         SucceesEdit (Err err)->
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401" then
+                (model , Api.thirdRefreshFetch ())
+            else if error == "500" then
+                 ({model | validationErr = "등록할 수 없습니다.", validErrShow = True}, Cmd.none)
+            else
+                (model, Cmd.none)
         VideoId str ->
             let
                 old = model.editData
@@ -198,7 +212,7 @@ update msg model =
             in
             ({model | editData = new},Cmd.none)
         SelectPart (code, title) ->
-            let _ = Debug.log "code" code
+            let
                 old = model.editData
                 new = {old | part_details = old.part_details ++ [code]}
                 sameData = 
@@ -228,35 +242,20 @@ update msg model =
         ExerCode (Ok ok) -> 
             ({model | exerCode = ok.data} ,Cmd.none)
         ExerCode (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model, Session.changeInterCeptor(Just error))
+            (model, Cmd.none)
         GetPart (Ok ok) -> 
             ({model | part = ok.data} ,Cmd.none)
         GetPart (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model, Session.changeInterCeptor(Just error))
+            (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-                (model, Session.changeInterCeptor (Just error))
+               (model, Cmd.none)
             
         GetLevel (Ok ok ) ->
             ({model | levels = ok.data}, Cmd.none)
         GetLevel (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            
-            (model,Session.changeInterCeptor (Just error))
+            (model, Cmd.none)
         TitleText str ->
             let
                 old = model.editData
@@ -266,7 +265,7 @@ update msg model =
             ({model | editData = new},Cmd.none)
 
 
-view : Model -> {title : String ,content : Html Msg}
+view : Model -> {title : String ,content : Html Msg, menu : Html Msg}
 view model =
     { title = "유어핏 단위 영상 상세"
     , content = 
@@ -286,7 +285,11 @@ view model =
                 Page.detailEventBtn "등록" GoEdit Route.VideoUnit
                 , Page.validationErr model.validationErr model.validErrShow
             ]
-
+            , menu =  
+            aside [ class "menu"] [
+                ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+            ]
 
         
     }
@@ -294,8 +297,8 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
-    [ Api.onSucceesSession SessionCheck
-    , Session.changes GotSession (Session.navKey model.session)
+    [ Session.changes GotSession (Session.navKey model.session)
+    , Session.retryChange RetryChange (Session.navKey model.session)
     ]
 
 validtitle model = 

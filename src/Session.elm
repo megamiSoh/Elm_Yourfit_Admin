@@ -27,9 +27,6 @@ viewer session =
             Just val
 
         Guest _ ->
-            let _ = Debug.log "guest" session
-                
-            in
             Nothing
 
 
@@ -80,6 +77,8 @@ changeInterCeptor error=
 retryChange toMsg key =
     Api.retryRequest (\maybeViewer -> toMsg (fromViewer key maybeViewer)) Api.credDecoder
 
+secRetryChange toMsg key = 
+    Api.secRetryRequest (\maybeViewer -> toMsg (fromViewer key maybeViewer)) Api.credDecoder
 
 
 changes toMsg key =

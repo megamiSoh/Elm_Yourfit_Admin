@@ -28,9 +28,10 @@ update msg model =
         NoOp ->
              (model, Cmd.none)
 
-view: Model -> {title : String ,content :Html Msg}
+view: Model -> {title : String ,content :Html Msg, menu: Html Msg}
 view model =
     { title = ""
     , content = 
         div [] [text "hello"]
+    , menu = div [] []
     }

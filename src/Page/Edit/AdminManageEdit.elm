@@ -77,7 +77,7 @@ update msg model =
             
             ({model | userData = filterItem, pop = not model.pop}, Cmd.none)    
 
-view : Model -> {title : String, content: Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "관리자 수정"
     , content = 
@@ -91,6 +91,7 @@ view model =
             -- "관리자 수정"
             -- ""
        ]
+       , menu = div [] []
     }
 
 

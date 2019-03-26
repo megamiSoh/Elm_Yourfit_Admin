@@ -87,7 +87,7 @@ update msg model =
                 ({model | videoShow = after ++ before, videoSelected = after++before}, Cmd.none)
 
 
-view : Model -> {title : String ,content : Html Msg}
+view : Model -> {title : String ,content : Html Msg, menu : Html Msg}
 view model =
     { title = "외부 API 영상 수정"
     , content = 
@@ -105,6 +105,7 @@ view model =
                 layerPop model
             ]
         ]
+        , menu = div [] []
     }
     
 

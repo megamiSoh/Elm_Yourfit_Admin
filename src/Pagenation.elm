@@ -58,47 +58,97 @@ pagenation =
             [ text "Next page" ]
         ]
 
-    
+
 -- pagination: Int -> Html msg
 pagination btn page= 
-    let
+    let 
         index = (page.total_count // page.per_page) + 1
     in
     
     nav [ class "pagination" ]
-        [ div [ class "pagination-previous", title "This is the first page",  onClick (
-            if (page.page - 1) == 0 then
-                btn (1 , "prev")
+        [ button [ class "pagination-previous button", title "This is the first page", disabled (if page.page <= 10 then True else False ),  onClick (
+            if page.page <= 10 then
+                btn (page.page , "prev")
             else
-                btn ((page.page - 1), "prev")
+                if (toFloat ((page.page // 10) * 10 ) / toFloat page.page) ==  1  then
+                    btn (((page.page // 10) * 10) - 10, "prev")
+                else
+                    btn (((page.page // 10) * 10) , "prev")
         ) ]
             [ text "Previous" ]
         
-        , ul [ class "pagination-list" ]
-            (
-                List.indexedMap (\idx x ->
-                    
-                    item idx x page.page btn
-                ) (List.range 1 index)
-            )
-        , div [ class "pagination-next" , onClick (
+        ,
+         if page.page <= 10 then
+            if index <= 10 then
+                ul [ class "pagination-list" ]
+                (
+                    List.indexedMap (\idx x ->
+                        
+                        item idx x page.page btn 0 index
+                    ) (List.range 1 index)
+                )
+            else
+                ul [ class "pagination-list" ]
+                (
+                    List.indexedMap (\idx x ->
+                        
+                        item idx x page.page btn 0 index
+                    ) (List.range 1 10)
+                )
+        else 
+                if (toFloat ((page.page // 10) * 10 ) / toFloat page.page) ==  1  then
+                ul [ class "pagination-list" ]
+                    (
+                        List.indexedMap (\idx x ->
+                            item idx x page.page btn (((page.page // 10 ) * 10) - 10) index
+                        ) (List.range (((page.page // 10 ) * 10)) ((page.page // 10 ) * 10 + 9))
+                    )
+                else
+                    if index < (page.page // 10 ) * 10 + 9 then
+                        ul [ class "pagination-list" ]
+                            (
+                                List.indexedMap (\idx x ->
+                                    item idx x page.page btn ((page.page // 10 ) * 10) index
+                                ) (List.range (((page.page // 10 ) * 10) + 1) index )
+                            )
+                    else
+                    ul [ class "pagination-list" ]
+                        (
+                            List.indexedMap (\idx x ->
+                                item idx x page.page btn ((page.page // 10 ) * 10) index
+                            ) (List.range (((page.page // 10 ) * 10)) ((page.page // 10 ) * 10 + 9))
+                        )
+        , button [ class "pagination-next  button" , disabled (if index <= 10 then True else False), onClick (
             if (page.page + 1) > index then
                 btn (index, "next")
             else
-                btn ((page.page + 1), "next")
-        )]
-            [ text "Next page" ]
+                if (toFloat ((page.page // 10) * 10 ) / toFloat page.page) ==  1  then
+                    btn ((((page.page // 10 ) * 10 + 10) - 9), "next")
+                else
+                    btn ((((page.page // 10 ) * 10 + 10) + 1), "next")
+        )]  
+            [ text "Next" ]
         ]
 
 
-item  idx num current btn=
+item  idx num current btn y index=
+    -- if index < (current // 10 ) * 10 + 9 then
+    -- li [class (
+    --     if (y + idx + 1) == current then
+    --     "pagination-link is-current"
+    --     else
+    --     "pagination-link"
+    --     ), onClick (btn ((y + idx + 1 ), "go"))] [
+    --     div [] [ text (String.fromInt (y + idx + 1 )) ]
+    -- ]
+    -- else 
     li [class (
-        if (idx + 1) == current then
+        if (y + idx + 1) == current then
         "pagination-link is-current"
         else
         "pagination-link"
-        ), onClick (btn ((idx + 1), "go"))] [
-        div [] [ text (String.fromInt (idx + 1)) ]
+        ), onClick (btn ((y + idx + 1), "go"))] [
+        div [] [ text (String.fromInt (y + idx + 1)) ]
     ]
 
 

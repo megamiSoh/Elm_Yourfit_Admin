@@ -8,12 +8,25 @@ import Pagenation exposing(..)
 import Page.Page exposing(..)
 import Session exposing (Session)
 import Route exposing (Route)
+import Page as Page
+import Api as Api
+import Http as Http
+import Api.Endpoint as Endpoint
+import Api.Decode as Decoder
 
 type alias Model =
     {
         popup : Bool,
         session: Session,
         popShow : Bool
+        , menus : List Menus
+        , username : String
+    }
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 init : Session -> (Model, Cmd Msg)
@@ -22,18 +35,25 @@ init session =
         popup = False,
         session = session,
         popShow = False
-    }, Cmd.none)
+        , menus = []
+        , username = ""
+    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 toSession : Model -> Session
 toSession model =
     model.session
 
 
-type Msg = PopClose | PopOpen | DeletePop
+type Msg = PopClose | PopOpen | DeletePop | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PopClose ->
             ({model | popup = False}, Cmd.none)
 
@@ -44,34 +64,41 @@ update msg model =
             ({model | popShow = not model.popShow}, Cmd.none)
             
 
-view : Model -> {title : String, content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model = 
     { title = "음식 칼로리 관리"
     , content = 
-        div [ class "container is-fluid" ]
-        [ 
+        div [] [text "준비 중 입니다."]
+        -- div [ class "container is-fluid" ]
+        -- [ 
             
-            columnsHtml [pageTitle "음식 칼로리 관리"],
-            div [ class "searchWrap" ] [
-                columnsHtml [
-                    searchDataSet "등록일"
-                ],
-                columnsHtml [
-                    formInput "음식명" "음식 명을 입력 해 주세요." False,
-                    searchBtn
-                ]
+        --     columnsHtml [pageTitle "음식 칼로리 관리"],
+        --     div [ class "searchWrap" ] [
+        --         columnsHtml [
+        --             searchDataSet "등록일"
+        --         ],
+        --         columnsHtml [
+        --             formInput "음식명" "음식 명을 입력 해 주세요." False,
+        --             searchBtn
+        --         ]
                 
-            ],
-            registBtn,
-            div [ class "table" ] ([headerTable] ++ (List.map tableLayout datatable ))
-            , Pagenation.pagenation
-            , foodRegist model
-            , 
-            if model.popShow then
-                deleteConfirm
-            else
-             span [] []
-        ]
+        --     ],
+        --     registBtn,
+        --     div [ class "table" ] ([headerTable] ++ (List.map tableLayout datatable ))
+        --     , Pagenation.pagenation
+        --     , foodRegist model
+        --     , 
+        --     if model.popShow then
+        --         deleteConfirm
+        --     else
+        --      span [] []
+        -- ]
+        , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
     }
 
 

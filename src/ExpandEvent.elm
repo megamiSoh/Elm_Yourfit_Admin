@@ -6,7 +6,6 @@ import Html exposing(..)
 import Html.Attributes exposing(..)
 import Html.Events exposing(onClick)
 import Page.Page as Page
-import Debug exposing (log)
 
 type alias Model =
     Bool
@@ -26,10 +25,6 @@ type Msg = Collapse | Expand | Checked Bool
 
 update : Msg -> Model -> Model
 update msg model =
-    let _  = Debug.log "hello" msg
-        
-    in
-    
         case msg of
             Collapse ->
                 False

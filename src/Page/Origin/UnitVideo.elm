@@ -31,7 +31,7 @@ unitVideoForm title disabled msg detailmodel model selectLevel exerCode tool url
             detailmodel.instrument_code
         ],
          Page.columnsHtml [
-              Page.formInputEvent "URL" "URL 아이디를 입력 해 주세요." disabled urlmsg model.editData.video,
+              Page.formInputEvent "Video Id" "Video Id 아이디를 입력 해 주세요." disabled urlmsg model.editData.video,
               (Page.normalBtn "미리보기" "is-normal")
             
         ],
@@ -53,7 +53,7 @@ checkBoxCustom list disabled checkV partMsg checkModel=
                             List.map (
                                 \title ->
                                 checkBoxReadOnly checkModel title partMsg disabled(
-                                    let _ = Debug.log "match " match
+                                    let 
                                         match = 
                                             List.head(List.filter(\f ->
                                             f.code == title.code
@@ -108,7 +108,7 @@ unitRegist title disabled msg model selectLevel exerCode tool urlmsg partMsg  ar
             model.editData.instrument
         ],
          Page.columnsHtml [
-              Page.formInputEvent "URL" "URL 아이디를 입력 해 주세요." disabled urlmsg model.editData.video,
+              Page.formInputEvent "Video Id" "Video Id 아이디를 입력 해 주세요." disabled urlmsg model.editData.video,
               (Page.normalBtn "미리보기" "is-normal")
             
         ],

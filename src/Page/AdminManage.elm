@@ -19,6 +19,7 @@ import Api as Api
 import Api.Decode as Decoder
 import Date exposing (..)
 import DatePicker exposing (Msg(..))
+import Page as Page
 
 type alias Model = {
     session: Session
@@ -35,6 +36,15 @@ type alias Model = {
     , dateModel : String
     , show : Bool
     , todaySave : String
+    , menus : List Menus
+    , username: String
+    }
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 type alias DataForm = 
@@ -111,6 +121,7 @@ init session =
         session = session 
         , listForm = listInit
         , problems = "" 
+        , menus = []
         , datePickerData = datePickerData
         , endDatePickerData = endDatePickerData
         , firstSelectedDate = Nothing
@@ -118,6 +129,7 @@ init session =
         , show = False
         , today = Nothing
         , endShow = False
+        , username = ""
         , endday = Nothing
         , dateModel = "all"
         , todaySave = ""
@@ -138,7 +150,8 @@ init session =
     }, Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
-        , managelist listInit session ]
+        , managelist listInit session
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) ]
      )
 
 type Msg = 
@@ -151,13 +164,14 @@ type Msg =
         | GotSession Session
         | GetUserId String
         | CheckResult Encode.Value
-        | SessionCheck Encode.Value
+        -- | SessionCheck Encode.Value
         | EndDatePickerMsg DatePicker.Msg
         | DatePickerMsg DatePicker.Msg
         | Show
         | EndShow
         | DateValue String    
-        | PageBtn (Int, String)    
+        | PageBtn (Int, String)
+        | GetMyInfo (Result Http.Error Decoder.DataWrap)    
 
 
 toSession : Model -> Session
@@ -169,8 +183,13 @@ toSession model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PageBtn (idx, str) ->
-            let _ = Debug.log "str" idx
+            let
                 old = model.listForm
                 list = 
                     { page = idx ,
@@ -281,7 +300,7 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
         GetList (Err error) ->
-            let _ = Debug.log "item" error
+            let
                 serverErrors =
                     Api.decodeErrors error
             in
@@ -293,7 +312,7 @@ update msg model =
             ( {model | resultForm = item}, Cmd.none )
 
         Nickname str ->
-            let _ = Debug.log "nickname" str
+            let
                 listFirst =model.listForm
                 new = 
                     {listFirst | nickname = str}
@@ -344,7 +363,10 @@ update msg model =
                 , Cmd.map EndDatePickerMsg enddatePickerCmd])
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , Cmd.batch [
+             managelist listInit session
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            ]
             )
         
         GetUserId id ->
@@ -365,21 +387,13 @@ update msg model =
                 
                     Err _  ->
                         (model, Cmd.none)
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, managelist listInit model.session)
-                    Err _ ->
-                        (model, Cmd.none)
 
-view : Model -> {title : String , content : Html Msg}
+
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "관리자 관리"
     , content = 
-        div [ class "container is-fluid" ]
+        div []
         [ 
             columnsHtml [pageTitle "관리자 관리"],
             div [ class "searchWrap" ] [
@@ -415,7 +429,7 @@ view model =
                 ]
         ],
         if List.length (model.resultForm.data) > 0 then
-        div [ class "table" ] ([headerTable] ++ (List.map tableLayout model.resultForm.data) )
+        div [ class "table" ] ([headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.resultForm.data) )
         else
         table [class "table"] [
                         headerTable,
@@ -427,6 +441,13 @@ view model =
                     ]
         ,Pagenation.pagination PageBtn model.resultForm.pagenate 
         ] 
+        , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+    
     }
 
 headerTable = 
@@ -438,11 +459,13 @@ headerTable =
     ]
 
 
-tableLayout item = 
+tableLayout idx item model = 
         div [class "tableRow cursor"
         , onClick (GetUserId (String.fromInt(item.id)))
         ] [
-                div [ class "tableCell" ] [text (String.fromInt(item.id))],
+                div [ class "tableCell" ] [text (
+                    String.fromInt(model.resultForm.pagenate.total_count - ((model.resultForm.pagenate.page - 1) * 10) - (idx)  )
+                )],
                 div [ class "tableCell" ] [
                     case item.nickname of
                         Just name ->
@@ -460,5 +483,5 @@ subscriptions model =
     Sub.batch[
     Session.changes GotSession (Session.navKey model.session)
     , Api.saveCheck CheckResult
-    , Api.onSucceesSession SessionCheck
+    -- , Api.onSucceesSession SessionCheck
     ]

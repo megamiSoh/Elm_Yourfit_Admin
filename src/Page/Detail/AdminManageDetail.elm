@@ -17,7 +17,7 @@ import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
 import Json.Encode as Encode
 import Api.Endpoint as Endpoint
 import Api.Decode as D
-import Debug exposing(..)
+import Page as Page
 
 type alias User =
     {
@@ -51,6 +51,13 @@ type alias Model =
     , userId : String
     , userIntId : Int
     , menuAuth : List MenuAuthCodeList
+    , menuss : List Menuss
+    }
+type alias Menuss =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 type alias SendAuth = 
@@ -111,6 +118,7 @@ init session =
         , userIntId = 0
         , isEdit = False
         , menuAuth = []
+        , menuss = []
         , closeOpen= False
         , userId = ""
         , plz = {
@@ -140,19 +148,20 @@ init session =
             Api.getParams (),
             Api.post Endpoint.authCode (Session.cred session)
             GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
         ]
         )
 
-testdesu model =
+menuAuthEncoder model =
     Encode.object
     [ ("menu_auth_code", (Encode.list Encode.string)model.menu_auth_code )
     , ("menu_id", Encode.int model.menu_id)]
-    -- ]
-menuAuthEncode form model= 
+
+menuAuthEncode form model session= 
     let
         result =
             Encode.object
-                [("menu_auth", (Encode.list testdesu ) form.menu_auth)
+                [("menu_auth", (Encode.list menuAuthEncoder ) form.menu_auth)
                 ]
         body = 
             result    
@@ -161,7 +170,7 @@ menuAuthEncode form model=
     in
         Api.post (Endpoint.adminEdit model.userId) (Session.cred model.session) EditAdmin body (D.resultDecoder ResultDecoder)
 
-deleteEncode model =
+deleteEncode model session =
     let
         result = 
             Encode.object
@@ -170,7 +179,7 @@ deleteEncode model =
             result 
                 |> Http.jsonBody
     in
-     Api.post Endpoint.adminDelete (Session.cred model.session) DeleteComplete body (D.resultDecoder ResultDecoder)
+     Api.post Endpoint.adminDelete (Session.cred session) DeleteComplete body (D.resultDecoder ResultDecoder)
 
 toSession : Model -> Session
 toSession model =
@@ -183,7 +192,7 @@ type Msg = PopEvent
         | GetData (Result Http.Error DataWrap)
         | GetMenus (Result Http.Error Authmenus)
         | GetCode (Result Http.Error AuthCodes)
-        | SessionCheck Encode.Value
+        | GotSession Session
         | DetailOrEdit String
         | EditAdmin (Result Http.Error ResultDecoder)
         | NoOp (String, Int, List String)
@@ -191,18 +200,32 @@ type Msg = PopEvent
         | AuthMenu
         | DeleteAdmin
         | CloseOpen 
+        | GetMyInfo (Result Http.Error D.DataWrap)
+        | RetryRequest Session
+        | VideoRetry Session
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        RetryRequest session ->
+            ({model | session = session}, menuAuthEncode model.sendAuth model session)
+        VideoRetry session ->
+            ({model | session = session}, deleteEncode model session)
+        GetMyInfo (Err err) ->
+            let
+               serverErrors = Api.decodeErrors err
+            in
+            (model,  Session.changeInterCeptor (Just serverErrors) )
+        GetMyInfo (Ok item) -> 
+            ( {model |  menuss = item.data.menus}, Cmd.none )
         CloseOpen ->
             ({model | closeOpen = not model.closeOpen}, Cmd.none)
         DeleteAdmin ->
-            (model, Cmd.batch[deleteEncode model])
+            (model, Cmd.batch[deleteEncode model model.session])
         AuthMenu ->
             (model, Cmd.none)
         NoOp (str,id , list) ->
-            let _ = Debug.log "authmenu" model.menus
+            let
                 idFilter = 
                     List.filter (\x ->
                         x.menu_id == id
@@ -240,7 +263,7 @@ update msg model =
                     ({model | menus = List.sortBy .menu_id model.menus ++ [secResult], sendAuth = secSendResult},Cmd.none)
         DetailOrEdit str ->
             if str == "edit" then
-            ({model | isEdit = not model.isEdit}, menuAuthEncode model.sendAuth model)
+            ({model | isEdit = not model.isEdit}, menuAuthEncode model.sendAuth model model.session)
             else
             ({model | isEdit = not model.isEdit}, Cmd.none)
         PopEvent ->
@@ -253,7 +276,6 @@ update msg model =
             let
                 idDecode = 
                     Decode.decodeValue Decode.string id
-                
             in
             case idDecode of
                 Ok str ->
@@ -275,58 +297,63 @@ update msg model =
             , menus = item.data.menus}
             , Api.post Endpoint.authMenu (Session.cred model.session) GetMenus Http.emptyBody (D.authMenusDecoder Authmenus Authmenu))
         GetData (Err err) ->
-            let
-               serverErrors = Api.decodeErrors err
-            in
-        
-            (model,  Session.changeInterCeptor (Just serverErrors) )
+            (model, Cmd.none)
         GetMenus (Ok menu) ->
            
             ({model| authMenus = menu.data }, Cmd.none)
         GetMenus (Err err) ->
-            let
-               serverErrors = Api.decodeErrors err
-            in
-            (model,  Session.changeInterCeptor (Just serverErrors))
+            (model, Cmd.none)
         GetCode (Ok menu) ->
             ({model| authCode =[{code = "메뉴", name = "메뉴"}] ++ menu.data}, Cmd.none)
         GetCode (Err err) ->
-            let
-               serverErrors = Api.decodeErrors err
-            in
-            (model,  Session.changeInterCeptor (Just serverErrors))
-
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Api.post Endpoint.authCode (Session.cred model.session)
-                        GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode))
-                    Err _ ->
-                        (model, Cmd.none)
+            (model, Cmd.none)
+        GotSession session ->
+            ({model | session = session}
+            ,  Cmd.batch[
+            Api.post Endpoint.authCode (Session.cred session)
+            GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            , Api.get GetData (Endpoint.adminDetail model.userId) (Session.cred session) (D.decoder DataWrap Data  Menus Admin)
+            , Api.post Endpoint.authMenu (Session.cred session) GetMenus Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
+            ])
+            
+        -- SessionCheck check ->
+        --     let
+        --         decodeCheck = Decode.decodeValue Decode.string check
+        --     in
+        --         case decodeCheck of
+        --             Ok continue ->
+        --                 (model, Api.post Endpoint.authCode (Session.cred model.session)
+        --                 GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode))
+        --             Err _ ->
+        --                 (model, Cmd.none)
         EditAdmin (Ok item) ->
             (model, Cmd.none)
         EditAdmin (Err err) ->
             let
-               serverErrors = Api.decodeErrors err
+                error = Api.decodeErrors err
             in
-            (model,  Session.changeInterCeptor (Just serverErrors))
+            if error == "401"then
+            (model, Api.thirdRefreshFetch ())
+            else 
+            (model, Cmd.none)
         DeleteComplete (Ok item) ->
             (model, Route.pushUrl (Session.navKey model.session) Route.AdminManage)
         DeleteComplete (Err err) ->
             let
-               serverErrors = Api.decodeErrors err
+                error = Api.decodeErrors err
             in
-            (model,  Session.changeInterCeptor (Just serverErrors))
+            if error == "401"then
+            (model, Api.fourRefreshFetch ())
+            else 
+            (model, Cmd.none)
 
 
 filter model idx = 
     List.filter (\x -> x.id == idx) model.authMenus
     
 
-view : Model -> {title : String, content: Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "관리자 관리"
     , content = 
@@ -363,12 +390,20 @@ view model =
             a [ class "button is-warning", Route.href (Just Route.AdminManage) ] [text "취소"]
         ]
        ]
+       , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menuss)
+        ]
     }
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
    Sub.batch[ Api.params GetId
-   , Api.onSucceesSession SessionCheck]
+   , Session.changes GotSession (Session.navKey model.session)
+    , Session.retryChange RetryRequest (Session.navKey model.session)
+    , Session.secRetryChange VideoRetry (Session.navKey model.session)
+   ]
 
 adminLayout popEvent userData title disabled menu code menuId model=
         div [ class "box" ]
@@ -436,7 +471,7 @@ adminLayout popEvent userData title disabled menu code menuId model=
         ]
 
 authTableContent authMenu d x= 
-    let _ = Debug.log "kakunin" 
+    let 
         checkFilter check = List.member check x.menu_auth_code
     in
     

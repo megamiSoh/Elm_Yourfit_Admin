@@ -59,12 +59,12 @@ init session =
 
 -- VIEW
 
-view : Model -> {title : String , content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "로그인"
     , content = 
             viewForm model.form
-    
+    , menu = div [] []    
     } 
 
 viewProblem : Problem -> Html msg
@@ -101,7 +101,7 @@ viewForm form =
         ]
     ,div [ class "field" ]
         [ p [ class "control has-icons-left" ]
-            [ input [ class "input", type_ "password", placeholder "Password" , onInput EnteredPassword, value form.password  ]
+            [ input [onKeyDown KeyDown, class "input", type_ "password", placeholder "Password" , onInput EnteredPassword, value form.password  ]
                 []
             , span [ class "icon is-small is-left" ]
                 [ i [ class "fas fa-lock" ]
@@ -125,6 +125,7 @@ type Msg
     | EnteredPassword String
     | CompletedLogin (Result Http.Error Cred)
     | GotSession Session
+    | KeyDown Int
 
 
 type alias Str =  {
@@ -134,7 +135,12 @@ type alias Str =  {
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-       
+        KeyDown key ->
+            if key == 13 then
+                update SubmittedForm model
+            else
+                (model, Cmd.none)
+
         SubmittedForm ->
             case validate model.form of
                 Ok validForm ->
@@ -179,7 +185,9 @@ updateForm transform model =
 
 
 
-
+onKeyDown:(Int -> msg) -> Attribute msg
+onKeyDown tagger = 
+    on "keydown" (Decode.map tagger keyCode)
 
     
 

@@ -8,17 +8,33 @@ import Pagenation exposing(..)
 import Page.Page exposing(..)
 import Session exposing (Session)
 import Route exposing (..)
+import Page as Page
+import Api as Api
+import Http as Http
+import Api.Endpoint as Endpoint
+import Api.Decode as Decoder
 
 type alias Model = {
     session: Session
+    , menus : List Menus
+    }
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 init : Session -> (Model, Cmd Msg)
 init session = ({
         session = session
-    }, Cmd.none)
+        , menus = []
+    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
-type Msg = NoOp
+type Msg 
+    = NoOp
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 
 
@@ -31,32 +47,43 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus}, Cmd.none )
 
 
-view : Model -> {title : String , content : Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "외부 API 영상"
     , content = 
-        div [ class "container is-fluid" ]
-        [ 
+        div [] [text "준비 중 입니다."]
+        -- div [ class "container is-fluid" ]
+        -- [ 
             
-            columnsHtml [pageTitle "외부 API 영상"],
-            div [ class "searchWrap" ] [
-                columnsHtml [
-                    searchDataSet "등록일"
-                ],
-                columnsHtml [
-                    formSelect "카테고리" False ,
-                    formInput "제목" "제목을 입력 해 주세요." False,
-                    searchBtn
-                ]
+        --     columnsHtml [pageTitle "외부 API 영상"],
+        --     div [ class "searchWrap" ] [
+        --         columnsHtml [
+        --             searchDataSet "등록일"
+        --         ],
+        --         columnsHtml [
+        --             formSelect "카테고리" False ,
+        --             formInput "제목" "제목을 입력 해 주세요." False,
+        --             searchBtn
+        --         ]
                 
-            ],
-            (registRoute "영상 등록" Route.ApiVideoRegist),
-            div [class "table"] 
-            ([headerTable] ++ List.map tableLayout dataTable)
-            ,Pagenation.pagenation
-        ]
+        --     ],
+        --     (registRoute "영상 등록" Route.ApiVideoRegist),
+        --     div [class "table"] 
+        --     ([headerTable] ++ List.map tableLayout dataTable)
+        --     ,Pagenation.pagenation
+        -- ]
+          , menu =  
+            aside [ class "menu"] [
+                ul [ class "menu-list yf-list"] 
+            (List.map Page.viewMenu model.menus)
+    ]
     } 
 
 

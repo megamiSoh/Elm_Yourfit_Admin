@@ -8,11 +8,23 @@ import Pagenation exposing (..)
 import Page.Page exposing(..)
 import Session exposing (Session)
 import Route exposing (Route)
-
+import Page as Page
+import Api.Decode as Decoder
+import Http as Http
+import Api as Api
+import Api.Endpoint as Endpoint
 type alias Model =
     {
         popUp : Bool,
         session : Session
+        , menus : List Menus
+        , username: String
+    }
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
     }
 
 init : Session -> (Model, Cmd Msg)
@@ -20,18 +32,21 @@ init session=
     ({
         popUp = False
         , session = session
-    }, Cmd.none)
+        , menus = []
+        , username = ""
+    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)) 
 
-type Msg = PopClose | PopOpen
+type Msg = PopClose | PopOpen | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetMyInfo (Err error) ->
+            ( model, Cmd.none )
+
+        GetMyInfo (Ok item) -> 
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PopClose ->
-            let _ = Debug.log "last Check" model.session
-                
-            in
-            
             ({model | popUp = False}, Cmd.none)
 
         PopOpen ->
@@ -42,34 +57,41 @@ toSession model =
     model.session
 
 
-view : Model -> {title : String , content: Html Msg}
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model = 
     { title = "사용자 게시물 관리"
     , content =
-        div [ class "container is-fluid" ]
-        [ 
-            columnsHtml [pageTitle "사용자 게시물 관리"],
-            div [ class "searchWrap" ] [
-                columnsHtml [
-                    searchDataSet "등록일"
-                ],
-                columnsHtml [
-                    formInput "사용자 ID" "사용자 ID을 입력 해 주세요." False,
-                    searchBtn
-                ]
+        div [] [text "준비 중 입니다."]
+        -- div [ class "container is-fluid" ]
+        -- [ 
+        --     columnsHtml [pageTitle "사용자 게시물 관리"],
+        --     div [ class "searchWrap" ] [
+        --         columnsHtml [
+        --             searchDataSet "등록일"
+        --         ],
+        --         columnsHtml [
+        --             formInput "사용자 ID" "사용자 ID을 입력 해 주세요." False,
+        --             searchBtn
+        --         ]
                 
-            ],
-            columnsHtml [
-                userDataCount
-            ],
-            columnsHtml [
-                div [class "userPostWrap"] (
-                List.indexedMap userPostItem userPost
-                )
-            ]
-            , Pagenation.pagenation,
-            detailPop model
-        ]
+        --     ],
+        --     columnsHtml [
+        --         userDataCount
+        --     ],
+        --     columnsHtml [
+        --         div [class "userPostWrap"] (
+        --         List.indexedMap userPostItem userPost
+        --         )
+        --     ]
+        --     , Pagenation.pagenation,
+        --     detailPop model
+        -- ]
+        , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
     }
 
 
