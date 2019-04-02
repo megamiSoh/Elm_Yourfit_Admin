@@ -573,9 +573,6 @@ update msg model =
                            
                         ({model| filter = delete, filterName = name}, Cmd.none)
                         else
-                            let _ = Debug.log "ifste" str
-                            in
-    
                         ({model| filter = new, filterName = model.filterName ++ [n] }, Cmd.none)
                     "exercise_code" ->
                         let
@@ -794,7 +791,7 @@ view model=
                 model.btnTitle
                 model.topTitle
                 GoEdit
-                ,videoShow "영상 미리보기" model.videoShow VideoClose
+                , videoShow "영상 미리보기" model.videoShow VideoClose
                 , validationErr model.validationErr model.validErrShow
             ]
         , menu =  

@@ -28,10 +28,20 @@ type alias Model =
     , exerCode : List Level
     , edit : Bool
     , contentsId: String
+    , validationErr : String
+    , loading : Bool
     , editData : EditData
     , checkModel : String
     , menus : List Menus
+    , validErrShow : Bool
+    , videoShow : Bool
     }
+
+type alias PreviewWrap =  
+    { data : DataPreview }
+type alias DataPreview = 
+    { file : String
+    , image : String }
 
 type alias EditData = 
     { action_id: Int
@@ -91,8 +101,12 @@ init session =
     , instrument = []
     , menus = []
     , part = []
+    , loading = True
     , exerCode = []
     , checkModel = ""
+    , validationErr = ""
+    , validErrShow = False
+    , videoShow = False
     , editData =
         { action_id =  0
         , title = "" 
@@ -173,10 +187,29 @@ type Msg
     | RetryRequest Session
     | GotSession Session
     | GetMyInfo (Result Http.Error D.DataWrap)
+    | GetPreview 
+    | PreviewComplete (Result Http.Error PreviewWrap)
+    | VideoClose
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        VideoClose ->
+                ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
+        PreviewComplete (Ok ok) ->
+            let
+                data = 
+                    Encode.object
+                        [ ("file", Encode.string ok.data.file)
+                        , ("image", Encode.string ok.data.image)]
+            in
+            (model, Api.sendData data)
+        PreviewComplete (Err err) ->
+            (model, Cmd.none)
+        GetPreview ->
+            ({model | videoShow = not model.videoShow}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow model.contentsId) (Session.cred model.session) (D.videoData PreviewWrap DataPreview)
+            , Api.heightControll (not model.videoShow)]
+            )
         RetryRequest session ->
             ({model | session = session}, editEncoder model.editData session model.contentsId)
         GotSession session ->
@@ -199,10 +232,24 @@ update msg model =
             
             ({model | editData = new} , Cmd.none)
         GoEdit ->
-            ({model | edit = not model.edit}
+            
+            if String.isEmpty model.editData.title then
+                ({model | validationErr = "제목을 입력 해 주세요.", validErrShow = True}, Cmd.none)
+            else if String.isEmpty model.editData.video  then
+                ({model |validationErr = "비디오 Id를 입력 해 주세요.", validErrShow = True}, Cmd.none)
+            else if String.isEmpty model.editData.description then
+                ({model | validationErr = "운동 설명을 입력 해 주세요.", validErrShow = True}, Cmd.none)
+            else if List.isEmpty model.editData.part_details then
+                ({model | validationErr = "운동 부위를 선택 해 주세요.", validErrShow = True}, Cmd.none)
+            else
+            ({model | edit = not model.edit, validErrShow = False, loading = True}
             , editEncoder model.editData model.session model.contentsId)
         SucceesEdit (Ok ok )->
-            (model, Route.pushUrl (Session.navKey model.session)Route.VideoUnit)
+            let
+                textEncoder = Encode.string "수정이 완료 되었습니다."
+            in
+            
+            (model, Cmd.batch[Route.pushUrl (Session.navKey model.session)Route.VideoUnit, Api.showToast textEncoder])
         SucceesEdit (Err err)->
             let
                 error = Api.decodeErrors err
@@ -313,7 +360,7 @@ update msg model =
                     }
             in
             
-            ({model | detailList = ok.data, editData = new}, Cmd.none)
+            ({model | detailList = ok.data, editData = new, loading = False}, Cmd.none)
         GetData (Err err) ->
             (model, Cmd.none)
 
@@ -345,6 +392,15 @@ view model =
     , content = 
         if model.edit then
             div [] [
+                if model.loading then
+                div [class "adminloadingMask"][Page.spinner]
+                else 
+                div [][] ,
+                if model.videoShow then
+                        div [class "adminAuthMask"] []
+                else
+                    div [] []
+                ,
                 Unit.unitVideoForm
                     "유어핏 단위 영상 수정"
                     False
@@ -358,12 +414,19 @@ view model =
                     SelectPart
                     model.checkModel
                     AreaMsg
+                    GetPreview
                 ,
                 Page.detailEventBtn "저장" GoEdit Route.VideoUnit
+                , Page.validationErr model.validationErr model.validErrShow
+                , Page.videoShow "영상 미리보기" model.videoShow VideoClose
             ]
 
        else 
             div [] [
+                if model.loading then
+                div [class "adminloadingMask"][Page.spinner]
+                else 
+                div [][] ,
                 Unit.unitVideoForm
                 "유어핏 단위 영상 상세"
                 True
@@ -377,8 +440,10 @@ view model =
                 SelectPart
                 model.checkModel
                 AreaMsg
+                GetPreview
                 , 
                 Page.detailEventBtn "수정" DetailOrEdit Route.VideoUnit
+                , Page.videoShow "영상 미리보기" model.videoShow VideoClose
             ]
        , menu =  
         aside [ class "menu"] [

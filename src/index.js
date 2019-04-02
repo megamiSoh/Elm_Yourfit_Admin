@@ -5,7 +5,7 @@ import { Elm } from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
 
 
-const url ='http://api.yfit.co.kr:4000/api/v1'
+const url ='http://api.yfit.co.kr:4000/api/v1/'
 var flags = 
   localStorage.getItem("token")
 

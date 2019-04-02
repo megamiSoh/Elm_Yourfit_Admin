@@ -9,7 +9,7 @@ import Json.Decode
 import String
 
 
-unitVideoForm title disabled msg detailmodel model selectLevel exerCode tool urlmsg partMsg checkModel areaMsg=
+unitVideoForm title disabled msg detailmodel model selectLevel exerCode tool urlmsg partMsg checkModel areaMsg videoShow=
     div [] [
         Page.columnsHtml [
             Page.pageTitle title
@@ -32,7 +32,11 @@ unitVideoForm title disabled msg detailmodel model selectLevel exerCode tool url
         ],
          Page.columnsHtml [
               Page.formInputEvent "Video Id" "Video Id 아이디를 입력 해 주세요." disabled urlmsg model.editData.video,
-              (Page.normalBtn "미리보기" "is-normal")
+              if title == "유어핏 단위 영상 수정" then
+                div [] []
+              else
+              div [ class "button is-normal", onClick videoShow  ]
+                    [ text "미리보기" ]
             
         ],
         Page.columnsHtml [

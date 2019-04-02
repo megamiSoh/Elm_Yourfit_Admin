@@ -27,6 +27,7 @@ type alias Model =
     , exerCode : List Level
     , editData : EditData
     , checkModel : String
+    , loading : Bool
     , validationErr : String
     , validErrShow : Bool
     , menus : List Menus
@@ -73,6 +74,7 @@ init session =
     , instrument = []
     , part = []
     , exerCode = []
+    , loading = True
     , checkModel = ""
     , validationErr = ""
     , validErrShow = False
@@ -186,9 +188,13 @@ update msg model =
             else if List.isEmpty model.editData.part_details then
                 ({model | validationErr = "운동 부위를 선택 해 주세요.", validErrShow = True}, Cmd.none)
             else
-                ({model | validErrShow = False},editEncoder model.editData model.session)
+                ({model | validErrShow = False, loading = True},editEncoder model.editData model.session)
         SucceesEdit (Ok ok )->
-            (model, Route.pushUrl (Session.navKey model.session)Route.VideoUnit)
+            let
+                textEncode = Encode.string "등록이 완료 되었습니다."
+            in
+            
+            (model, Cmd.batch[Route.pushUrl (Session.navKey model.session)Route.VideoUnit, Api.showToast textEncode])
         SucceesEdit (Err err)->
             let
                 error = Api.decodeErrors err
@@ -253,7 +259,7 @@ update msg model =
                (model, Cmd.none)
             
         GetLevel (Ok ok ) ->
-            ({model | levels = ok.data}, Cmd.none)
+            ({model | levels = ok.data, loading = False}, Cmd.none)
         GetLevel (Err err) ->
             (model, Cmd.none)
         TitleText str ->
@@ -270,6 +276,10 @@ view model =
     { title = "유어핏 단위 영상 상세"
     , content = 
             div [] [
+                if model.loading then
+                div [class "adminloadingMask"][Page.spinner]
+                else 
+                div [][] ,
                 Unit.unitRegist
                     "유어핏 단위 영상 등록"
                     False

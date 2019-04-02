@@ -320,10 +320,6 @@ update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
         VideoClose ->
-            let _ = Debug.log "videoClose" model.videoShow
-                
-            in
-            
                 ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
         PreviewComplete (Ok ok) ->
             let
