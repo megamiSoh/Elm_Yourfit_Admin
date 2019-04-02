@@ -97,6 +97,7 @@ port fourRefreshFetch : () -> Cmd msg
 port sendData : Value -> Cmd msg
 port heightControll : Bool -> Cmd msg
 port validationHeight : Bool -> Cmd msg
+port showToast : Value -> Cmd msg
 -- application :
     -- Decoder (Cred -> viewer)
     -- ->
