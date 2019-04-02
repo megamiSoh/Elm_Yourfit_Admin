@@ -640,7 +640,7 @@ tableLayout idx item model=
                 div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.exercise_part_name],
                 div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.difficulty_name],
                 div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.duration],
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.inserted_at],
+                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell" ] [
                     if item.is_use then
                     div [class "button is-small", onClick (IsActive( item.is_use, String.fromInt(item.id)))] [text "활성화"]

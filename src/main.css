@@ -107,7 +107,7 @@ img {
 .customBox {
     border: 1px solid #cecece;
     border-radius: 4px;
-    height: 450px;
+    height: 600px;
     min-width: 389px;
 }
 .scrollon {
@@ -280,7 +280,7 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
 .adminAuthMask {
   width: 100%;
   position: absolute;
-  height: 150vh;
+  height: 210vh;
   background-color: #80808024;
   z-index: 9999;
   font-weight: bold;
@@ -351,8 +351,17 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
 .media-left {
   /* padding: 0 1rem; */
   text-align: center;
+      text-align: center;
+      font-size: 3.5rem;
+      background-color: #f3f0f0;
+      border-radius: 5px;
 }
-
+.fas.fa-coffee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
 /* layerPopup */
 .layerPop.searchPop {
   max-width: 400px;
@@ -459,6 +468,10 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
   height: 85px;
   width: 85px;
 }
+.image.is-85x85 img {
+  width: 100%;
+  height: 100%;
+}
 .far.fa-plus-square, .far.fa-minus-square {
   font-size: 2rem;
   line-height: 85px;
@@ -499,7 +512,7 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
 }
 .scrollStyle {
   overflow-y: scroll;
-  height: 311px;
+  height: 480px;
 
 }
 .labelStyle {
@@ -1402,4 +1415,119 @@ padding: 1rem;
 }
 .userProfileInside:hover {
   color: purple;
+}
+.noDropCursor{
+  cursor: no-drop !important;
+}
+
+
+/* loading spinner */
+
+.lds-ring {
+  display: inline-block;
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+.lds-ring div {
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  width: 51px;
+  height: 51px;
+  margin: 6px;
+  border: 6px solid #fff;
+  border-radius: 50%;
+  animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  border-color: #000 transparent transparent transparent;
+}
+.lds-ring div:nth-child(1) {
+  animation-delay: -0.45s;
+}
+.lds-ring div:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.lds-ring div:nth-child(3) {
+  animation-delay: -0.15s;
+}
+@keyframes lds-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.adminloadingMask {
+  width: 100%;
+  position: fixed;
+  height: 103vh;
+  background-color: #80808024;
+  z-index: 9999;
+  font-weight: bold;
+  font-size: 35px;
+  display: flex;
+  justify-content: center;
+  color: #a7a5a5;
+  align-items: center;
+  left: 0;
+  top: 0;
+}
+
+
+/* toast */
+
+
+#webToast {
+  visibility: hidden; 
+  min-width: 250px; 
+  margin-left: -125px; 
+  background-color: #333; 
+  color: #fff; 
+  text-align: center;
+  border-radius: 2px; 
+  padding: 16px; 
+  position: fixed; 
+  z-index: 1;
+  left: 50%; 
+  top: 10vh;
+}
+
+#webToast.show {
+  visibility: visible; 
+  -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+@-webkit-keyframes fadein {
+  from {top: 0; opacity: 0;} 
+  to {top: 9vh; opacity: 1;}
+}
+
+@keyframes fadein {
+  from {top: 0; opacity: 0;}
+  to {top: 9vh; opacity: 1;}
+}
+
+@-webkit-keyframes fadeout {
+  from {top: 9vh; opacity: 1;} 
+  to {top: 0; opacity: 0;}
+}
+
+@keyframes fadeout {
+  from {top: 9vh; opacity: 1;}
+  to {top: 0; opacity: 0;}
+}
+.textTitleTop {
+  font-size: 16px;
+  padding-bottom: 0.5rem;
+  font-weight: bold;
+}
+.textvideoStyle {
+  font-size: 14px;
+  padding: 0.2rem;
+  font-weight: normal;
+}
+.fas.fa-stopwatch {
+  margin-right: 0.2rem;
 }

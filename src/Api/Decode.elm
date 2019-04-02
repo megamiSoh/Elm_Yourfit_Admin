@@ -227,6 +227,8 @@ videoFilterItem item=
         |> required "title"  string
         |> optional "value" (Decode.map Just int) Nothing
         |> optional "is_rest" (Decode.map Just bool) (Just False)
+        |> required "thembnail" string
+        |> required "duration" string
 
 
 videodetail data item =

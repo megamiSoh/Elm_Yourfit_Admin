@@ -913,7 +913,22 @@ videoShow title show showBtn=
             div [class "button videoBtn", onClick showBtn] [text "닫기"]   
             ]
     else
+        div [ id "myElement"] []
+
+detailvideoShow title show =
+    if show then
+        div [ class "videoPop" ] [
+            p [class "videoTitle"] [ text title 
+            ,
+                i[ class "fas fa-times videoClose"][]
+            ],
+            div [ id "myElement" ] [
+            ],
+            div [class "button videoBtn"] [text "닫기"]   
+            ]
+    else
         div [] []
+
 
 yfVideoShow show close model sort sortMsg=
     if show then
@@ -949,3 +964,17 @@ yfVideoShow show close model sort sortMsg=
             ]
     else
         div [] []
+
+
+
+spinner = 
+    div [ class "lds-ring" ]
+        [ div []
+            []
+        , div []
+            []
+        , div []
+            []
+        , div []
+            []
+        ]

@@ -97,7 +97,7 @@ contents content page maybeViewer menu=
                     [ div [ class "tile is-child box" ]
                         [ p []
                             [ content ]
-                            
+                            , div [id "webToast"] []
                         ]
                     ]
                 ]

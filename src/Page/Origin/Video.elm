@@ -123,22 +123,47 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
             ] 
         ],
         columnsHtml [
-            div [ class "field-body  customBox" ]
+            div [ class "field-body  customBox", style "background-color" (if disabledMask then "" else "#80808021")
+                 ]
             [ 
                 if disabledMask then
-                div [] []
-                else
-                div [ class "disabledMsk"][]
-                ,div [ class "field  is-fullwidth" ]
+                div [ class "field  is-fullwidth" ]
                 [ p [ class "control" ] [
                     p [ class "title" ]
                             [   
                                 div [ class "media restStyle"] [
-                                i [ class "far fa-plus-square", onClick (addItem Nothing) ]
+                                i [ class "far fa-plus-square" , onClick (addItem Nothing)]
                                 [],
                                 div [ class "media-left" ]
                                 [ figure [ class "image is-85x85" ]
-                                    [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+                                    [ i [ class "fas fa-coffee" ]
+                                        []
+                                    ]
+                                ]
+                                , div [ class "media-content" ]
+                                [ p [ class "title is-4" ]
+                                    [ text "휴식" ]
+                                , p [ class "subtitle is-6" ]
+                                    [ text "1 분" ]
+                                ]
+                            ],
+                            exercise
+                        ]
+                    ]
+                    
+                ]
+                else
+                div [ class "field  is-fullwidth" ]
+                [ p [ class "control" ] [
+                    p [ class "title" ]
+                            [   
+                                div [ class "media restStyle"] [
+                                i [ class "far fa-plus-square" ]
+                                [],
+                                div [ class "media-left" ]
+                                [ figure [ class "image is-85x85" ]
+                                    [ 
+                                    i [ class "fas fa-coffee" ]
                                         []
                                     ]
                                 ]
@@ -156,13 +181,13 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
                 ]
             ]
 
-            , div [ class "field-body customBox scrollon" ]
+            , div [ class "field-body customBox scrollon" , style "background-color" (if disabledMask then "" else "#80808021")]
             [ 
-                  if disabledMask then
-                    div [] []
-                else
-                    div [ class "disabledMsk"][]
-                ,
+                --   if disabledMask then
+                --     div [] []
+                -- else
+                --     div [ class "disabledMsk"][]
+                -- ,
                 div [ class "field  is-fullwidth" ]
                 [ p [ class "control" ]
                      [ 
@@ -221,78 +246,116 @@ inputBtnx btn model getFile thumb=
 
 
 
-exerciseItem idx item addItem=
+exerciseItem idx item addItem mask preview=
 
         div [ class "media restStyle" ] [
-            i [ class "far fa-plus-square", onClick (addItem (Just item.id)) ]
-                [  ],
+            if mask then
+            i [ class "far fa-plus-square" , onClick (addItem (Just item.id))]
+                [  ]
+            else
+            i [ class "far fa-plus-square noDropCursor" ]
+                [  ]
+                ,
             div [ class "media-left" ]
-            [ figure [ class "image is-85x85" ]
-                [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+            [ figure [ class "image is-85x85", onClick (preview (item.id, item.title)) ]
+                [ img [ src item.thembnail, alt item.title ]
                     []
                 ]
             ]
-            , div [ class "media-content" ]
-            [ p [ class "title is-4" ]
+            , div [ class "media-content" , onClick (preview(item.id, item.title)) ]
+            [ p [ class "textTitleTop"  ]
                 [ text (item.title ++ " - " ++ "3 세트")  ]
-            , p [ class "subtitle is-6" ]
+            , p [ class "textvideoStyle" ]
                [ 
                    p [] [text (item.difficulty_name ++ " - "),
                    text (item.exercise_name ++ " - "),
                    text (item.instrument_name)
                    ]
                ]
-            , p [class "subtitle is-6"] [
-                text ""
+            , p [class "textvideoStyle"] [
+                i [ class "fas fa-stopwatch" ]
+                []
+                , text item.duration
             ]
-            , p [class "subtitle is-6"] [
+            , p [class "textvideoStyle"] [
                 text (String.join "  " item.part_detail_name)
             ]
             ]
         ]
 
-exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowIdx rest setModel restModel pmd valueWarn=
+exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowIdx rest setModel restModel pmd valueWarn mask preview=
     div [ class "restStyle"] [
         div [ class "media" ] [
             div [] [
+                if mask then
                 i [
                      class ("fas fa-arrows-alt-v " ++ "style"++ String.fromInt(idx) 
                      )
                      , onClick (switchItem idx)
                 ]
                 []
+                else
+                i [
+                     class ("fas fa-arrows-alt-v noDropCursor " ++ "style"++ String.fromInt(idx) 
+                     )
+                ]
+                []
             ],
+            if mask then
             i [ class "far fa-minus-square" 
             , onClick( backItem idx) 
             ]
-                [],
-            div [ class "media-left" ]
+                []
+            else
+            i [ class "far fa-minus-square noDropCursor" 
+            ]
+                []
+            ,
+            div [ class "media-left" , onClick (preview(item.id, item.title)) ]
             [ figure [ class "image is-85x85" ]
-                [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+                [
+                if item.title == "" then
+                    i [ class "fas fa-coffee" ]
+                    []
+                else
+                img [ src 
+                    item.thembnail
+                 ]
                     []
                 ]
             ] ,
             if item.title == "" then
             div [ class "media-content" ]
             [ 
-                p [ class "title is-4" ]
+                p [ class "title is-4"  ]
                     [ 
-                        text (
+                        -- text (
                             case item.value of
                                 Just x ->
-                                    "휴식 - " ++ String.fromInt(x)  ++ " 분"
+                                    div [ class "media-content" ]
+                                    [ p [ class "title is-4" ]
+                                        [ text "휴식" ]
+                                    , p [ class "subtitle is-6" ]
+                                        [ text (String.fromInt(x) ++ " 분") ]
+                                    ]
+                                    -- "휴식 - " ++ String.fromInt(x)  ++ " 분"
                             
                                 Nothing ->
-                                   "휴식 - " ++ "1 분"
-                        )
+                                   div [ class "media-content" ]
+                                    [ p [ class "title is-4" ]
+                                        [ text "휴식" ]
+                                    , p [ class "subtitle is-6" ]
+                                        [ text "1 분" ]
+                                    ]
+                        -- )
                     ]
 
             ]
             else
-            div [ class "media-content" ]
+            div [ class "media-content", onClick (preview(item.id, item.title)) ]
             [ 
                 
-                p [ class "title is-4" ]
+                p [ class "textTitleTop"  ]
                 [ 
                     text (
                         case item.value of
@@ -302,14 +365,19 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
                                 item.title ++ " -  3 세트"
                     )
                 ]
-            , p [ class "subtitle is-6" ]
+            , p [ class "textvideoStyle" ]
                [ 
-                   p [] [text (item.difficulty_name ++ " - ")
-                   , text (item.exercise_name ++ " - ")
-                   , text (item.instrument_name )
+                   p [] [text (item.difficulty_name ++ " - "),
+                   text (item.exercise_name ++ " - "),
+                   text (item.instrument_name)
                    ]
                ]
-            , p [class "subtitle is-6"]
+             , p [class "textvideoStyle"] [
+                i [ class "fas fa-stopwatch" ]
+                []
+                , text item.duration
+            ]
+            , p [class "textvideoStyle"]
                ( List.map (\x ->
                     text (x ++"  ")
                 )item.part_detail_name)
@@ -323,17 +391,20 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
             ]
         ] ,
             
-            if String.fromInt(idx) == settingShowIdx then
-                if item.title == "" then
-                   div [ class ("overlay  settingStyle " ++ newStyle) ] [
-                        setRest rest restModel idx item.value pmd backItem settingShow valueWarn
-                        ] 
-                else
+            if mask then
+                if String.fromInt(idx) == settingShowIdx then
+                    if item.title == "" then
                     div [ class ("overlay  settingStyle " ++ newStyle) ] [
-                        setSetting rest restModel idx item.value pmd backItem settingShow valueWarn
-                        ]
+                            setRest rest restModel idx item.value pmd backItem settingShow valueWarn
+                            ] 
+                    else
+                        div [ class ("overlay  settingStyle " ++ newStyle) ] [
+                            setSetting rest restModel idx item.value pmd backItem settingShow valueWarn
+                            ]
+                else
+                div [ class ("overlay  settingStyle ")] []
             else
-            div [ class ("overlay  settingStyle ")] []
+            div [ class ("overlay  settingStyle noDropCursor")] []
             ]
 
 setRest rest restModel idx val pmd backItem show valueWarn=

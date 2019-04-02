@@ -5,7 +5,7 @@ import { Elm } from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
 
 
-const url ='http://api.yfit.co.kr:4000/api/v1/'
+const url ='http://api.yfit.co.kr:4000/api/v1'
 var flags = 
   localStorage.getItem("token")
 
@@ -104,7 +104,7 @@ app.ports.getParams.subscribe (function() {
   var sd = localStorage.getItem ("setData")
     var parse = JSON.parse(sd)
     app.ports.params.send(parse);
-    localStorage.removeItem ("setData")
+    // localStorage.removeItem ("setData")
     return 
 })
 
@@ -282,6 +282,13 @@ app.ports.heightControll.subscribe(function(data) {
   {
     document.documentElement.style.overflow = "scroll";
   }
+})
+
+app.ports.showToast.subscribe(function (text) {
+  var x = document.getElementById("webToast") 
+  x.className = "show";
+  x.textContent = text
+  setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
 })
 
 

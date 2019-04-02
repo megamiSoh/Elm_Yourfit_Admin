@@ -30,7 +30,9 @@ type alias Model =
     , filter : ExerFilterList
     , filterData : List FilterItem
     , disabledMask : Bool
+    , loading : Bool
     , exerCode : List SelectItem
+    , justFilter : Bool
     , instrument : List SelectItem
     , openFilter : Bool
     , partDetail : List SelectItem
@@ -44,11 +46,21 @@ type alias Model =
     , setSet : String
     , setRest : String
     , btnTitle : String
+    , videoShow : Bool
+    , validationErr : String
+    , validErrShow: Bool
     , topTitle : String
     , getId : String
     , menus : List Menus
     , valueWarn: String
+    , preview : DataPreview
     }
+type alias PreviewWrap =  
+    { data : DataPreview }
+type alias DataPreview = 
+    { file : String
+    , image : String }
+
 type alias Menus =
     {
         menu_auth_code: List String,
@@ -104,6 +116,8 @@ type alias FilterItem =
     , title : String
     , value : Maybe Int
     , is_rest : Maybe Bool
+    , thembnail : String
+    , duration : String
     }
 type alias DetailData =
     { difficulty_code : String
@@ -243,7 +257,13 @@ init session =
             , valueWarn =""
             , menus = []
             , levelData = []
+            , videoShow = False
+            , preview = 
+                { file = ""
+                , image = ""}
+            , justFilter = False
             , disabledMask = False
+            , loading = True
             , exerCode = []
             , instrument = []
             , openFilter = False
@@ -253,6 +273,8 @@ init session =
             , editItem = []
             , resultFilterItem = []
             , newStyle = ""
+            , validationErr = ""
+            , validErrShow = False
             , settingShowIdx = ""
             , value = []
             , setSet = "0"
@@ -271,6 +293,7 @@ init session =
             , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            -- , Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem)
             ]
             )
 
@@ -309,6 +332,9 @@ type Msg
     -- | SessionCheck Encode.Value
     | GotSession Session
     | VideoRetry Session
+    | GetPreview (Int, String)
+    | PreviewComplete (Result Http.Error PreviewWrap)
+    | VideoClose
 
 
 takeLists idx model = 
@@ -320,6 +346,22 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        VideoClose ->
+                ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
+        PreviewComplete (Ok ok) ->
+            let
+                data = 
+                    Encode.object
+                        [ ("file", Encode.string ok.data.file)
+                        , ("image", Encode.string ok.data.image)]
+            in
+            (model, Api.sendData data)
+        PreviewComplete (Err err) ->
+            (model, Cmd.none)
+        GetPreview (id, title)->
+            ({model | videoShow = not model.videoShow}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(id))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview)
+            , Api.heightControll (not model.videoShow)]
+            )
         VideoRetry session ->
             ({model | session = session}, editVideo model.detaildata model.editItem session model.getId )
         RetryRequest session ->
@@ -346,7 +388,7 @@ update msg model =
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
             ])
         GoEditApi (Ok ok) ->
-            update DetailOrEdit model
+            update DetailOrEdit {model | loading = False}
         GoEditApi (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -378,9 +420,15 @@ update msg model =
                                     String.fromInt (3)
                         }
                         ) model.resultFilterItem
+                detailFind = model.detaildata
             in
+            if model.detaildata.title == "" then
+                ({model | validationErr = "운동 제목을 입력 해 주세요.", validErrShow = True}, Cmd.none)
+            else if List.length result == 0 then
+                ({model | validationErr = "운동을 선택 해 주세요.", validErrShow = True}, Cmd.none)
+            else
             (
-                {model | editItem = result}
+                {model | editItem = result, loading = True, validationErr = "" , validErrShow = False}
             , editVideo model.detaildata result model.session model.getId
             )
         PlusMinusDeleteSet idx pattern num->
@@ -418,7 +466,7 @@ update msg model =
                 _ ->
                     (model, Cmd.none)
         RestSetting id val ->
-            let
+            let 
                 parseVal = 
                     String.toInt (val)
                 target = model.resultFilterItem
@@ -500,12 +548,14 @@ update msg model =
                 , title = ""
                 , value =  Just 1
                 , is_rest = Just True
+                , thembnail = ""
+                , duration = ""
                 }
             ]},Cmd.none)
             else
             ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
         FilterResultData ->
-            ({model | openFilter = False,gofilter = model.filterName}, videoFilterResult model.filter model.session)
+            ({model | openFilter = False,gofilter = model.filterName, justFilter = True}, videoFilterResult model.filter model.session)
         GetFilterItem (str, category, n) ->
             let
                 old = model.filter
@@ -520,8 +570,12 @@ update msg model =
                             delete = {old | difficulty_code = (compare old.difficulty_code)}
                         in
                         if ifState old.difficulty_code then
+                           
                         ({model| filter = delete, filterName = name}, Cmd.none)
                         else
+                            let _ = Debug.log "ifste" str
+                            in
+    
                         ({model| filter = new, filterName = model.filterName ++ [n] }, Cmd.none)
                     "exercise_code" ->
                         let
@@ -567,6 +621,10 @@ update msg model =
         GetTool (Err err) ->
             (model, Cmd.none)
         DetailOrEdit ->
+             let 
+                editEncode = Encode.string "수정 완료 되었습니다."
+            in
+            
             ({model | disabledMask = not model.disabledMask
             , disabled = not model.disabled
             , newStyle = ""
@@ -580,7 +638,11 @@ update msg model =
                     "유어핏영상 수정"
                 else
                     "유어핏영상 상세"
-            }, Cmd.none)
+            }, if model.btnTitle == "저장" then
+                Api.showToast editEncode
+                else
+                Cmd.none
+            )
         SucceesEdit (Ok ok) ->
             let
                 result = 
@@ -601,7 +663,7 @@ update msg model =
                                 c
                         
                             Nothing ->
-                                { difficulty_name = "", exercise_name = "", id = 0, instrument_name = "", part_detail_name = [], title = "", value = Just 1 , is_rest = Just True}
+                                { difficulty_name = "", exercise_name = "", id = 0, instrument_name = "", part_detail_name = [], title = "", value = Just 1 , is_rest = Just True, thembnail ="", duration = ""}
                         ) model.detaildata.exercise_items
                 new = 
                     List.map2 (\x i->
@@ -609,9 +671,14 @@ update msg model =
                     ) result model.value
                     
             in
-            
+            if model.justFilter then
+            ({model | filterData = ok.data
+            }, Cmd.none)
+            else
             ({model | filterData = ok.data, 
-            resultFilterItem = model.resultFilterItem ++ new}, Cmd.none)
+            resultFilterItem = model.resultFilterItem ++ new
+            , justFilter = False
+            }, Cmd.none)
         SucceesEdit (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -665,7 +732,7 @@ update msg model =
                        {value = x.value, id = Just idx}
                     )ok.data.exercise_items
             in
-            ({model | detaildata = ok.data, value = result}, videoFilterResult model.filter model.session)
+            ({model | detaildata = ok.data, loading = False, value = result}, videoFilterResult model.filter model.session)
         GetData(Err err) ->
             (model, Cmd.none)
             
@@ -677,7 +744,7 @@ exerciseMap model=
        div [class "scrollStyle"] [
         p [ class "title" ]
         (List.indexedMap (\idx x -> 
-            (Video.exerciseItem idx x AddItem)
+            (Video.exerciseItem idx x AddItem model.disabledMask GetPreview)
         ) model.filterData)
         ]
 
@@ -686,7 +753,7 @@ emptyList model=
             \idx item ->
                 (Video.exerciseBackItem idx item BackItem SwitchItem model.newStyle SettingShow model.settingShowIdx 
                  RestSetting model.setSet model.setRest PlusMinusDeleteSet
-                 model.valueWarn
+                 model.valueWarn model.disabledMask GetPreview
                 )
         ) model.resultFilterItem
         )
@@ -697,27 +764,38 @@ view model=
         { title = ""
         , content =
             div [] [
-            Video.formView
-            model.disabled 
-            (exerciseMap model) 
-            (emptyList model)
-            model.levelData
-            LevelSelect
-            model.detaildata
-            model.partData
-            PartSelect
-            TitleChange
-            model.disabledMask
-            Route.Video
-            DetailOrEdit
-            model
-            OpenFilter
-            GetFilterItem
-            FilterResultData
-            AddItem
-            model.btnTitle
-            model.topTitle
-            GoEdit
+            if model.loading then
+            div [class "adminloadingMask"][spinner]
+            else 
+            div [][] ,
+                if model.videoShow then
+                        div [class "adminAuthMask"] []
+                else
+                    div [] []
+                ,
+                Video.formView
+                model.disabled 
+                (exerciseMap model) 
+                (emptyList model)
+                model.levelData
+                LevelSelect
+                model.detaildata
+                model.partData
+                PartSelect
+                TitleChange
+                model.disabledMask
+                Route.Video
+                DetailOrEdit
+                model
+                OpenFilter
+                GetFilterItem
+                FilterResultData
+                AddItem
+                model.btnTitle
+                model.topTitle
+                GoEdit
+                ,videoShow "영상 미리보기" model.videoShow VideoClose
+                , validationErr model.validationErr model.validErrShow
             ]
         , menu =  
         aside [ class "menu"] [

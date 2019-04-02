@@ -31,6 +31,7 @@ type alias Model =
     , filterData : List FilterItem
     , exerCode : List SelectItem
     , instrument : List SelectItem
+    , loading : Bool
     , openFilter : Bool
     , partDetail : List SelectItem
     , filterName : List String
@@ -40,6 +41,7 @@ type alias Model =
     , resultFilterItem : List FilterItem
     , newStyle : String
     , settingShowIdx : String
+    , videoShow : Bool
     , value : List Value
     , setSet : String
     , setRest : String
@@ -52,6 +54,12 @@ type alias Model =
     , validErrShow : Bool
     , validationErr : String
     }
+
+type alias PreviewWrap =  
+    { data : DataPreview }
+type alias DataPreview = 
+    { file : String
+    , image : String }
 
 type alias Menus =
     {
@@ -107,6 +115,8 @@ type alias FilterItem =
     , title : String
     , value : Maybe Int
     , is_rest : Maybe Bool
+    , thembnail : String
+    , duration : String
     }
 
 type alias ExerItem =
@@ -233,7 +243,9 @@ init session =
             , username = ""
             , gofilter = []
             , editItem = []
+            , loading = True
             , valueWarn = ""
+            , videoShow = False
             , resultFilterItem = []
             , newStyle = ""
             , settingShowIdx = ""
@@ -294,6 +306,9 @@ type Msg
     | RetryChange Session
     | GotSession Session
     | SecRetry Session
+    | GetPreview (Int, String)
+    | PreviewComplete (Result Http.Error PreviewWrap)
+    | VideoClose
 
 takeLists idx model = 
     List.take idx model
@@ -304,6 +319,25 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        VideoClose ->
+            let _ = Debug.log "videoClose" model.videoShow
+                
+            in
+            
+                ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
+        PreviewComplete (Ok ok) ->
+            let
+                data = 
+                    Encode.object
+                        [ ("file", Encode.string ok.data.file)
+                        , ("image", Encode.string ok.data.image)]
+            in
+            (model, Api.sendData data)
+        PreviewComplete (Err err) ->
+            (model, Cmd.none)
+        GetPreview (id, title)->
+            ({model | videoShow = not model.videoShow}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(id))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview),
+             Api.heightControll (not model.videoShow)])
         SecRetry session ->
             ({model | session = session }, videoFilterResult model.filter session)
         RetryChange session ->
@@ -493,6 +527,8 @@ update msg model =
                 , title = ""
                 , value = Just 1
                 , is_rest = Just True
+                , thembnail = ""
+                , duration = ""
                 }
             ]},Cmd.none)
             else
@@ -560,7 +596,7 @@ update msg model =
         GetTool (Err err) ->
             (model,Cmd.none)
         SucceesEdit (Ok ok) ->
-            ({model | filterData = ok.data}, Cmd.none)
+            ({model | filterData = ok.data, loading = False}, Cmd.none)
         SucceesEdit (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -599,7 +635,7 @@ exerciseMap model=
        div [class "scrollStyle"] [
         p [ class "title" ]
         (List.indexedMap (\idx x -> 
-            (Video.exerciseItem idx x AddItem)
+            (Video.exerciseItem idx x AddItem model.disabled GetPreview)
         ) model.filterData)
         ]
 
@@ -607,7 +643,7 @@ emptyList model=
         div [] (List.indexedMap (
             \idx item ->
                 (Video.exerciseBackItem idx item BackItem SwitchItem model.newStyle SettingShow model.settingShowIdx 
-                 RestSetting model.setSet model.setRest PlusMinusDeleteSet model.valueWarn
+                 RestSetting model.setSet model.setRest PlusMinusDeleteSet model.valueWarn model.disabled GetPreview
                 )
         ) model.resultFilterItem
         )
@@ -618,6 +654,15 @@ view model=
         { title = ""
         , content =
             div [] [
+            if model.loading then
+            div [class "adminloadingMask"][spinner]
+            else 
+            div [][] ,
+                if model.videoShow then
+                    div [class "adminAuthMask"] []
+                else
+                    div [] []
+                ,
             Video.registformView
             (exerciseMap model) 
             (emptyList model)
@@ -633,6 +678,7 @@ view model=
             FilterResultData
             AddItem
             GoRegist
+            , videoShow "영상 미리보기" model.videoShow VideoClose
             , validationErr model.validationErr model.validErrShow
             ]
             , menu =  
