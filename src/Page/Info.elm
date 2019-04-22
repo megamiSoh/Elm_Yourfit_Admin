@@ -2,7 +2,7 @@ module Page.Info exposing(..)
 
 import Browser
 import Html exposing(..)
-import Html.Attributes exposing(class, style)
+import Html.Attributes exposing(class, style, colspan)
 import Pagenation exposing(..)
 import Session exposing (Session)
 import Page.Page exposing (..)
@@ -485,11 +485,23 @@ view model =
                 else
                 div [] []
             ]
-            , div [class "table"](
-                    [headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model
+            , 
+           div [] [
+                if List.length model.resultForm.data > 0 then
+                    div [class "table"](
+                            [headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model
+                            
+                            ) model.resultForm.data)
+                        )
+                    else 
+                    div [class "table"] [
+                        headerTable 
+                        , tr[][
+                        td [colspan 4, class "noSearch"] [text "검색 결과가 없습니다."]
+                        ]
+                    ]
                     
-                    ) model.resultForm.data)
-                )
+           ]
             ,Pagenation.pagination 
                 PageBtn
                 model.resultForm.paginate
