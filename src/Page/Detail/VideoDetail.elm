@@ -38,6 +38,7 @@ type alias Model =
     , partDetail : List SelectItem
     , filterName : List String
     , gofilter : List String
+    , goEdit : Bool
     , editItem : List EditItems
     , resultFilterItem : List FilterItem
     , newStyle : String
@@ -54,6 +55,7 @@ type alias Model =
     , menus : List Menus
     , valueWarn: String
     , preview : DataPreview
+    , description: String
     }
 type alias PreviewWrap =  
     { data : DataPreview }
@@ -126,7 +128,8 @@ type alias DetailData =
     , exercise_part_code: String
     , exercise_part_name :String
     , id: Int
-    , title: String}
+    , title: String
+    , description : Maybe String}
 
 type alias ExerItem =
     { action_id : Maybe Int
@@ -198,14 +201,18 @@ listformUrlencoded object =
             )
         |> String.join ","
 
-editVideo detaildata edit session id=
+editVideo detaildata edit session id description=
     let
-        
+        newText text = 
+            text
+                |> String.replace "&" "%26"
+                |> String.replace "%" "%25"
         list =
             formUrlencoded 
-            [ ("title", detaildata.title)
+            [ ("title", (newText detaildata.title))
             , ("difficulty", detaildata.difficulty_code)
             , ("exercise_part", detaildata.exercise_part_code)
+            , ("description", (newText description))
             , ("items", "[" ++ listformUrlencoded edit ++ "]"
             )
             ]
@@ -245,7 +252,8 @@ init session =
                 , exercise_part_code = ""
                 , exercise_part_name  =""
                 , id = 0
-                , title = ""}
+                , title = ""
+                , description = Nothing}
         in
             ({ 
              filter = f
@@ -256,6 +264,7 @@ init session =
             , partData = []
             , valueWarn =""
             , menus = []
+            , goEdit = False
             , levelData = []
             , videoShow = False
             , preview = 
@@ -269,6 +278,7 @@ init session =
             , openFilter = False
             , partDetail = []
             , filterName = []
+            , description = ""
             , gofilter = []
             , editItem = []
             , resultFilterItem = []
@@ -335,6 +345,7 @@ type Msg
     | GetPreview (Int, String)
     | PreviewComplete (Result Http.Error PreviewWrap)
     | VideoClose
+    | TextAreaInput String
 
 
 takeLists idx model = 
@@ -346,6 +357,13 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        TextAreaInput str ->
+            -- let 
+            --     old = model.detaildata
+            --     descriptionInput = {old | description = (Just str)}
+            -- in
+            
+            ({model | description = str}, Cmd.none)
         VideoClose ->
                 ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
         PreviewComplete (Ok ok) ->
@@ -363,7 +381,7 @@ update msg model =
             , Api.heightControll (not model.videoShow)]
             )
         VideoRetry session ->
-            ({model | session = session}, editVideo model.detaildata model.editItem session model.getId )
+            ({model | session = session}, editVideo model.detaildata model.editItem session model.getId model.description)
         RetryRequest session ->
             ({model | session = session }, videoFilterResult model.filter session)
         GetMyInfo (Err err) ->
@@ -372,7 +390,20 @@ update msg model =
             in
             (model,Session.changeInterCeptor (Just error))
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 4) item.data.menus)
+            in
+            case menuf of
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    if auth "30" then
+                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                    else
+                        ( {model |  menus = item.data.menus}, Cmd.none )
+                Nothing ->
+                    ( {model |  menus = item.data.menus}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.batch 
@@ -426,10 +457,12 @@ update msg model =
                 ({model | validationErr = "운동 제목을 입력 해 주세요.", validErrShow = True}, Cmd.none)
             else if List.length result == 0 then
                 ({model | validationErr = "운동을 선택 해 주세요.", validErrShow = True}, Cmd.none)
+            else if model.description == "" then
+                ({model | validationErr = "운동 설명을 입력 해 주세요.", validErrShow = True}, Cmd.none)
             else
             (
                 {model | editItem = result, loading = True, validationErr = "" , validErrShow = False}
-            , editVideo model.detaildata result model.session model.getId
+            , editVideo model.detaildata result model.session model.getId model.description
             )
         PlusMinusDeleteSet idx pattern num->
             let
@@ -728,8 +761,19 @@ update msg model =
                 result = List.indexedMap (\idx x ->
                        {value = x.value, id = Just idx}
                     )ok.data.exercise_items
+                newInput text = 
+                    text
+                        |> String.replace "%26" "&"
+                        |> String.replace "%25" "%"
             in
-            ({model | detaildata = ok.data, loading = False, value = result}, videoFilterResult model.filter model.session)
+            ({model | detaildata = ok.data, description = 
+            (case ok.data.description of
+                Just desc ->
+                    newInput desc
+            
+                Nothing ->
+                    "") ,
+              loading = False, value = result}, videoFilterResult model.filter model.session)
         GetData(Err err) ->
             (model, Cmd.none)
             
@@ -791,6 +835,8 @@ view model=
                 model.btnTitle
                 model.topTitle
                 GoEdit
+                model.description
+                TextAreaInput
                 , videoShow "영상 미리보기" model.videoShow VideoClose
                 , validationErr model.validationErr model.validErrShow
             ]

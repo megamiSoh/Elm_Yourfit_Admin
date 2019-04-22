@@ -39,7 +39,10 @@ img {
   box-shadow: 3px 3px #f3f3f3;
 }
 .marginTable {
-  margin-top: 1.5rem;
+  margin-top: 4.5rem;
+}
+.marginTable2 {
+  margin-top: 2rem;
 }
 .headerStyle {background-color: #8080801c; border-bottom: 1px solid black; padding: .5rem;}
 .tableRow {display: table-row;}
@@ -264,7 +267,13 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
   visibility: hidden
 }
 .image.is-64x64 > .fas.fa-user-circle {
-  font-size: 4rem;
+  font-size: 6rem;
+  width: 100px;
+  height: 100px;
+}
+.image.is-64x64 {
+  width: 100px;
+  height: 100px;
 }
 .customCheck {
   border: 1px solid #e5e5e5;
@@ -311,6 +320,7 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
   border: 1px solid black;
   top: 127px;
   z-index: 99999999;
+  font-size: 14px;
 }
 
 .media .columns {
@@ -331,11 +341,12 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
 }
 .adminPop .columns {
   padding: 0 !important;
-  margin: 0 !important;    
+  margin: 0 !important;  
 }
 .adminColumn {
   padding: 20px !important;
   margin: 0 !important;
+  font-size: 16px;
 }
 .media .pageTitle {
   margin: 0;
@@ -353,7 +364,7 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
   text-align: center;
       text-align: center;
       font-size: 3.5rem;
-      background-color: #f3f0f0;
+      /* background-color: #f3f0f0; */
       border-radius: 5px;
 }
 .fas.fa-coffee {
@@ -768,10 +779,11 @@ textarea.editorStyle {
   font-weight: bold;
   font-size: 20px;
   padding: 1rem;
+  text-align: left;
 }
 .videoClose {
   float: right;
-  padding: 1rem;
+  padding: .3rem 0 1rem;
 }
 /* faq */
 .faqtitle {text-align: left; padding: 2rem;}
@@ -1285,6 +1297,9 @@ padding: 1rem;
 }
 .image.is-64x64.adminImg {
   margin: 13px auto;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 1px solid #f2ecec;
 }
 
 .emptyMsg {
@@ -1295,6 +1310,7 @@ padding: 1rem;
     font-weight: bold;
     color: #c3c2c2;
     border-radius: 5px;
+    margin-top: 4.5rem;
 }
 .marginTop {margin-top : 20px;}
 .disabledWrap {
@@ -1530,4 +1546,23 @@ padding: 1rem;
 }
 .fas.fa-stopwatch {
   margin-right: 0.2rem;
+}
+
+.btnpositionRight {
+  float: right;
+  margin-bottom: 1rem;
+}
+
+.image.is-64x64.userimage img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+}
+.emptyheight{
+  padding: 1rem;
+}
+
+.loginErr {
+  padding: 1rem;
+  color: red;
 }

@@ -63,7 +63,7 @@ view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "로그인"
     , content = 
-            viewForm model.form
+            viewForm model.form model
     , menu = div [] []    
     } 
 
@@ -78,14 +78,17 @@ viewProblem problem =
     li [] [ text errorMessage ]
 
 
-viewForm : Form -> Html Msg
-viewForm form =
+viewForm : Form -> Model -> Html Msg
+viewForm form model =
              div [ class "loginWrap"] [
            h1 [ class "loginText"] [text "Yourfit Admin"],
            div [ class "field" ]
         [
             -- viewForm form,
-             p [ class "control has-icons-left has-icons-right" ]
+                div [class "loginErr"] [
+                    text model.err
+                ]
+            , p [ class "control has-icons-left has-icons-right" ]
             [
                  input [ class "input", type_ "id", placeholder "E-mail", onInput EnteredEmail, value form.email  ]
                 []
@@ -164,6 +167,9 @@ update msg model =
                 serverErrors =
                     Api.decodeErrors error
             in
+            if serverErrors == "badbody" then
+            ({model | err = "아이디와 비밀번호를 확인 해 주세요."}, Cmd.none)
+            else
             ( { model | err = serverErrors }
             , Cmd.none
             )

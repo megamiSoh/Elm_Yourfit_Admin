@@ -58,7 +58,8 @@ parser : Parser (Route -> a) a
 parser =
     oneOf
         [ Parser.map Home Parser.top
-        , Parser.map Home (s "userManage")
+        , Parser.map Home (s "userInfo")
+        , Parser.map UserInfo (s "userInfo")
         , Parser.map UserManage (s "userManage")
         , Parser.map AdminManage (s "adminManage")
         , Parser.map VideoUnit (s "videoUnit")
@@ -68,7 +69,6 @@ parser =
         , Parser.map UserPost (s "userPost")
         , Parser.map Info (s "info")
         , Parser.map Faq (s "faq")
-        , Parser.map UserInfo (s "userInfo")
         , Parser.map UserMDetail (s "userManageDetail")
         , Parser.map AdminRegist (s "adminManageRegist")
         , Parser.map AdminEdit (s "adminManage"</>string</>string)
@@ -140,6 +140,8 @@ routeToString page =
                     []
                 Logout -> 
                     ["logout"]
+                UserInfo ->
+                    ["userInfo"]
                 UserManage ->
                     ["userManage"]
                 AdminManage ->
@@ -158,8 +160,6 @@ routeToString page =
                     ["info"]
                 Faq ->
                     ["faq"]
-                UserInfo ->
-                    ["userInfo"]
                 UserMDetail ->
                     ["userManageDetail"]
                 AdminRegist ->

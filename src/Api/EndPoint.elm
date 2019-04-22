@@ -39,6 +39,7 @@ module Api.Endpoint exposing
     , videoActive
     , unitVideoShow
     , yourfitVideoShow
+    , resetpwd
     )
 
 import Http
@@ -72,7 +73,7 @@ unwrap (Endpoint str) =
 
 url : List String -> List QueryParameter -> Endpoint
 url paths queryParams =
-    Url.Builder.crossOrigin "http://api.yfit.co.kr:4000/api"
+    Url.Builder.crossOrigin "http://13.209.49.169:4000/api"
         ("v1" :: paths)
         queryParams
         |> Endpoint
@@ -210,3 +211,7 @@ unitVideoShow id =
 
 yourfitVideoShow id = 
     url ["admin", "exercises", "preview", id] []
+
+-- resetpwd
+resetpwd id= 
+    url ["admin" , "users", id , "init"] []

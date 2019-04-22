@@ -1,6 +1,14 @@
 module Api.Decode exposing (..)
 import Json.Decode as Decode exposing (..)
 import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
+type alias Success = 
+    {result : String}
+
+result =
+    Decode.succeed Success
+        |> required "result" string
+
+
 -- admin
 userformDecoder resultForm dataform page= 
     Decode.succeed resultForm
@@ -44,6 +52,7 @@ userDecoder userdata =
         |> required "joined_at" string
         |> optional "nickname" (Decode.map Just string) Nothing
         |> required "username" string 
+        |> optional "profile" (Decode.map Just string ) Nothing
 -- auth
 
 authMenusDecoder authmenus authmenu=
@@ -85,6 +94,7 @@ adminDecoder admin=
         |> required "joined_at" string
         |> optional "nickname" (Decode.map Just string) Nothing
         |> required "username" string
+        |> optional "profile" (Decode.map Just string) Nothing
 
 -- adminREgist
 decoderBody resultForm getBody page= 
@@ -99,6 +109,7 @@ decodeGetBody getBody=
         |> required "joined_at" string
         |> optional "nickname" (Decode.map Just string) Nothing
         |> required "username" string
+        |> optional "profile" (Decode.map Just string) Nothing
 
 decodePaginate page =
     Decode.succeed page
@@ -240,6 +251,7 @@ videodetail data item =
         |> required "exercise_part_name" string
         |> required "id" int
         |> required "title" string
+        |> optional "description" (Decode.map Just string) Nothing
         
 
 videoExerItem item=
@@ -312,6 +324,7 @@ userInfoAdmin admin=
         |> required "joined_at" string
         |> optional "nickname" (Decode.map Just string) Nothing
         |> required "username" string
+        |> optional "profile" (Decode.map Just string) Nothing
 userInfoMenus menus= 
     Decode.succeed menus
         |> required "menu_auth_code" (Decode.list string) 

@@ -38,6 +38,7 @@ type alias Model =
     , title : String
     , noticeId : String
     , menus : List Menus
+    , goEdit : Bool
     }
 
 type alias Data = 
@@ -79,6 +80,7 @@ init session =
     , isEdit = False
     , title = ""
     , menus = []
+    , goEdit = False
     , noticeId =""
     , data = 
         {
@@ -131,7 +133,20 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 8) item.data.menus)
+            in
+            case menuf of
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    if auth "30" then
+                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                    else
+                        ( {model |  menus = item.data.menus}, Cmd.none )
+                Nothing ->
+                    ( {model |  menus = item.data.menus}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.none
@@ -242,8 +257,13 @@ view model =
                 model.data.data.content
                 ,
                 div [ class "buttons" ] [
-                    div [ class "button is-primary cursur", onClick IsEdit ] [text "수정"],
-                    a [ class "button is-warning", Route.href (Just Route.Info) ] [text "취소"]
+                    div [][
+                        if model.goEdit then
+                        div [ class "button is-primary cursur", onClick IsEdit ] [text "수정"]
+                        else
+                        div [] []
+                    ]
+                    , a [ class "button is-warning", Route.href (Just Route.Info) ] [text "취소"]
                 ]
             ]
          , menu =  

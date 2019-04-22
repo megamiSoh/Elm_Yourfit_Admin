@@ -125,6 +125,11 @@ detailEventBtn  title msg route=
             a  [ class "button is-warning", Route.href (Just route) ] [text "취소"]
         ]
 
+backPageBtn route =
+        div [ class "buttons" ] [
+            a [ class "button is-warning", Route.href (Just route) ] [text "취소"]
+        ]
+
 goRegist : String -> String -> Html msg
 goRegist title link =
         div [ class "registWrap"] 
@@ -366,11 +371,11 @@ userInfo nickname username createDate updateDate=
                 [ th []
                     [ text "등록일" ]
                 , td []
-                    [ text createDate ]
+                    [ text (String.dropRight 10 createDate) ]
                 , th []
                     [ text "최종 접속일" ]
                 , td []
-                    [ text updateDate ]
+                    [ text (String.dropRight 10 updateDate) ]
                 ]
             ]
         ]
@@ -610,7 +615,18 @@ textAreaEvent  title read article msg=
             div [ class "field-body inputWidth" ]
             [  p [ class "control inputWidth" ]
                    [ 
-                      textarea [ class "textarea", placeholder "Normal textarea", disabled read, onInput msg] [text article]
+                      textarea [ class "textarea", placeholder "250자까지 입력 가능", disabled read, onInput msg, value article] []
+                    ]
+            ]
+       ]
+
+textAreaRegist  title read article msg=
+       div[ class "field is-horizontal" ] [
+           labelWrap title,
+            div [ class "field-body inputWidth" ]
+            [  p [ class "control inputWidth" ]
+                   [ 
+                      textarea [ class "textarea", placeholder article, disabled read, onInput msg] []
                     ]
             ]
        ]

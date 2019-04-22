@@ -56,7 +56,7 @@ type alias Flags =
 
 type Model 
      = Redirect Session
-     | Home UserM.Model
+     | Home UserI.Model
      | AdminMmodel AdminM.Model
      | UserMmodel UserM.Model
      | VideoUnitmodel VideoU.Model
@@ -144,7 +144,7 @@ subscriptions model =
         Redirect session ->
             Session.changes GotSession (Session.navKey (toSession model))
         Home user ->
-            Sub.map UserMmsg (UserM.subscriptions user)
+            Sub.map UserImsg (UserI.subscriptions user)
         AdminMmodel adminm ->
             Sub.map AdminMmsg (AdminM.subscriptions adminm)
         UserMmodel user ->
@@ -234,8 +234,8 @@ changeRouteTo maybeRoute model =
         Just Route.Other ->
             (Redirect session , Cmd.none)
         Just Route.Home -> 
-            UserM.init session
-                |> updateWith UserMmodel UserMmsg model
+            UserI.init session
+                |> updateWith UserImodel UserImsg model
         Just Route.UserManage ->
             UserM.init  session
                 |> updateWith UserMmodel UserMmsg model
@@ -336,7 +336,7 @@ toSession page =
         NotFound session ->
             session
         Home user ->
-            UserM.toSession user
+            UserI.toSession user
         AdminMmodel adminm ->
             AdminM.toSession adminm
         UserMmodel user ->
@@ -591,7 +591,7 @@ view model =
                         viewPage Page.Other (\_ -> Ignored) Blank.view
 
                     Home home ->
-                        viewPage Page.Home UserMmsg (UserM.view home)
+                        viewPage Page.Home UserImsg (UserI.view home)
                     AdminMmodel _ ->
                         viewPage Page.Other (\_ -> Ignored) Blank.view
 
@@ -662,7 +662,7 @@ view model =
                         viewPage Page.Other (\_ -> Ignored) Blank.view
 
                     Home home ->
-                        viewPage Page.Home UserMmsg (UserM.view home)
+                        viewPage Page.Home UserImsg (UserI.view home)
 
                     AdminMmodel itemModel ->
                         viewPage Page.AdminManage AdminMmsg (AdminM.view itemModel)

@@ -5,7 +5,7 @@ import { Elm } from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
 
 
-const url ='http://api.yfit.co.kr:4000/api/v1/'
+const url ='http://13.209.49.169:4000/api/v1/'
 var flags = 
   localStorage.getItem("token")
 
@@ -63,14 +63,13 @@ setInterval(async function() {
           console.log(3)
           return await fetchSuccess();
         } else {
-          alert("11112231")
         }
       
         
     } else {
       return;
     }
-}, 30000)
+}, 600000)
 
 
 app.ports.getInfo.subscribe (function() {
@@ -260,11 +259,11 @@ app.ports.sendData.subscribe(function(data) {
 
 
 app.ports.storeCache.subscribe(function(token) {
-  console.log(2)
 var t = JSON.stringify(token)
 if (token === null) {
   localStorage.removeItem("token")
   alert ("로그아웃 되었습니다.")
+  location.reload();
 } else {
   localStorage.setItem("token", t)
 }

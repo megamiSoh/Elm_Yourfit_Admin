@@ -45,6 +45,7 @@ type alias Model =
     , value : List Value
     , setSet : String
     , setRest : String
+    , description : String
     , btnTitle : String
     , topTitle : String
     , getId : String
@@ -187,10 +188,14 @@ listformUrlencoded object =
 
 registVideo model edit session=
     let
-        
+        newInput text = 
+            text 
+                |> String.replace "&" "%26"
+                |> String.replace "%" "%25"
         list =
             formUrlencoded 
-            [ ("title", model.titleModel)
+            [ ("title", (newInput model.titleModel))
+            , ("description", (newInput model.description))
             , ("difficulty", model.levelModel)
             , ("exercise_part", model.partModel)
             , ("items", "[" ++ listformUrlencoded edit ++ "]"
@@ -243,6 +248,7 @@ init session =
             , username = ""
             , gofilter = []
             , editItem = []
+            , description = ""
             , loading = True
             , valueWarn = ""
             , videoShow = False
@@ -309,6 +315,7 @@ type Msg
     | GetPreview (Int, String)
     | PreviewComplete (Result Http.Error PreviewWrap)
     | VideoClose
+    | TextAreaInput String
 
 takeLists idx model = 
     List.take idx model
@@ -319,6 +326,8 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        TextAreaInput str ->
+            ({model | description = str}, Cmd.none)
         VideoClose ->
                 ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
         PreviewComplete (Ok ok) ->
@@ -401,6 +410,12 @@ update msg model =
             in
             if String.isEmpty model.titleModel then
             ({model | validationErr = "운동제목을 입력 해 주세요.", validErrShow = True}, Api.validationHeight (True))
+            else if String.length model.titleModel > 100 then
+            ({model | validationErr = "운동제목은 100자까지 입력 가능합니다.", validErrShow = True} ,Api.validationHeight (True))
+            else if String.isEmpty model.description then
+            ({model | validationErr = "운동설명을 입력 해 주세요.", validErrShow = True}, Api.validationHeight (True))
+            else if String.length model.description > 350 then
+            ({model | validationErr = "운동 설명은 350자까지 입력 가능합니다.", validErrShow = True} ,Api.validationHeight (True))
             else if List.isEmpty result then
             ({model | validationErr = "운동영상을 선택 해 주세요.", validErrShow = True}, Api.validationHeight (True))
             else
@@ -674,6 +689,7 @@ view model=
             FilterResultData
             AddItem
             GoRegist
+            TextAreaInput
             , videoShow "영상 미리보기" model.videoShow VideoClose
             , validationErr model.validationErr model.validErrShow
             ]
@@ -684,9 +700,6 @@ view model=
                         (List.map Page.viewMenu model.menus)
                 ]
         }
-
-
-
 
 subscriptions : Model -> Sub Msg
 subscriptions model =

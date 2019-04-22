@@ -3,7 +3,7 @@ module Page.Video exposing (..)
 import Browser
 
 import Html exposing (..)
-import Html.Attributes exposing( class, colspan )
+import Html.Attributes exposing( class, colspan, style )
 import Pagenation exposing(..)
 import Page.Page exposing(..)
 import Session exposing (Session)
@@ -45,6 +45,8 @@ type alias Model = {
     , yfvideo : YfVideoData
     , sort : String
     , menus : List Menus
+    , goRegist : Bool
+    , goDetail : Bool
     }
 
 type alias Menus =
@@ -169,6 +171,8 @@ init session =
         , menus = []
         , sendBody = listInit
         , videoData = []
+        , goRegist = False
+        , goDetail = False
         , partData = []
         , levelData = []
         , sort = "영상 x 세트 탭을 클릭하시면 설명글이 나타납니다."
@@ -288,7 +292,26 @@ update msg model =
            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            let 
+                menuf = List.head (List.filter (\x -> x.menu_id == 4) item.data.menus)
+            in
+            case menuf of
+                        Just a ->
+                            let
+                                auth num = List.member num a.menu_auth_code
+                            in
+                            
+                                if auth "20" then
+                                    if auth "50" then
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
+                                    else
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                else if auth "50" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                        Nothing ->
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         VideoRetry retry ->
             ({model | session = retry},
                 Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred retry) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
@@ -464,11 +487,14 @@ update msg model =
             let
                 result = Decode.decodeValue Decode.string str
             in
+            if model.goDetail then
             case result of
                 Ok s ->
                     (model, Route.pushUrl (Session.navKey model.session) Route.VideoDetail)
                 Err _ ->
                     (model, Cmd.none)
+            else
+            (model, Cmd.none)
                     
         DetailGo id ->
             let
@@ -582,8 +608,13 @@ view model =
                 ]
             ]
             ,
-            registRoute "영상 등록" Route.VideoRegist,
-            dataCount (String.fromInt(model.paginate.total_count)),
+            div [] [
+                if model.goRegist then
+                registRoute "영상 등록" Route.VideoRegist
+                else
+                div [] []
+            ]
+            , dataCount (String.fromInt(model.paginate.total_count)),
             if model.videoData == []  then
              table [class "table"] [
                         headerTable,
@@ -632,15 +663,27 @@ headerTable =
 
 
 tableLayout idx item model= 
-        div [class "tableRow"] [
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text (
+    let
+        newinput text=
+            text 
+                |> String.replace "%26" "&" 
+                |> String.replace "%25" "%" 
+    in
+    
+        div [class "tableRow", style "cursor" (
+                if model.goDetail then
+                "pointer"
+                else 
+                "no-drop"
+        )] [
+                div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text (
                     String.fromInt(model.paginate.total_count - ((model.paginate.page - 1) * 10) - (idx)  )
                 )],
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.title],
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.exercise_part_name],
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.difficulty_name],
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text item.duration],
-                div [ class "tableCell cursor", onClick (DetailGo (String.fromInt(item.id))) ] [text (String.dropRight 10 item.inserted_at)],
+                div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))), style "width" "600px" ] [text (newinput item.title)],
+                div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text item.exercise_part_name],
+                div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text item.difficulty_name],
+                div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text item.duration],
+                div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell" ] [
                     if item.is_use then
                     div [class "button is-small", onClick (IsActive( item.is_use, String.fromInt(item.id)))] [text "활성화"]

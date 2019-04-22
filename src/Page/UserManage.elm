@@ -41,6 +41,8 @@ type alias Model =
     , todaySave : String
     , menus : List Menus
     , username : String
+    , goDetail : Bool
+    , goRegist : Bool
     }
 
 
@@ -109,6 +111,8 @@ init session=
     , endday = Nothing
     , dateModel = "all"
     , todaySave = ""
+    , goDetail = False
+    , goRegist = False
     , menus = []
     , resultForm = 
             {
@@ -207,7 +211,24 @@ update msg model =
             )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            let 
+                menuf = List.head (List.filter (\x -> x.menu_id == 1) item.data.menus)
+            in
+            case menuf of
+                        Just a ->
+                            let
+                                auth num = List.member num a.menu_auth_code
+                            in
+                            
+                                if auth "20" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                else if auth "50" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                        Nothing ->
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            
         PageBtn (idx, str) ->
             let
                 old = model.listForm
@@ -340,12 +361,15 @@ update msg model =
             let 
                 decodeId = Decode.decodeValue Decode.string id
             in
-                case decodeId of
-                    Ok go ->
-                        (model , Route.pushUrl (Session.navKey model.session) Route.UserMDetail) 
-                
-                    Err _  ->
-                        (model,Cmd.none)
+                if model.goDetail then
+                    case decodeId of
+                        Ok go ->
+                            (model , Route.pushUrl (Session.navKey model.session) Route.UserMDetail) 
+                    
+                        Err _  ->
+                            (model,Cmd.none)
+                else
+                    (model, Cmd.none)
         -- SessionCheck check ->
         --     let
         --         decodeCheck = Decode.decodeValue Decode.string check
@@ -524,6 +548,6 @@ tableLayout idx item model =
                         
                 ],
                 div [ class "tableCell" ] [text item.username],
-                div [ class "tableCell" ] [text item.joined_at]
+                div [ class "tableCell" ] [text (String.dropRight 10 item.joined_at)]
         ]
 

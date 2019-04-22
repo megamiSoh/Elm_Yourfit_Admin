@@ -2,7 +2,7 @@ module Page.Info exposing(..)
 
 import Browser
 import Html exposing(..)
-import Html.Attributes exposing(class)
+import Html.Attributes exposing(class, style)
 import Pagenation exposing(..)
 import Session exposing (Session)
 import Page.Page exposing (..)
@@ -46,6 +46,8 @@ type alias Model = {
     , todaySave : String
     , menus : List Menus
     , username : String
+    , goRegist : Bool
+    , goDetail : Bool
     }
 type alias Menus =
     {
@@ -130,6 +132,8 @@ init session =
         , endday = Nothing
         , dateModel = "all"
         , todaySave = ""
+        , goRegist = False
+        , goDetail = False
         , username = ""
         , menus = []
         , resultForm = 
@@ -201,7 +205,26 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            let 
+                menuf = List.head (List.filter (\x -> x.menu_id == 8) item.data.menus)
+            in
+            case menuf of
+                        Just a ->
+                            let
+                                auth num = List.member num a.menu_auth_code
+                            in
+                            
+                                if auth "20" then
+                                    if auth "50" then
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
+                                    else
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                else if auth "50" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                        Nothing ->
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PageBtn (idx, str) ->
             let 
                 old = model.listInit
@@ -385,16 +408,33 @@ update msg model =
             let
                 decodeId = Decode.decodeValue Decode.string id
             in
+                if model.goDetail then
                 case decodeId of
                     Ok go ->
                         (model , Route.pushUrl (Session.navKey model.session) Route.InfoDetail) 
                 
                     Err _  ->
                         (model,Cmd.none)
+                else
+                (model, Cmd.none)
         IsActive id->
             ({model | isActive = not model.isActive}, Cmd.batch[encodeList model id])
         HttpResult (Ok item)->
-            (model , managelist model.listInit model.session )
+            let
+                old = model.listInit
+                list = 
+                    {
+                    page= 1,
+                    per_page= 10,
+                    title= old.title,
+                    start_date= "",
+                    end_date= ""
+                    }
+            in
+                if model.dateModel == "all" then
+                (model, managelist list model.session)
+                else
+                (model , managelist model.listInit model.session )
         HttpResult (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -439,9 +479,16 @@ view model =
                 ]
             ],
             dataCount (String.fromInt(model.resultForm.paginate.total_count)),
-            registRoute "등록" Route.InfoRegist,
-            div [class "table"](
-                    [headerTable] ++ (List.indexedMap (tableLayout) model.resultForm.data)
+            div [] [
+                if model.goRegist then
+                registRoute "등록" Route.InfoRegist
+                else
+                div [] []
+            ]
+            , div [class "table"](
+                    [headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model
+                    
+                    ) model.resultForm.data)
                 )
             ,Pagenation.pagination 
                 PageBtn
@@ -477,11 +524,16 @@ headerTable =
          div [ class "tableCell" ] [text "게시"]
      ]
 
-tableLayout idx item = 
-        div [class "tableRow"] [
+tableLayout idx item model = 
+        div [class "tableRow", style "cursor" (
+            if model.goDetail then
+            "pointer"
+            else
+            "no-drop"
+        )] [
                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text (String.fromInt(idx + 1))],
                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.title],
-                div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.inserted_at],
+                div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text (String.dropRight 10 (item.inserted_at))],
                 div [ class "tableCell" ] [
                      if item.is_use then
                         button [class "button is-small", onClick (IsActive (String.fromInt(item.id)))] [text "활성화"]

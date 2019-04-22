@@ -20,7 +20,7 @@ onChange tagger =
 targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
-registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit =
+registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput=
     div[ ] [
         columnsHtml [pageTitle "유어핏영상 등록"],
         columnsHtml [
@@ -34,6 +34,9 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
             noEmptyselectForm "난이도" False levelmodel seletmsg  model.levelModel,
             noEmptyselectForm "운동 부위" False partmodel partmsg  model.partModel
             ]
+            , columnsHtml [
+           textAreaRegist "운동 설명" False "250자까지 입력 가능" textAreaInput
+        ]
         ]
         ,
         columnsHtml [
@@ -92,12 +95,20 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
                     a [ class "button is-warning", Route.href (Just url) ] [text "취소"]
                 ]
         ]
+        
          , 
         videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult
     ]
 
 
-formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit=
+formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit description textareaInput=
+    let
+        textInput text =
+            text
+                |> String.replace "%26" "&"    
+                |> String.replace "%25" "%"
+    in
+    
     div[] [
         columnsHtml [pageTitle toptitle],
         columnsHtml [
@@ -105,12 +116,16 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
         ],
         div [class "searchWrap"] [
             columnsHtml [
-            formInputEvent "운동 제목" "운동 제목을 입력 해 주세요." dis titlemsg seletmodel.title
+            formInputEvent "운동 제목" "운동 제목을 입력 해 주세요." dis titlemsg (textInput seletmodel.title)
             ],
             columnsHtml [
             noEmptyselectForm "난이도" dis levelmodel seletmsg seletmodel.difficulty_code ,
             noEmptyselectForm "운동 부위" dis partmodel partmsg seletmodel.exercise_part_code
+            ] ,
+            columnsHtml [
+                textAreaEvent "운동설명" dis description textareaInput
             ]
+            
         ]
         ,
         columnsHtml [
@@ -197,7 +212,8 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
             ]
         ],
         columnsHtml [
-                div [ class "buttons" ] [
+            if model.goEdit then
+            div [ class "buttons" ] [
                     if btntitle == "수정" then
                     div [ class "button is-primary cursor", onClick changePage ] [text btntitle]
                     else
@@ -205,6 +221,8 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
                     ,
                     a [ class "button is-warning", Route.href (Just url) ] [text "취소"]
                 ]
+            else
+            backPageBtn url
         ]
          , 
         videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult
@@ -311,7 +329,7 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
             ]
                 []
             ,
-            div [ class "media-left" , onClick (preview(item.id, item.title)) ]
+            div [ class "media-left" ]
             [ figure [ class "image is-85x85" ]
                 [
                 if item.title == "" then
@@ -320,6 +338,7 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
                 else
                 img [ src 
                     item.thembnail
+                    , onClick (preview(item.id, item.title))
                  ]
                     []
                 ]

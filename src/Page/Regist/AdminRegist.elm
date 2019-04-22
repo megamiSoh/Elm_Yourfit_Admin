@@ -3,7 +3,7 @@ module Page.Regist.AdminRegist exposing (..)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (class, type_ , checked, disabled)
+import Html.Attributes exposing (class, type_ , checked, disabled, src)
 import Html.Events exposing (..)
 import Page.Page exposing (..)
 import Session exposing (Session)
@@ -74,6 +74,7 @@ type alias GetBody =
     , joined_at : String
     , nickname : Maybe String
     , username : String
+    , profile : Maybe String
     }
 
 type alias Menus =
@@ -121,6 +122,7 @@ init session =
             , joined_at = ""
             , nickname = Nothing
             , username = ""
+            , profile = Nothing
             }
         , sendBody = 
             { page = 1
@@ -357,8 +359,13 @@ adminLayout popEvent title disabled popModel nickModel idModel userData choiceMs
                 [   pageTitle title,
                     figure [ class "image is-64x64 adminImg" ]
                     [ 
-                        i [ class "fas fa-user-circle" ]
-                        []
+                        case choiceData.profile of
+                            Just image ->
+                                img [src image] []
+                        
+                            Nothing ->
+                                i [ class "fas fa-user-circle" ]
+                                []
                     ]
                     , div [class "button is-small", onClick PopEvent ] [text "관리자 검색"]
                     , AdminManage.adminRegistPop popModel PopEvent NickName Id nickModel idModel Search Reset userData.data choiceMsg
@@ -368,7 +375,7 @@ adminLayout popEvent title disabled popModel nickModel idModel userData choiceMs
                     if choiceData.id == 0 then
                         div [class "emptyMsg"] [text "관리자를 등록 해 주세요."]
                     else
-                        AdminManage.body choiceData
+                        AdminManage.body choiceData ""
                     
                 ]
             ]

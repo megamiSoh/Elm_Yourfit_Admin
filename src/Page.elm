@@ -153,6 +153,8 @@ navbarLink : Page -> Maybe Route -> List (Html msg) -> Html msg
 navbarLink page route linkContent =
     li [ classList [ ( "nav-item", True ), ( "active", isActive page route ) ] ]
         [ a [ class "nav-link", Route.href route ] linkContent ]
+emptyMenu item =
+    li [] [ a [ class "nav-link", Route.href(Just Route.UserInfo) ][]]
 viewMenu item  =
     case item.menu_id of
         1 ->
@@ -174,7 +176,7 @@ viewMenu item  =
         9 ->  
             li [] [ a [ class "nav-link", Route.href(Just Route.Faq) ][text item.menu_name]]
         _ ->
-            li [] [ a [ class "nav-link", Route.href(Just Route.UserManage) ][text item.menu_name]]
+            li [] [ a [ class "nav-link", Route.href(Just Route.UserInfo) ][text item.menu_name]]
 
 -- viewAside : Page -> Html msg
 viewAside page =

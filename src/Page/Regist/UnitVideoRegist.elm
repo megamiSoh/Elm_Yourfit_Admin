@@ -102,9 +102,13 @@ init session =
 
 editEncoder editData session = 
     let
+        newinput text=
+            text 
+                |> String.replace "&" "%26"
+                |> String.replace "%" "%25"
         list =
             ("title="
-                ++ editData.title
+                ++ (newinput editData.title)
                 ++ "&difficulty="
                 ++ editData.difficulty
                 ++ "&exercise="
@@ -113,7 +117,7 @@ editEncoder editData session =
                 ++ editData.instrument
                 ++ "&video="
                 ++ editData.video
-                ++ "&description=" ++editData.description
+                ++ "&description=" ++ (newinput editData.description)
                 ++ "&part_details=[\"" ++ 
                     String.join "\",\"" editData.part_details
                 ++"\"]" 

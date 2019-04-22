@@ -2,7 +2,7 @@ module Page.UserInfo exposing (..)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes as Attr exposing (class, value, checked, type_, disabled)
+import Html.Attributes as Attr exposing (class, value, checked, type_, disabled, src)
 import Page.Page exposing (..)
 import Html.Events exposing (..)
 import Session exposing (Session)
@@ -53,7 +53,8 @@ type alias Admin =
         id : Int,
         joined_at : String,
         nickname : Maybe String,
-        username : String
+        username : String,
+        profile : Maybe String
     }
 type alias Menus =
     {
@@ -92,7 +93,8 @@ init session =
             id = 0,
             joined_at = "",
             nickname = Nothing,
-            username = "" 
+            username = "" ,
+            profile = Nothing
         } ,
         menus = []
     },
@@ -177,8 +179,13 @@ view model =
                 [   pageTitle "내 정보",
                     figure [ class "image is-64x64" ]
                     [ 
-                        i [ class "fas fa-user-circle" ]
-                        []
+                        case model.data.admin.profile of
+                            Just image ->
+                                img [src image] []
+                        
+                            Nothing ->
+                                i [ class "fas fa-user-circle" ]
+                                []
                     ]
                 ]
             , div [ class "media-content" ]

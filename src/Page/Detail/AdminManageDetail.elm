@@ -4,7 +4,7 @@ module Page.Detail.AdminManageDetail exposing (..)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes as Attr exposing (class, value, checked, type_, disabled)
+import Html.Attributes as Attr exposing (class, value, src, checked, type_, disabled)
 import Html.Events exposing (..)
 import Page.Page exposing (..)
 import Session exposing (Session)
@@ -52,6 +52,8 @@ type alias Model =
     , userIntId : Int
     , menuAuth : List MenuAuthCodeList
     , menuss : List Menuss
+    , goEdit : Bool
+    , goDelete : Bool
     }
 type alias Menuss =
     {
@@ -98,7 +100,8 @@ type alias Admin =
     , id : Int
     , joined_at : String
     , nickname : Maybe String
-    , username : String}
+    , username : String
+    , profile : Maybe String}
 
 
 type alias Authmenus = 
@@ -120,6 +123,8 @@ init session =
         , menuAuth = []
         , menuss = []
         , closeOpen= False
+        , goEdit = False
+        , goDelete = False
         , userId = ""
         , plz = {
             menu_auth_code = []
@@ -133,7 +138,8 @@ init session =
             , id = 0
             , joined_at = ""
             , nickname = Nothing
-            , username = ""}
+            , username = ""
+            , profile = Nothing}
         , menus = 
             [
                 {
@@ -217,7 +223,25 @@ update msg model =
             in
             (model,  Session.changeInterCeptor (Just serverErrors) )
         GetMyInfo (Ok item) -> 
-            ( {model |  menuss = item.data.menus}, Cmd.none )
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 2) item.data.menus)
+            in
+            case menuf of
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    if auth "30" then
+                        if auth "40" then
+                        ( {model |  menuss = item.data.menus, goEdit = True, goDelete = True}, Cmd.none )
+                        else
+                        ( {model |  menuss = item.data.menus, goEdit = True}, Cmd.none )
+                    else if auth "40" then
+                        ( {model |  menuss = item.data.menus, goDelete = True}, Cmd.none )
+                    else
+                        ( {model |  menuss = item.data.menus}, Cmd.none )
+                Nothing ->
+                    ( {model |  menuss = item.data.menus}, Cmd.none )
         CloseOpen ->
             ({model | closeOpen = not model.closeOpen}, Cmd.none)
         DeleteAdmin ->
@@ -255,7 +279,7 @@ update msg model =
                 secResult = {old | menu_id = id, menu_auth_code = [str] }
                 senda = model.sendAuth
                 sendResult = {senda | menu_auth = List.sortBy .menu_id result}
-                secSendResult = {senda | menu_auth = List.sortBy .menu_id senda.menu_auth ++ [secResult]}
+                secSendResult = {senda | menu_auth = List.sortBy .menu_id (least ++ [secResult])}
             in
                 if List.length (idFilter) > 0 then
                     ({model | menus = List.sortBy .menu_id result, sendAuth = sendResult},Cmd.none)
@@ -386,8 +410,13 @@ view model =
             model.menus
             model,
             div [ class "buttons" ] [
-            div [ class "button is-primary cursor", onClick (DetailOrEdit "detail") ] [text "수정"],
-            a [ class "button is-warning", Route.href (Just Route.AdminManage) ] [text "취소"]
+            div [] [
+                if model.goEdit then
+                div [ class "button is-primary cursor", onClick (DetailOrEdit "detail") ] [text "수정"]
+                else 
+                div [] []
+            ]
+            , a [ class "button is-warning", Route.href (Just Route.AdminManage) ] [text "취소"]
         ]
        ]
        , menu =  
@@ -412,14 +441,25 @@ adminLayout popEvent userData title disabled menu code menuId model=
                 [   pageTitle title,
                     figure [ class "image is-64x64 adminImg" ]
                     [ 
-                        i [ class "fas fa-user-circle" ]
-                        []
+                        case userData.profile of
+                            Just image ->
+                                img [src image] []
+                        
+                            Nothing ->
+                                i [ class "fas fa-user-circle" ]
+                                []
                     ]
                 ]
             , div [ class "media-content" ]
                 [
-                     div [class "button is-danger cursor",onClick CloseOpen] [text "관리자 삭제"] 
-                    ,AdminManage.body userData
+                    div [] [
+                        if model.goDelete then
+                        div [class "button is-danger cursor",onClick CloseOpen] [text "관리자 삭제"] 
+                        else 
+                        div [class "emptyheight"] []
+                    ]
+                    , AdminManage.body userData "marginTable2"
+                    
                 ],
                 if model.closeOpen then
                             div [] [

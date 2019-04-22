@@ -35,6 +35,7 @@ type alias Model =
     , menus : List Menus
     , validErrShow : Bool
     , videoShow : Bool
+    , goEdit : Bool
     }
 
 type alias PreviewWrap =  
@@ -106,6 +107,7 @@ init session =
     , checkModel = ""
     , validationErr = ""
     , validErrShow = False
+    , goEdit = False
     , videoShow = False
     , editData =
         { action_id =  0
@@ -141,9 +143,13 @@ init session =
 
 editEncoder editData session id= 
     let
+        newInput text = 
+            text
+                |> String.replace "&" "%26"
+                |> String.replace "%" "%25"
         list =
             ("title="
-                ++ editData.title
+                ++ newInput (editData.title)
                 ++ "&difficulty="
                 ++ editData.difficulty
                 ++ "&exercise="
@@ -152,7 +158,7 @@ editEncoder editData session id=
                 ++ editData.instrument
                 ++ "&video="
                 ++ editData.video
-                ++ "&description=" ++editData.description
+                ++ "&description=" ++ (newInput editData.description)
                 ++ "&part_details=[\"" ++ 
                     String.join "\",\"" editData.part_details
                 ++"\"]" 
@@ -338,14 +344,19 @@ update msg model =
             ({model | editData = new},Cmd.none)
         GetData (Ok ok)->
             let
+                newInput text = 
+                    text
+                        |> String.replace "%26" "&" 
+                        |> String.replace "%25" "%" 
+
                 old = model.editData
                 new = 
-                    { old | title = ok.data.title
+                    { old | title = (newInput ok.data.title)
                     , difficulty = ok.data.difficulty_code
                     , exercise = ok.data.exercise_code
                     , instrument = ok.data.instrument_code
                     , video = ok.data.video
-                    , description = ok.data.description
+                    , description = (newInput ok.data.description)
                     , action_id = 
                         case String.toInt(model.contentsId) of
                             Just int ->
@@ -381,7 +392,20 @@ update msg model =
             (model, Session.changeInterCeptor (Just error) )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 3) item.data.menus)
+            in
+            case menuf of
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    if auth "30" then
+                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                    else
+                        ( {model |  menus = item.data.menus}, Cmd.none )
+                Nothing ->
+                    ( {model |  menus = item.data.menus}, Cmd.none )
             
 
 
@@ -442,7 +466,12 @@ view model =
                 AreaMsg
                 GetPreview
                 , 
-                Page.detailEventBtn "수정" DetailOrEdit Route.VideoUnit
+                div [] [
+                    if model.goEdit then
+                    Page.detailEventBtn "수정" DetailOrEdit Route.VideoUnit
+                    else
+                    Page.backPageBtn Route.VideoUnit
+                ]
                 , Page.videoShow "영상 미리보기" model.videoShow VideoClose
             ]
        , menu =  

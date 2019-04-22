@@ -2,7 +2,7 @@ port module Page.Detail.UserManageDetail exposing (..)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing(class)
+import Html.Attributes exposing(class, src)
 import Html.Events exposing(..)
 import Page.Page exposing(..)
 import ExpandEvent as Exevent
@@ -23,6 +23,7 @@ type alias Model = {
     , getData : Data
     , menus : List Menus
     , getId : String
+    , goEdit : Bool
     }
 
 
@@ -38,6 +39,7 @@ type alias UserData =
     , joined_at : String
     , nickname : Maybe String
     , username : String
+    , profile : Maybe String
     }
 
 type alias Menus =
@@ -56,13 +58,15 @@ init session = ({
         session = session
         , menus = []
         , getId = ""
+        , goEdit = False
         , getData =  {
          data = {
             user = { connected_at = ""
                     , id = 0 
                     , joined_at = ""
                     , nickname = Nothing
-                    , username = ""}
+                    , username = ""
+                    , profile = Nothing}
                 }  
                   }
             
@@ -82,6 +86,8 @@ type Msg
     | GotSession Session
     | SessionCheck E.Value
     | GetMyInfo (Result Http.Error D.DataWrap)
+    | ResetPwd
+    | ResetComplete (Result Http.Error D.Success)
 
 
 
@@ -92,6 +98,12 @@ toSession model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ResetComplete (Ok ok) ->
+            (model, Api.showToast (E.string "임시 비밀번호가 발송되었습니다."))
+        ResetComplete (Err err) ->
+            (model, Cmd.none)
+        ResetPwd ->
+            (model, Api.get ResetComplete (Endpoint.resetpwd model.getId) (Session.cred model.session) D.result)
         GetId id ->
             let
                 decodeId = Decode.decodeValue Decode.string id
@@ -129,7 +141,20 @@ update msg model =
             in
             (model, Session.changeInterCeptor (Just error) )
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 1) item.data.menus)
+            in
+            case menuf of
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    if auth "30" then
+                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                    else
+                        ( {model |  menus = item.data.menus}, Cmd.none )
+                Nothing ->
+                    ( {model |  menus = item.data.menus}, Cmd.none )
                         
   
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
@@ -141,15 +166,26 @@ view model =
             article [ class "media" ]
             [ div [ class "media-left" ]            
                 [   pageTitle "사용자 관리 상세",
-                    figure [ class "image is-64x64" ]
+                    figure [ class "image is-64x64 userimage" ]
                     [ 
-                        i [ class "fas fa-user-circle" ]
-                        []
+                       case model.getData.data.user.profile of
+                           Just image ->
+                               img [src image] []
+                       
+                           Nothing ->
+                                i [ class "fas fa-user-circle" ]
+                                []
                     ]
                 ]
             , div [ class "media-content" ]
-                [ 
-                    div [ class "content marginTop" ]
+                    [
+                    div [] [
+                        if model.goEdit then
+                            div [ class "button is-danger btnpositionRight", onClick ResetPwd ] [text "비밀번호 초기화"]
+                        else
+                            div [class "emptyheight"][]
+                    ]
+                    , div [ class "content marginTop" ]
                     [ 
                         userInfo
                         model.getData.data.user.nickname model.getData.data.user.username

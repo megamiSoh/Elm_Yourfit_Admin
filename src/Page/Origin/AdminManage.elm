@@ -8,8 +8,8 @@ import Html.Events exposing (..)
 import Page.Page exposing (..)
 
 
-body item =
-    div [ class "table marginTable"][
+body item margin=
+    div [ class ("table marginTable " ++ margin)][
         div  [class "tableRow tableNotList"] [
                 div [ class "tableCell" ] [text "닉네임"],
                 div [ class "tableCell" ] [

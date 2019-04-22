@@ -7,7 +7,7 @@ import Browser
 import Session exposing(Session)
 import Json.Encode as E
 import Json.Decode as Decode
-import Html.Attributes exposing( class, placeholder, disabled, title, id, colspan)
+import Html.Attributes exposing( class, placeholder, disabled, title, id, colspan, style)
 import Route exposing (Route)
 import Pagenation exposing(..)
 import Page.Page exposing(..)
@@ -46,6 +46,8 @@ type alias Model = {
     , paginate : Paginate
     , videoId : String
     , menus : List Menus
+    , goDetail : Bool
+    , goRegist : Bool
      }
 
 type alias Menus =
@@ -145,6 +147,8 @@ init  session =
          title = "",
          videoShow = False
         , username = ""
+        , goRegist = False
+        , goDetail = False
         , getList= []
         , levels = []
         , instrument = []
@@ -283,7 +287,26 @@ update msg model =
             )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            let 
+                menuf = List.head (List.filter (\x -> x.menu_id == 3) item.data.menus)
+            in
+            case menuf of
+                        Just a ->
+                            let
+                                auth num = List.member num a.menu_auth_code
+                            in
+                            
+                                if auth "20" then
+                                    if auth "50" then
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
+                                    else
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                else if auth "50" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                        Nothing ->
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PageBtn (idx, str) ->
             if model.dateModel == "all" then
                 case str of
@@ -392,12 +415,15 @@ update msg model =
             let
                 dId = Decode.decodeValue Decode.string data
             in
+                if model.goDetail then
                 case dId of
                     Ok id ->
                         (model ,Route.pushUrl (Session.navKey model.session) Route.UvideoDetail)
                 
                     Err _ ->
                         (model, Cmd.none)
+                else
+                (model, Cmd.none)
         GetId id -> 
             let
                 data = Encode.string id 
@@ -546,7 +572,12 @@ view model =
                      ]
                     
                  ],
-                 registRoute "영상 등록" Route.UvideoRegist
+                 div [] [
+                    if model.goRegist then
+                    registRoute "영상 등록" Route.UvideoRegist
+                    else
+                    div [] []
+                 ]
                  , dataCount (String.fromInt(model.paginate.total_count))
                  , 
                   if model.getList == [] then
@@ -590,11 +621,21 @@ headerTable =
      ]
 
 tableLayout idx item model= 
-        div [class "tableRow cursor"] [
+        let
+            newinput text=
+                text 
+                    |> String.replace "%26" "&"
+                    |> String.replace "%25" "%"
+        in
+        div [class "tableRow",style "cursor" (if model.goDetail then
+            "pointer"
+            else
+            "no-drop"
+        )] [
                  div [ class "tableCell", onClick (GetId (String.fromInt(item.id)))] [text  (
                     String.fromInt(model.paginate.total_count - ((model.paginate.page - 1) * 10) - (idx)  )
                 )],
-                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.title],
+                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text (newinput item.title)],
                  div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.instrument_name],
                  div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] (
                      List.map (\x ->
@@ -603,7 +644,7 @@ tableLayout idx item model=
                  ),
                  div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.difficulty_name],
                  div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.exercise_name],
-                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.inserted_at],
+                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text (String.dropRight 10 item.inserted_at)],
                  div [ class "tableCell" ] [
                      button [class "button is-small"
                      , onClick (GetVideoFile (item.title, (String.fromInt(item.id))))

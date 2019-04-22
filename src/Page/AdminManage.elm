@@ -30,6 +30,8 @@ type alias Model = {
     , secondSelectedDate : Maybe Date
     , datePickerData : DatePicker.Model
     , endDatePickerData :DatePicker.Model
+    , goRegist : Bool
+    , goDetail : Bool
     , today : Maybe Date
     , endday : Maybe Date
     , endShow : Bool
@@ -133,6 +135,8 @@ init session =
         , endday = Nothing
         , dateModel = "all"
         , todaySave = ""
+        , goRegist = False
+        , goDetail = False
         , resultForm = 
             {
                 data = [],
@@ -187,7 +191,25 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            let 
+                menuf = List.head (List.filter (\x -> x.menu_id == 2) item.data.menus)
+            in
+            case menuf of
+                        Just a ->
+                            let
+                                auth num = List.member num a.menu_auth_code
+                            in
+                                if auth "20" then
+                                    if auth "50" then
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
+                                    else
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                else if auth "50" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                        Nothing ->
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PageBtn (idx, str) ->
             let
                 old = model.listForm
@@ -381,12 +403,15 @@ update msg model =
                 resultOk = 
                     Decode.decodeValue Decode.string str
             in
-                case resultOk of
-                    Ok go ->
-                        (model,  Route.pushUrl (Session.navKey model.session) Route.AdminDetail)
-                
-                    Err _  ->
-                        (model, Cmd.none)
+                if model.goDetail then
+                    case resultOk of
+                        Ok go ->
+                            (model,  Route.pushUrl (Session.navKey model.session) Route.AdminDetail)
+                    
+                        Err _  ->
+                            (model, Cmd.none)
+                else
+                    (model, Cmd.none)
 
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
@@ -421,12 +446,15 @@ view model =
         dataCount (String.fromInt(model.resultForm.pagenate.total_count)),
         div [ class "registWrap"] 
         [
+            if model.goRegist then
             a [ class "button is-primary", Route.href (Just Route.AdminRegist) ]
             [ 
                 i [ class "far fa-registered" ]
                 []
                 , text "관리자등록" 
                 ]
+            else
+            div [] []
         ],
         if List.length (model.resultForm.data) > 0 then
         div [ class "table" ] ([headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.resultForm.data) )
@@ -475,7 +503,7 @@ tableLayout idx item model =
                         
                 ],
                 div [ class "tableCell" ] [text item.username],
-                div [ class "tableCell" ] [text item.joined_at]
+                div [ class "tableCell" ] [text (String.dropRight 10 item.joined_at)]
         ]
 
 subscriptions : Model -> Sub Msg
