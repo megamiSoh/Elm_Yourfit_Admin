@@ -379,26 +379,34 @@ filter model idx =
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
+    if model.isEdit then
+        { title = "관리자 관리"
+        , content = 
+            div [] [
+                adminLayout 
+                PopEvent 
+                model.admin
+                "관리자 수정"
+                False
+                model.authMenus
+                model.authCode
+                model.menus
+                model,
+                
+                div [ class "buttons" ] [
+                div [ class "button is-primary cursor", onClick (DetailOrEdit "edit") ] [text "저장"],
+                a [ class "button is-warning", Route.href (Just Route.AdminManage) ] [text "취소"]
+            ]
+        ]
+        , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menuss)
+        ]
+        }
+    else
     { title = "관리자 관리"
     , content = 
-        if model.isEdit then
-         div [] [
-            adminLayout 
-            PopEvent 
-            model.admin
-            "관리자 수정"
-            False
-            model.authMenus
-            model.authCode
-            model.menus
-            model,
-            
-            div [ class "buttons" ] [
-            div [ class "button is-primary cursor", onClick (DetailOrEdit "edit") ] [text "저장"],
-            a [ class "button is-warning", Route.href (Just Route.AdminManage) ] [text "취소"]
-        ]
-       ]
-        else
          div [] [
             adminLayout 
             PopEvent 
@@ -429,7 +437,7 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
    Sub.batch[ Api.params GetId
-   , Session.changes GotSession (Session.navKey model.session)
+    , Session.changes GotSession (Session.navKey model.session)
     , Session.retryChange RetryRequest (Session.navKey model.session)
     , Session.secRetryChange VideoRetry (Session.navKey model.session)
    ]

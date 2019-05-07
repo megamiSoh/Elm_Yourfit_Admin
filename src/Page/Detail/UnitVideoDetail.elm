@@ -412,76 +412,159 @@ update msg model =
 
 view : Model -> {title : String ,content : Html Msg, menu : Html Msg}
 view model =
-    { title = "유어핏 단위 영상 상세"
-    , content = 
-        if model.edit then
-            div [] [
-                if model.loading then
-                div [class "adminloadingMask"][Page.spinner]
-                else 
-                div [][] ,
-                if model.videoShow then
-                        div [class "adminAuthMask"] []
-                else
-                    div [] []
-                ,
-                Unit.unitVideoForm
-                    "유어핏 단위 영상 수정"
-                    False
-                    TitleText 
-                    model.detailList
-                    model
-                    SelectLevel
-                    SelectExerCode
-                    SelectTool
-                    VideoId
-                    SelectPart
-                    model.checkModel
-                    AreaMsg
-                    GetPreview
-                ,
-                Page.detailEventBtn "저장" GoEdit Route.VideoUnit
-                , Page.validationErr model.validationErr model.validErrShow
-                , Page.videoShow "영상 미리보기" model.videoShow VideoClose
-            ]
-
-       else 
-            div [] [
-                if model.loading then
-                div [class "adminloadingMask"][Page.spinner]
-                else 
-                div [][] ,
-                Unit.unitVideoForm
-                "유어핏 단위 영상 상세"
-                True
-                TitleText 
-                model.detailList
-                model
-                SelectLevel
-                SelectExerCode
-                SelectTool
-                VideoId
-                SelectPart
-                model.checkModel
-                AreaMsg
-                GetPreview
-                , 
-                div [] [
-                    if model.goEdit then
-                    Page.detailEventBtn "수정" DetailOrEdit Route.VideoUnit
-                    else
-                    Page.backPageBtn Route.VideoUnit
+    if model.edit then
+        if model.loading then
+            { title = "유어핏 단위 영상 상세"
+            , content = 
+                    div [] [
+                        div [class "adminloadingMask"][Page.spinner]
+                    ]
+            , menu =  
+                aside [ class "menu"] [
+                    ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
                 ]
-                , Page.videoShow "영상 미리보기" model.videoShow VideoClose
+            }
+        else
+            if model.videoShow then
+            { title = "유어핏 단위 영상 상세"
+            , content = 
+                    div [] [
+                        div [class "adminAuthMask"] []
+                        , Unit.unitVideoForm
+                            "유어핏 단위 영상 수정"
+                            False
+                            TitleText 
+                            model.detailList
+                            model
+                            SelectLevel
+                            SelectExerCode
+                            SelectTool
+                            VideoId
+                            SelectPart
+                            model.checkModel
+                            AreaMsg
+                            GetPreview
+                        ,
+                        Page.detailEventBtn "저장" GoEdit Route.VideoUnit
+                        , Page.validationErr model.validationErr model.validErrShow
+                        , Page.videoShow "영상 미리보기" model.videoShow VideoClose
+                    ]
+            , menu =  
+                aside [ class "menu"] [
+                    ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+            }
+            else
+            { title = "유어핏 단위 영상 상세"
+            , content = 
+                    div [] [
+                        Unit.unitVideoForm
+                            "유어핏 단위 영상 수정"
+                            False
+                            TitleText 
+                            model.detailList
+                            model
+                            SelectLevel
+                            SelectExerCode
+                            SelectTool
+                            VideoId
+                            SelectPart
+                            model.checkModel
+                            AreaMsg
+                            GetPreview
+                        ,
+                        Page.detailEventBtn "저장" GoEdit Route.VideoUnit
+                        , Page.validationErr model.validationErr model.validErrShow
+                        , Page.videoShow "영상 미리보기" model.videoShow VideoClose
+                    ]
+            , menu =  
+                aside [ class "menu"] [
+                    ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+            }
+    else
+        if model.loading then
+        { title = "유어핏 단위 영상 상세"
+        , content = 
+                div [] [
+                    div [class "adminloadingMask"][Page.spinner]
+                ]
+        , menu =  
+            aside [ class "menu"] [
+                ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
             ]
-       , menu =  
-        aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menus)
-        ]
 
-        
-    }
+            
+        }
+        else
+            if model.goEdit then
+            { title = "유어핏 단위 영상 상세"
+            , content = 
+                    div [] [
+                        Unit.unitVideoForm
+                        "유어핏 단위 영상 상세"
+                        True
+                        TitleText 
+                        model.detailList
+                        model
+                        SelectLevel
+                        SelectExerCode
+                        SelectTool
+                        VideoId
+                        SelectPart
+                        model.checkModel
+                        AreaMsg
+                        GetPreview
+                        , 
+                        div [] [
+                            Page.detailEventBtn "수정" DetailOrEdit Route.VideoUnit
+                        ]
+                        , Page.videoShow "영상 미리보기" model.videoShow VideoClose
+                    ]
+            , menu =  
+                aside [ class "menu"] [
+                    ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+
+                
+            }
+            else
+            { title = "유어핏 단위 영상 상세"
+            , content = 
+                    div [] [
+                        Unit.unitVideoForm
+                        "유어핏 단위 영상 상세"
+                        True
+                        TitleText 
+                        model.detailList
+                        model
+                        SelectLevel
+                        SelectExerCode
+                        SelectTool
+                        VideoId
+                        SelectPart
+                        model.checkModel
+                        AreaMsg
+                        GetPreview
+                        , 
+                        div [] [
+                            Page.backPageBtn Route.VideoUnit
+                        ]
+                        , Page.videoShow "영상 미리보기" model.videoShow VideoClose
+                    ]
+            , menu =  
+                aside [ class "menu"] [
+                    ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+
+                
+            }
   
 
 

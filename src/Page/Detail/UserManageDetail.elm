@@ -159,6 +159,7 @@ update msg model =
   
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
+    if model.goEdit then
     { title = "사용자 관리 상세"
     , content = 
         div [ class "box" ]
@@ -180,9 +181,48 @@ view model =
             , div [ class "media-content" ]
                     [
                     div [] [
-                        if model.goEdit then
                             div [ class "button is-danger btnpositionRight", onClick ResetPwd ] [text "비밀번호 초기화"]
-                        else
+                    ]
+                    , div [ class "content marginTop" ]
+                    [ 
+                        userInfo
+                        model.getData.data.user.nickname model.getData.data.user.username
+                        model.getData.data.user.joined_at model.getData.data.user.connected_at
+                    ]
+                ]
+            ]
+            , div [ class "backArea"] [
+                goNormalBtn "리스트로 돌아가기" " is-primary"  (Just Route.UserManage)
+            ]
+        ]
+        , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menus)
+        ]
+    }
+    else
+    { title = "사용자 관리 상세"
+    , content = 
+        div [ class "box" ]
+        [   
+            article [ class "media" ]
+            [ div [ class "media-left" ]            
+                [   pageTitle "사용자 관리 상세",
+                    figure [ class "image is-64x64 userimage" ]
+                    [ 
+                       case model.getData.data.user.profile of
+                           Just image ->
+                               img [src image] []
+                       
+                           Nothing ->
+                                i [ class "fas fa-user-circle" ]
+                                []
+                    ]
+                ]
+            , div [ class "media-content" ]
+                    [
+                    div [] [
                             div [class "emptyheight"][]
                     ]
                     , div [ class "content marginTop" ]

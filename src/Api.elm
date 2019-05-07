@@ -49,6 +49,7 @@ port saveCheck : (Value -> msg) -> Sub msg
 port getInfoParams : (Value -> msg) -> Sub msg
 port onSucceesSession : (Value -> msg) -> Sub msg
 port onfourChange : (Value -> msg) -> Sub msg 
+port sendPageNum : (Value -> msg) -> Sub msg
 viewerChanges toMsg decoder =
     onStoreChange (\value -> toMsg (decodeFromChange decoder value))
 
@@ -98,6 +99,7 @@ port sendData : Value -> Cmd msg
 port heightControll : Bool -> Cmd msg
 port validationHeight : Bool -> Cmd msg
 port showToast : Value -> Cmd msg
+port pageNum : Value -> Cmd msg
 -- application :
     -- Decoder (Cred -> viewer)
     -- ->

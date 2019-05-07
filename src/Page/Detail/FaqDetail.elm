@@ -58,6 +58,7 @@ update msg model =
 
 view: Model -> {title: String, content : Html Msg, menu : Html Msg}
 view model =
+    if model.onlyRead then
     { title = ""
     , content = 
         div [class "container is-fluid"] [
@@ -70,12 +71,26 @@ view model =
             div [class "questionUser"] [ text model.question ],
             div [class "questionTitle"] [text "답변"],
             textarea [ class "questionStyle", disabled model.onlyRead] [],
-            if model.onlyRead then
                 div [ class "buttons" ] [
                 div [ class "button is-primary", onClick Disabled] [text "수정"],
                 a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]
                 ]
-            else
+        ]
+        , menu = div [] []
+    }
+    else
+    { title = ""
+    , content = 
+        div [class "container is-fluid"] [
+            pageTitle "1 : 1 문의",
+            div [class "faqtitle"] [
+                span [] [text "제목 : "] ,
+                span [] [text "blah blah"],
+                span [class "faqDate"] [text "2019-12-12"]
+            ],
+            div [class "questionUser"] [ text model.question ],
+            div [class "questionTitle"] [text "답변"],
+            textarea [ class "questionStyle", disabled model.onlyRead] [],
                 div [ class "buttons" ] [
                 div [ class "button is-primary",  onClick Disabled] [text "저장"],
                 a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]

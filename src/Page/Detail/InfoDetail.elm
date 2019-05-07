@@ -225,9 +225,9 @@ type alias Code =
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
+    if model.isEdit then
     { title = "공지사항"
     , content = 
-        if model.isEdit then
             div [] [
                 Info.infoDetail 
                 model
@@ -244,7 +244,15 @@ view model =
                     a [ class "button is-warning", Route.href (Just Route.Info) ] [text "취소"]
                 ]
             ]
-        else 
+         , menu =  
+            aside [ class "menu"] [
+                ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+            ]
+    }
+    else
+    { title = "공지사항"
+    , content = 
             div [] [
                 Info.infoDetail 
                 model

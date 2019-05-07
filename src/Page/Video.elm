@@ -192,7 +192,7 @@ init session =
         , videoShow = False
     }, 
     Cmd.batch
-    [ videoEncoder listInit session
+    [ videoEncoder listInit session Getbody
     , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Cmd.map DatePickerMsg datePickerCmd
@@ -204,7 +204,7 @@ toSession : Model -> Session
 toSession model = 
     model.session
 
-videoEncoder model session=
+videoEncoder model session getBody=
     let
         list = 
             Encode.object 
@@ -220,10 +220,11 @@ videoEncoder model session=
                 |> Http.jsonBody
  
     in
-    Api.post Endpoint.videoRegist (Session.cred session) Getbody body (D.videoDecoder GetBody VideoData Paginate)
+    Api.post Endpoint.videoRegist (Session.cred session) getBody body (D.videoDecoder GetBody  VideoData Paginate)
+
+-- videoPostCode = 
 
 
-    
 -- yourfitVideoShow id
 
 type Msg 
@@ -253,6 +254,8 @@ type Msg
     | Sort Int
     | VideoRetry Session
     | GetMyInfo (Result Http.Error D.DataWrap)
+    | ReceivePnum Encode.Value
+    | GetbodySecond (Result Http.Error GetBody)
 
 oldModel model =
     model.sendBody
@@ -288,6 +291,29 @@ allListDataSetComplete old =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ReceivePnum num ->
+            let 
+                val = Decode.decodeValue Decode.int num
+            in
+            
+            case val of
+                Ok ok ->
+                    if model.dateModel == "all" then
+                        let
+                            old = model.sendBody
+                            new = {old | page = ok, end_date = "", start_date = ""}
+                        in
+                        
+                        ({model | sendBody = new } , videoEncoder new model.session GetbodySecond)
+                    else
+                        let
+                            old = model.sendBody
+                            new = {old | page = ok}
+                        in
+                        
+                        ({model | sendBody = new } , videoEncoder new model.session GetbodySecond)
+                Err err ->
+                    (model, Cmd.none)
         GetMyInfo (Err err) ->
            (model, Cmd.none)
 
@@ -368,24 +394,35 @@ update msg model =
             ]
             )
         PageBtn (idx, str) ->
+            let
+                old = model.sendBody
+                new = {old | page = idx}
+            in
+            
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        (model, videoEncoder (allListDataSet idx (oldModel model)) model.session)
+                        ({model | sendBody = new}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
+                        Api.pageNum (Encode.int idx)])
                     "next" ->
-                        (model, videoEncoder (allListDataSet idx (oldModel model)) model.session)
+                        ({model | sendBody = new}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
+                        Api.pageNum (Encode.int idx)])
                     "go" -> 
-                        (model, videoEncoder (allListDataSet idx (oldModel model)) model.session)
+                        ({model | sendBody = new}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
+                        Api.pageNum (Encode.int idx)])
                     _ ->
                         (model, Cmd.none)
             else
                 case str of
                 "prev" ->
-                    (model, videoEncoder (listDataSet idx (oldModel model)) model.session)
+                    ({model | sendBody = new}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
+                    , Api.pageNum (Encode.int idx)])
                 "next" ->
-                    (model, videoEncoder (listDataSet idx (oldModel model)) model.session)
+                    ({model | sendBody = new}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
+                    , Api.pageNum (Encode.int idx)])
                 "go" -> 
-                    (model, videoEncoder (listDataSet idx (oldModel model)) model.session)
+                    ({model | sendBody = new}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
+                    , Api.pageNum (Encode.int idx)])
                 _ ->
                     (model, Cmd.none)
         EndShow ->
@@ -461,9 +498,9 @@ update msg model =
             ({model | session = session}
             , Cmd.batch [
             if model.dateModel == "all" then
-                videoEncoder (allListDataSetComplete(oldModel model)) session
+                videoEncoder (allListDataSetComplete(oldModel model) ) session Getbody
             else 
-                videoEncoder model.sendBody session
+            videoEncoder model.sendBody session Getbody
             , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
             , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
@@ -478,9 +515,9 @@ update msg model =
 
         GoActive (Ok ok) ->
             if model.dateModel == "all" then
-                (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session)
+                (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session Getbody)
             else
-            (model, videoEncoder model.sendBody model.session)
+            (model, videoEncoder model.sendBody model.session Getbody)
         GoActive (Err err) ->
             (model, Api.thirdRefreshFetch ())
         Complete str ->
@@ -503,9 +540,9 @@ update msg model =
             (model, Api.saveData new)
         Search ->
             if model.dateModel == "all" then
-            (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session)
+            (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session Getbody)
             else
-            (model, videoEncoder model.sendBody model.session)
+            (model, videoEncoder model.sendBody model.session Getbody)
         Reset ->
             let
                 list = 
@@ -560,8 +597,15 @@ update msg model =
                 activeEncode model.session (not active) id
             ])
         Getbody (Ok ok) ->
-            ({model | videoData = ok.data ,  paginate = ok.paginate} , Cmd.none)
+            ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Api.pageNum (Encode.int 0))
         Getbody (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            (model,Session.changeInterCeptor (Just error))
+        GetbodySecond (Ok ok)->
+            ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Cmd.none)
+        GetbodySecond (Err err)->
             let
                 error = Api.decodeErrors err
             in
@@ -572,15 +616,74 @@ update msg model =
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
+    if model.videoShow then
     { title = "유어핏 영상"
     , content = 
         div [ class "" ]
         [ 
-            if model.videoShow then
             div [class "adminAuthMask"] []
-            else
-            div [] []
             , 
+            columnsHtml [pageTitle "유어핏 영상"],
+            div [class "searchWrap"] [
+                columnsHtml [
+                    searchDate 
+                        "등록일"
+                        Show 
+                        (datepicker model DatePickerMsg) 
+                        (getFormattedDate model.firstSelectedDate model.today) 
+                        EndShow (endDatePicker model EndDatePickerMsg) 
+                        (getFormattedDate model.secondSelectedDate model.endday) DateValue model.dateModel
+                        (if model.dateModel == "all" then
+                            "readOnly"
+                        else
+                            ""
+                        )
+                ],
+                columnsHtml [
+                    formInputEvent "제목" "제목을 입력 해 주세요." False GetTitle model.sendBody.title,
+                    selectForm "난이도" False model.levelData LevelValue "" model.sendBody.difficulty_code
+                ],
+                columnsHtml [
+                    selectForm "운동 부위" False model.partData PartValue "" model.sendBody.exercise_part_code
+                    -- searchBtn
+                    , searchB Search Reset
+                ]
+            ]
+            ,
+            div [] [
+                if model.goRegist then
+                registRoute "영상 등록" Route.VideoRegist
+                else
+                div [] []
+            ]
+            , dataCount (String.fromInt(model.paginate.total_count)),
+            if model.videoData == []  then
+             table [class "table"] [
+                        headerTable,
+                        tr [] [
+                            td [ colspan 8 , class "noSearch"] [
+                                text "검색결과가 없습니다."
+                            ]
+                        ]
+                    ]
+            else
+            div [ class "table" ] 
+                ([headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.videoData))
+            , Pagenation.pagination PageBtn model.paginate
+            , (yfVideoShow model.videoShow VideoShowClose model.yfvideo model.sort Sort)
+        ]  
+        , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+    }
+    else
+    { title = "유어핏 영상"
+    , content = 
+        div [ class "" ]
+        [ 
             columnsHtml [pageTitle "유어핏 영상"],
             div [class "searchWrap"] [
                 columnsHtml [
@@ -705,4 +808,5 @@ subscriptions model =
     , Session.changes GotSession (Session.navKey model.session)
     , Session.retryChange RetryRequest (Session.navKey model.session)
     , Session.secRetryChange VideoRetry (Session.navKey model.session)
+    , Api.sendPageNum ReceivePnum
     ]

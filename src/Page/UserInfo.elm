@@ -130,7 +130,13 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+            let
+                serverErrors =
+                    Api.decodeErrors error
+            in
+            ( { model | problems = "Err" }
+            , Session.changeInterCeptor (Just serverErrors)
+            )
 
         GetMyInfo (Ok item) -> 
             ( {model |  menuss = item.data.menus}, Cmd.none )
@@ -138,6 +144,7 @@ update msg model =
             ({model | session = session}
             , Cmd.batch [
             managelist session
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             , Api.post Endpoint.authCode (Session.cred session)
                 GetCode Http.emptyBody (Decoder.authCodeDecoder AuthCodes AuthCode)
             , Api.post Endpoint.authMenu (Session.cred session) GetMenus Http.emptyBody (Decoder.authMenusDecoder Authmenus Authmenu)
@@ -157,7 +164,7 @@ update msg model =
                     Api.decodeErrors error
             in
             ( { model | problems = "Err" }
-            , Cmd.none
+            , Session.changeInterCeptor (Just serverErrors)
             )
 
         GetList (Ok item) ->

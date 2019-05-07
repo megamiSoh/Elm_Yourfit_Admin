@@ -169,10 +169,11 @@ init  session =
     , Api.post Endpoint.instrument (Session.cred session) GetTool
     Http.emptyBody (D.unitLevelsDecoder Data Level)
     , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder Data Level)
-    , listEncode listInit session
     , Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+    , listEncode listInit session
+    -- , Api.pageNum (Encode.int 0)
      ]
     )
 
@@ -195,6 +196,24 @@ listEncode model session=
     in
     Api.post Endpoint.unitList (Session.cred session) GetList body (D.unitListDecoder DataList UnitList Paginate)
 
+listEncodeSec model session= 
+    let
+        list = 
+            Encode.object
+                [ ("page", Encode.int  model.page)
+                , ("per_page", Encode.int model.per_page)
+                , ("title", Encode.string model.titleList)
+                , ("difficulty_code", Encode.string model.difficulty_code)
+                , ("exercise_code", Encode.string model.exercise_code)
+                , ("instrument_code", Encode.string model.instrument_code)
+                , ("part_detail_code", Encode.string model.part_detail_code)
+                , ("start_date", Encode.string model.start_date)
+                , ("end_date", Encode.string model.end_date)
+                ]
+        body = 
+            list |> Http.jsonBody
+    in
+    Api.post Endpoint.unitList (Session.cred session) GetListSec body (D.unitListDecoder DataList UnitList Paginate)
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -203,6 +222,8 @@ subscriptions model =
         , Api.saveCheck ReceiveId
         , Session.retryChange RetryRequest (Session.navKey model.session)
         , Session.changes GotSession (Session.navKey model.session)
+        , Api.sendPageNum ReceivePnum
+        
     ]
 
 toSession : Model -> Session
@@ -218,6 +239,7 @@ type Msg
     | GetTool (Result Http.Error Data)
     | GetPart (Result Http.Error Data)
     | GetList (Result Http.Error DataList)
+    | GetListSec (Result Http.Error DataList)
     | SelectTool String
     | SelectPart String
     | SelectLevel String
@@ -235,6 +257,7 @@ type Msg
     | DateValue String 
     | PageBtn (Int, String)
     | GetMyInfo (Result Http.Error D.DataWrap)
+    | ReceivePnum Encode.Value
 
 originModel model = 
     model.listmodel
@@ -277,6 +300,29 @@ allDataList old =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ReceivePnum num ->
+            let 
+                val = Decode.decodeValue Decode.int num
+            in
+            
+            case val of
+                Ok ok ->
+                    if model.dateModel == "all" then
+                        let
+                            old = model.listmodel
+                            new = {old | page = ok, end_date = "", start_date = ""}
+                        in
+                        
+                        ({model | listmodel = new } , listEncodeSec new model.session)
+                    else
+                        let
+                            old = model.listmodel
+                            new = {old | page = ok}
+                        in
+                        
+                        ({model | listmodel = new } , listEncodeSec new model.session)
+                Err err ->
+                    (model, Cmd.none)
         GetMyInfo (Err error) ->
             let
                 serverErrors =
@@ -308,24 +354,29 @@ update msg model =
                         Nothing ->
                             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         PageBtn (idx, str) ->
+            let
+                old = model.listmodel
+                new = {old | page = idx}
+            in
+            
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        (model, listEncode (alldataListSet idx (originModel (model))) model.session)
+                        ({model | listmodel = new}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "next" ->
-                        (model, listEncode (alldataListSet idx (originModel (model))) model.session)
+                        ({model | listmodel = new}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "go" -> 
-                        (model, listEncode (alldataListSet idx (originModel (model))) model.session)
+                        ({model | listmodel = new}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     _ ->
                         (model, Cmd.none)
             else
                 case str of
                     "prev" ->
-                        (model, listEncode (dataListSet idx (originModel (model))) model.session)
+                        ({model | listmodel = new}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "next" ->
-                        (model, listEncode (dataListSet idx (originModel (model))) model.session)
+                        ({model | listmodel = new}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "go" -> 
-                        (model, listEncode (dataListSet idx (originModel (model))) model.session)
+                        ({model | listmodel = new}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     _ ->
                         (model, Cmd.none)
         EndShow ->
@@ -481,8 +532,15 @@ update msg model =
                 new =  {old | difficulty_code = str}
             in
              ({model | listmodel = new},Cmd.none)
-        GetList (Ok ok) ->  
+        GetListSec (Ok ok) ->
             ({model | getList = ok.data, paginate = ok.paginate}, Cmd.none)
+        GetListSec (Err err) ->
+            let
+                error = Api.newdecodeErrors err
+            in
+            (model, Api.newdecodeErrors err)
+        GetList (Ok ok) ->  
+            ({model | getList = ok.data, paginate = ok.paginate}, Api.pageNum (Encode.int 0))
         GetList (Err err) ->
             let
                 error = Api.newdecodeErrors err

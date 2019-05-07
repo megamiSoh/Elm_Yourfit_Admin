@@ -54,7 +54,18 @@ type alias Model =
     , titleModel : String
     , validErrShow : Bool
     , validationErr : String
+    , screenInfo : ScreenInfo
+    , page : Int
+    , per_page : Int
+    , total_count : Int
+    , filtertitle : String
     }
+
+type alias ScreenInfo = 
+    { scrollHeight : Int
+    , scrollTop : Int
+    , offsetHeight : Int}
+
 
 type alias PreviewWrap =  
     { data : DataPreview }
@@ -94,6 +105,9 @@ type alias ExerFilterList =
     , exercise_code : List String
     , instrument_code : List String
     , part_detail_code : List String
+    , title : String
+    , page : Int
+    , per_page : Int
     }
 
 type alias ListData = 
@@ -103,9 +117,20 @@ type alias SelectItem =
     { code : String
     , name : String }
 
-type alias FilterDetail 
-    = { data : List FilterItem }
+type alias FilterDetail = 
+    { data : List FilterItem 
+    , paginate : Paginate}
 
+
+type alias Paginate =
+    { difficulty_code : List String
+    , exercise_code : List String
+    , instrument_code : List String
+    , page : Int
+    , part_detail_code : List String
+    , per_page : Int
+    , title : String
+    , total_count : Int}
 
 type alias FilterItem =
     { difficulty_name : String
@@ -134,6 +159,15 @@ type alias ExerItem =
 
 type alias Success = 
     { result : String}
+
+scrollEvent msg = 
+    on "scroll" (Decode.map msg scrollInfoDecoder)
+
+scrollInfoDecoder =
+    Decode.map3 ScreenInfo
+        (Decode.at [ "target", "scrollHeight" ] Decode.int)
+        (Decode.at [ "target", "scrollTop" ] Decode.int)
+        (Decode.at [ "target", "offsetHeight" ] Decode.int) 
 
 editItem edit=
     Encode.object   
@@ -207,7 +241,7 @@ registVideo model edit session=
     Api.post (Endpoint.videoRegistRegist)(Session.cred session) GoEditApi list ((D.resultDecoder Success))
 
 
-videoFilterResult e session= 
+videoFilterResult e session page perpage filtertitle= 
     let
         list = 
             Encode.object
@@ -215,12 +249,15 @@ videoFilterResult e session=
                 , ("exercise_code", (Encode.list Encode.string) e.exercise_code)
                 , ("instrument_code", (Encode.list Encode.string) e.instrument_code)
                 , ("part_detail_code", (Encode.list Encode.string) e.part_detail_code )
+                , ("title", Encode.string filtertitle)
+                , ("page", Encode.int page)
+                , ("per_page", Encode.int perpage)
                 ]    
         body =
             list
                 |> Http.jsonBody
     in
-    Api.post Endpoint.videoFilterResult (Session.cred session) SucceesEdit body (D.videoFilterDecoder FilterDetail FilterItem) 
+    Api.post Endpoint.videoFilterResult (Session.cred session) SucceesEdit body (D.videoFilterDecoder FilterDetail FilterItem Paginate) 
 
 init : Session -> ( Model, Cmd Msg )
 init session = 
@@ -230,6 +267,9 @@ init session =
                 , exercise_code = []
                 , instrument_code = []
                 , part_detail_code = []
+                , page = 1
+                , per_page = 20
+                , title = ""
                 }
         in
             ({ 
@@ -266,6 +306,14 @@ init session =
             , partModel = "10"
             , validErrShow = False
             , validationErr = ""
+            , screenInfo = 
+            { scrollHeight = 0
+            , scrollTop = 0
+            , offsetHeight = 0}
+            , page = 1
+            , per_page = 20
+            , total_count = 0
+            , filtertitle = ""
             }
             , Cmd.batch
             [ Api.getParams ()
@@ -276,7 +324,7 @@ init session =
             Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , videoFilterResult f session
+            , videoFilterResult f session 1 20 ""
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
             ]
             )
@@ -287,8 +335,7 @@ toSession model =
     model.session
 
 type Msg 
-    = 
-     GetLevel (Result Http.Error ListData)
+    = GetLevel (Result Http.Error ListData)
     | GetPart (Result Http.Error ListData)
     | LevelSelect String
     | GetMyInfo (Result Http.Error D.DataWrap)
@@ -316,6 +363,8 @@ type Msg
     | PreviewComplete (Result Http.Error PreviewWrap)
     | VideoClose
     | TextAreaInput String
+    | ScrollEvent ScreenInfo
+    | FilterTitle String
 
 takeLists idx model = 
     List.take idx model
@@ -326,6 +375,16 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        FilterTitle title ->
+            ({model | filtertitle = title}, Cmd.none)
+        ScrollEvent { scrollHeight, scrollTop, offsetHeight } ->
+             if (scrollHeight - scrollTop) <= (offsetHeight + 77) then
+                if  model.total_count // model.per_page + 1 > model.page then
+                ({model | page = model.page + 1}, videoFilterResult model.filter model.session (model.page + 1) model.per_page model.filtertitle)
+                else
+                (model, Cmd.none)
+            else
+                (model, Cmd.none)
         TextAreaInput str ->
             ({model | description = str}, Cmd.none)
         VideoClose ->
@@ -344,7 +403,7 @@ update msg model =
             ({model | videoShow = not model.videoShow}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(id))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview),
              Api.heightControll (not model.videoShow)])
         SecRetry session ->
-            ({model | session = session }, videoFilterResult model.filter session)
+            ({model | session = session }, videoFilterResult model.filter session model.page model.per_page model.filtertitle)
         RetryChange session ->
             ({model | session = session} , registVideo model model.editItem session)
         GetMyInfo (Err error) ->
@@ -545,7 +604,7 @@ update msg model =
             else
             ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
         FilterResultData ->
-            ({model | openFilter = False,gofilter = model.filterName}, videoFilterResult model.filter model.session)
+            ({model | openFilter = False,gofilter = model.filtertitle::model.filterName, filterData = [], page = 1}, videoFilterResult model.filter model.session 1 model.per_page model.filtertitle)
         GetFilterItem (str, category, n) ->
             let
                 old = model.filter
@@ -607,7 +666,7 @@ update msg model =
         GetTool (Err err) ->
             (model,Cmd.none)
         SucceesEdit (Ok ok) ->
-            ({model | filterData = ok.data, loading = False}, Cmd.none)
+            ({model | filterData = model.filterData ++ ok.data, loading = False, total_count = ok.paginate.total_count}, Cmd.none)
         SucceesEdit (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -643,7 +702,7 @@ update msg model =
 
 
 exerciseMap model=
-       div [class "scrollStyle"] [
+       div [class "scrollStyle", scrollEvent ScrollEvent] [
         p [ class "title" ]
         (List.indexedMap (\idx x -> 
             (Video.exerciseItem idx x AddItem model.disabled GetPreview)
@@ -662,18 +721,56 @@ emptyList model=
 
 view: Model -> {title: String, content: Html Msg, menu : Html Msg}
 view model=
+    if model.loading then
+        { title = ""
+            , content =
+                div [] [
+                div [class "adminloadingMask"][spinner]
+                ]
+                , menu =  
+                    aside [ class "menu"] [
+                        Page.header model.username
+                        ,ul [ class "menu-list yf-list"] 
+                            (List.map Page.viewMenu model.menus)
+                    ]
+            }
+    else
+        if model.videoShow then
         { title = ""
         , content =
             div [] [
-            if model.loading then
-            div [class "adminloadingMask"][spinner]
-            else 
-            div [][] ,
-                if model.videoShow then
-                    div [class "adminAuthMask"] []
-                else
-                    div [] []
-                ,
+            div [class "adminAuthMask"] []
+            , Video.registformView
+            (exerciseMap model) 
+            (emptyList model)
+            model.levelData
+            LevelSelect
+            model.partData
+            PartSelect
+            TitleChange
+            Route.Video
+            model
+            OpenFilter
+            GetFilterItem
+            FilterResultData
+            AddItem
+            GoRegist
+            TextAreaInput
+            FilterTitle
+            , videoShow "영상 미리보기" model.videoShow VideoClose
+            , validationErr model.validationErr model.validErrShow
+            ]
+            , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+        }
+        else
+        { title = ""
+        , content =
+            div [] [
             Video.registformView
             (exerciseMap model) 
             (emptyList model)
@@ -690,6 +787,7 @@ view model=
             AddItem
             GoRegist
             TextAreaInput
+            FilterTitle
             , videoShow "영상 미리보기" model.videoShow VideoClose
             , validationErr model.validationErr model.validErrShow
             ]

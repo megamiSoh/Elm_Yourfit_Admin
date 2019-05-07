@@ -56,9 +56,22 @@ type alias Model =
     , valueWarn: String
     , preview : DataPreview
     , description: String
+    , filtertitle : String
+    , page : Int
+    , per_page : Int
+    , total_count : Int
+    , screenInfo : ScreenInfo
+    , filterItem : FilterItem
     }
+
+type alias ScreenInfo = 
+    { scrollHeight : Int
+    , scrollTop : Int
+    , offsetHeight : Int}
+
 type alias PreviewWrap =  
     { data : DataPreview }
+
 type alias DataPreview = 
     { file : String
     , image : String }
@@ -94,6 +107,9 @@ type alias ExerFilterList =
     , exercise_code : List String
     , instrument_code : List String
     , part_detail_code : List String
+    , title : String
+    , page : Int
+    , per_page : Int
     }
 
 type alias ListData = 
@@ -105,9 +121,20 @@ type alias SelectItem =
 
 type alias Detail
     = { data : DetailData }
-type alias FilterDetail 
-    = { data : List FilterItem }
 
+type alias FilterDetail =
+    { data : List FilterItem 
+    , paginate : Paginate}
+
+type alias Paginate =
+    { difficulty_code : List String
+    , exercise_code : List String
+    , instrument_code : List String
+    , page : Int
+    , part_detail_code : List String
+    , per_page : Int
+    , title : String
+    , total_count : Int}
 
 type alias FilterItem =
     { difficulty_name : String
@@ -132,20 +159,35 @@ type alias DetailData =
     , description : Maybe String}
 
 type alias ExerItem =
-    { action_id : Maybe Int
-    , difficulty_name :Maybe  String
-    , exercise_id : Int
-    , exercise_name : Maybe String
-    , instrument_name : Maybe String
-    , is_rest :Bool
-    , part_detail_name : List (Maybe String)
-    , sort: Int 
-    , title : Maybe String
-    , value: Int}
+    { 
+    --     id : Int
+    -- ,
+     difficulty_name :String
+    , id : Int
+    , exercise_name : String
+    , instrument_name : String
+    , is_rest :Maybe Bool
+    , part_detail_name : List String
+    -- , sort: Int 
+    , title : String
+    , value: Maybe Int
+    , thembnail : String
+    , duration : String}
 
 type alias Success = 
     { result : String}
 -- (D.resultDecoder Success)
+
+
+
+scrollEvent msg = 
+    on "scroll" (Decode.map msg scrollInfoDecoder)
+
+scrollInfoDecoder =
+    Decode.map3 ScreenInfo
+        (Decode.at [ "target", "scrollHeight" ] Decode.int)
+        (Decode.at [ "target", "scrollTop" ] Decode.int)
+        (Decode.at [ "target", "offsetHeight" ] Decode.int) 
 
 editItem edit=
     Encode.object   
@@ -221,7 +263,7 @@ editVideo detaildata edit session id description=
     in
     Api.post (Endpoint.videoEdit id)(Session.cred session) GoEditApi list ((D.resultDecoder Success))
 
-videoFilterResult e session= 
+videoFilterResult e session page perpage title= 
     let
         list = 
             Encode.object
@@ -229,12 +271,15 @@ videoFilterResult e session=
                 , ("exercise_code", (Encode.list Encode.string) e.exercise_code)
                 , ("instrument_code", (Encode.list Encode.string) e.instrument_code)
                 , ("part_detail_code", (Encode.list Encode.string) e.part_detail_code )
+                , ("title", Encode.string title)
+                , ("page", Encode.int page)
+                , ("per_page", Encode.int perpage)
                 ]    
         body =
             list
                 |> Http.jsonBody
     in
-    Api.post Endpoint.videoFilterResult (Session.cred session) SucceesEdit body (D.videoFilterDecoder FilterDetail FilterItem) 
+    Api.post Endpoint.videoFilterResult (Session.cred session) SucceesEdit body (D.videoFilterDecoder FilterDetail FilterItem Paginate) 
 
 init : Session -> ( Model, Cmd Msg )
 init session = 
@@ -244,6 +289,9 @@ init session =
                 , exercise_code = []
                 , instrument_code = []
                 , part_detail_code = []
+                , title = ""
+                , page = 1
+                , per_page = 20
                 }
             d = 
                 { difficulty_code  = ""
@@ -292,6 +340,26 @@ init session =
             , btnTitle = "수정"
             , topTitle = "유어핏영상 상세"
             , getId = ""
+            , filtertitle = ""
+            , page = 1
+            , per_page = 20
+            , total_count = 0
+            , screenInfo = 
+            { scrollHeight = 0
+            , scrollTop = 0
+            , offsetHeight = 0}
+            , filterItem = 
+                { difficulty_name = ""
+                , exercise_name = ""
+                , id = 0
+                , instrument_name = ""
+                , part_detail_name = []
+                , title = ""
+                , value = Nothing
+                , is_rest = Nothing
+                , thembnail = ""
+                , duration = ""
+                }
             }
             , Cmd.batch
             [ Api.getParams ()
@@ -313,8 +381,7 @@ toSession model =
     model.session
 
 type Msg 
-    = 
-     GetData (Result Http.Error Detail)
+    = GetData (Result Http.Error Detail)
     | GetId Encode.Value
     | GetLevel (Result Http.Error ListData)
     | GetPart (Result Http.Error ListData)
@@ -346,6 +413,8 @@ type Msg
     | PreviewComplete (Result Http.Error PreviewWrap)
     | VideoClose
     | TextAreaInput String
+    | FilterTitle String
+    | ScrollEvent ScreenInfo
 
 
 takeLists idx model = 
@@ -357,6 +426,16 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        ScrollEvent { scrollHeight, scrollTop, offsetHeight } ->
+             if (scrollHeight - scrollTop) <= (offsetHeight + 77) then
+                if  model.total_count // model.per_page + 1 > model.page then
+                ({model | page = model.page + 1}, videoFilterResult model.filter model.session (model.page + 1) model.per_page model.filtertitle)
+                else
+                (model, Cmd.none)
+            else
+                (model, Cmd.none)
+        FilterTitle title ->
+            ({model|filtertitle = title}, Cmd.none)
         TextAreaInput str ->
             -- let 
             --     old = model.detaildata
@@ -383,7 +462,7 @@ update msg model =
         VideoRetry session ->
             ({model | session = session}, editVideo model.detaildata model.editItem session model.getId model.description)
         RetryRequest session ->
-            ({model | session = session }, videoFilterResult model.filter session)
+            ({model | session = session }, videoFilterResult model.filter session model.page model.per_page model.filtertitle)
         GetMyInfo (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -588,7 +667,7 @@ update msg model =
             else
             ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
         FilterResultData ->
-            ({model | openFilter = False,gofilter = model.filterName, justFilter = True}, videoFilterResult model.filter model.session)
+            ({model | openFilter = False,gofilter = model.filtertitle :: model.filterName, justFilter = True,filterData= [], page = 1}, videoFilterResult model.filter model.session model.page model.per_page model.filtertitle)
         GetFilterItem (str, category, n) ->
             let
                 old = model.filter
@@ -674,40 +753,8 @@ update msg model =
                 Cmd.none
             )
         SucceesEdit (Ok ok) ->
-            let
-                result = 
-                    List.map (\x -> 
-                        let
-                            caseCode = 
-                                List.head (
-                                    List.filter ( \y -> 
-                                        case x.action_id of
-                                            Just p ->
-                                                p == y.id
-                                            Nothing ->
-                                                False
-                                        ) ok.data)
-                        in
-                        case caseCode of
-                            Just c ->
-                                c
-                        
-                            Nothing ->
-                                { difficulty_name = "", exercise_name = "", id = 0, instrument_name = "", part_detail_name = [], title = "", value = Just 1 , is_rest = Just True, thembnail ="", duration = ""}
-                        ) model.detaildata.exercise_items
-                new = 
-                    List.map2 (\x i->
-                        {x | value = Just i.value}                        
-                    ) result model.value
-                    
-            in
-            if model.justFilter then
-            ({model | filterData = ok.data
-            }, Cmd.none)
-            else
-            ({model | filterData = ok.data, 
-            resultFilterItem = model.resultFilterItem ++ new
-            , justFilter = False
+            ({model | filterData = model.filterData ++ ok.data
+            , justFilter = False , total_count = ok.paginate.total_count
             }, Cmd.none)
         SucceesEdit (Err err) ->
             let
@@ -758,9 +805,6 @@ update msg model =
 
         GetData (Ok ok) ->
             let
-                result = List.indexedMap (\idx x ->
-                       {value = x.value, id = Just idx}
-                    )ok.data.exercise_items
                 newInput text = 
                     text
                         |> String.replace "%26" "&"
@@ -773,7 +817,8 @@ update msg model =
             
                 Nothing ->
                     "") ,
-              loading = False, value = result}, videoFilterResult model.filter model.session)
+              loading = False,
+               resultFilterItem = ok.data.exercise_items}, videoFilterResult model.filter model.session model.page model.per_page model.filtertitle)
         GetData(Err err) ->
             (model, Cmd.none)
             
@@ -782,7 +827,7 @@ update msg model =
 
 
 exerciseMap model=
-       div [class "scrollStyle"] [
+       div [class "scrollStyle", scrollEvent ScrollEvent] [
         p [ class "title" ]
         (List.indexedMap (\idx x -> 
             (Video.exerciseItem idx x AddItem model.disabledMask GetPreview)
@@ -802,19 +847,65 @@ emptyList model=
 
 view: Model -> {title: String, content: Html Msg, menu : Html Msg}
 view model=
+    if model.loading then
+        -- if model.videoShow then
+        { title = ""
+            , content =
+                div [] [
+                div [class "adminloadingMask"][spinner]
+                , div [class "adminAuthMask"] []
+                   
+                ]
+            , menu =  
+            aside [ class "menu"] [
+                ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+            ]
+            }
+        -- else
+        -- { title = ""
+        --     , content =
+        --         div [] [
+        --         div [class "adminloadingMask"][spinner]
+        --             , Video.formView
+        --             model.disabled 
+        --             (exerciseMap model) 
+        --             (emptyList model)
+        --             model.levelData
+        --             LevelSelect
+        --             model.detaildata
+        --             model.partData
+        --             PartSelect
+        --             TitleChange
+        --             model.disabledMask
+        --             Route.Video
+        --             DetailOrEdit
+        --             model
+        --             OpenFilter
+        --             GetFilterItem
+        --             FilterResultData
+        --             AddItem
+        --             model.btnTitle
+        --             model.topTitle
+        --             GoEdit
+        --             model.description
+        --             TextAreaInput
+        --             , videoShow "영상 미리보기" model.videoShow VideoClose
+        --             , validationErr model.validationErr model.validErrShow
+        --         ]
+        --     , menu =  
+        --     aside [ class "menu"] [
+        --         ul [ class "menu-list yf-list"] 
+        --             (List.map Page.viewMenu model.menus)
+        --     ]
+        --     }
+    else
+        if model.videoShow then
         { title = ""
         , content =
             div [] [
-            if model.loading then
-            div [class "adminloadingMask"][spinner]
-            else 
-            div [][] ,
-                if model.videoShow then
-                        div [class "adminAuthMask"] []
-                else
-                    div [] []
-                ,
-                Video.formView
+                div [class "adminAuthMask"] []
+                , Video.formView
                 model.disabled 
                 (exerciseMap model) 
                 (emptyList model)
@@ -837,8 +928,52 @@ view model=
                 GoEdit
                 model.description
                 TextAreaInput
+                FilterTitle
                 , videoShow "영상 미리보기" model.videoShow VideoClose
                 , validationErr model.validationErr model.validErrShow
+            ]
+        , menu =  
+        aside [ class "menu"] [
+            ul [ class "menu-list yf-list"] 
+                (List.map Page.viewMenu model.menus)
+        ]
+        }
+        else
+        { title = ""
+        , content =
+            div [] [
+                div [] [
+                    Video.formView
+                    model.disabled 
+                    (exerciseMap model) 
+                    (emptyList model)
+                    model.levelData
+                    LevelSelect
+                    model.detaildata
+                    model.partData
+                    PartSelect
+                    TitleChange
+                    model.disabledMask
+                    Route.Video
+                    DetailOrEdit
+                    model
+                    OpenFilter
+                    GetFilterItem
+                    FilterResultData
+                    AddItem
+                    model.btnTitle
+                    model.topTitle
+                    GoEdit
+                    model.description
+                    TextAreaInput
+                    FilterTitle
+                ]
+                , div [] [
+                    videoShow "영상 미리보기" model.videoShow VideoClose
+                ]
+                , div [][
+                    validationErr model.validationErr model.validErrShow
+                ]
             ]
         , menu =  
         aside [ class "menu"] [

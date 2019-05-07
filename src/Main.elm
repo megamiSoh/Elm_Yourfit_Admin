@@ -160,7 +160,7 @@ subscriptions model =
         InfoModel info ->
             Sub.map Infomsg (Info.subscriptions info)
         FaqModel faq ->
-            Sub.none
+            Sub.map Faqmsg (Faq.subscriptions faq)
         FoodCmodel food ->
             Sub.none
         UserImodel useri ->

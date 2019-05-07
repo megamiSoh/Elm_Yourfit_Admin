@@ -20,7 +20,7 @@ onChange tagger =
 targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
-registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput=
+registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput filterTitle=
     div[ ] [
         columnsHtml [pageTitle "유어핏영상 등록"],
         columnsHtml [
@@ -97,11 +97,11 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
         ]
         
          , 
-        videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult
+        videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult filterTitle model.filtertitle
     ]
 
 
-formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit description textareaInput=
+formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit description textareaInput filterTitle=
     let
         textInput text =
             text
@@ -225,7 +225,7 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
             backPageBtn url
         ]
          , 
-        videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult
+        videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult filterTitle model.filtertitle
     ]
 
 filterItem item = 
@@ -575,16 +575,23 @@ itemText item check category list=
 
 
 
-videoFilter exermodel levelmodel exerItemmodel toolmodel show open check list filterResult=
+videoFilter exermodel levelmodel exerItemmodel toolmodel show open check list filterResult filterTitle title =
     if show then
         div [ class "widePop"] [
             popTitle "필터 설정" ,
+            
             div [ class "closeBtn"][
                     i [ class "far fa-times-circle", onClick open ]
                     []
                 ],
+                div [class "filtertitle"] [text "운동 제목"],
+                div [class "filterExerTitle"] [
+                input [class "input", placeholder "운동 제목을 입력 해 주세요.", onInput filterTitle, value title] []
+                
+            ],
                 div [ class "filtertitle"] [
                     text "운동부위"
+                
             ],
             columnsHtml [
                     div [] (

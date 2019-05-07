@@ -4,7 +4,6 @@ import './css/all.min.css'
 import { Elm } from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
 
-
 const url ='http://13.209.49.169:4000/api/v1/'
 var flags = 
   localStorage.getItem("token")
@@ -69,7 +68,7 @@ setInterval(async function() {
     } else {
       return;
     }
-}, 600000)
+}, 10000)
 
 
 app.ports.getInfo.subscribe (function() {
@@ -116,7 +115,6 @@ function () {
 
 
 app.ports.secRefreshFetch.subscribe(function() {
-
   var retoken = localStorage.getItem ("refresh")
   if (retoken ==undefined) {
     localStorage.removeItem("token")
@@ -290,6 +288,23 @@ app.ports.showToast.subscribe(function (text) {
   setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
 })
 
+app.ports.pageNum.subscribe(function(num) {
+//   if (num == 0) {
+//     var pathcheck = document.cookie.match('(^|;) ?' + "pathCheck" + '=([^;]*)(;|$)');
+//       if (pathcheck[2] == window.location.hash) {
+//         var val = document.cookie.match('(^|;) ?' + "pageNum" + '=([^;]*)(;|$)');
+//         app.ports.sendPageNum.send(parseInt(val[2]))
+//       }
+//       else {
+//         app.ports.sendPageNum.send(1)
+//         document.cookie = "pageNum" + '=' + 1 + ';expires=' + ';path=/';
+//       }
+//   } else {
+//   document.cookie = "pageNum" + '=' + num + ';expires=' + ';path=/';
+//   document.cookie = "pathCheck" + '=' + window.location.hash + ';expires=' + ';path=/';
+
+// }
+})
 
 registerServiceWorker();
 

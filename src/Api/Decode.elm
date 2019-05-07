@@ -215,9 +215,21 @@ videoPage page=
 videoDetailDecoder detaildata data item =
     Decode.succeed detaildata
         |> required "data" (videodetail data item )
-videoFilterDecoder detaildata item =
+videoFilterDecoder detaildata item page=
     Decode.succeed detaildata
         |> required "data" (Decode.list (videoFilterItem item) )
+        |> required "paginate" (videoPaginate page)
+
+videoPaginate page = 
+    Decode.succeed page
+        |> required "difficulty_code" (Decode.list string)
+        |> required "exercise_code" (Decode.list string)
+        |> required "instrument_code" (Decode.list string)
+        |> required "page" int
+        |> required "part_detail_code" (Decode.list string)
+        |> required "per_page" int
+        |> required "title" string
+        |> required "total_count" int
 
 -- videoFilter data item =
 --     Decode.succeed data
@@ -256,16 +268,18 @@ videodetail data item =
 
 videoExerItem item=
     Decode.succeed item
-        |> optional "action_id" (Decode.map Just int) Nothing
-        |> optional "difficulty_name" (Decode.map Just string) Nothing
+        -- |> required "action_id" int
+        |> required "difficulty_name" string
         |> required "exercise_id"  int
-        |> optional "exercise_name"  (Decode.map Just string) Nothing
-        |> optional "instrument_name"  (Decode.map Just string) Nothing
-        |> required "is_rest" bool
-        |> required "part_detail_name" (Decode.list (Decode.nullable string))
-        |> required "sort" int 
-        |> optional "title"  (Decode.map Just string) Nothing
-        |> required "value" int
+        |> required "exercise_name" string
+        |> required "instrument_name" string
+        |> optional "is_rest" (Decode.map Just bool)Nothing
+        |> required "part_detail_name" (Decode.list string)
+        -- |> required "sort" int 
+        |> required "title"  string
+        |> optional "value" (Decode.map Just int) Nothing
+        |> required "thembnail" string
+        |> required "duration" string
 
 -- usermanage
 
@@ -379,3 +393,29 @@ type alias Menus =
         menu_id : Int,
         menu_name : String
     }
+
+
+
+faqlist faq data page=
+    Decode.succeed faq
+        |> required "data" (Decode.list (faqlistdata data))
+        |> required "paginate" (faqlistpage page)
+
+faqlistdata data = 
+    Decode.succeed data
+        |> required "id" int
+        |> required "inserted_at" string
+        |> required "is_answer" bool
+        |> required "title"string
+
+faqlistpage page = 
+    Decode.succeed page
+        |> optional "asked_id" (Decode.map Just int) Nothing
+        |> required "end_date" string
+        |> optional "is_answer" (Decode.map Just bool) Nothing
+        |> required "page" int
+        |> required "per_page" int
+        |> required "start_date" string
+        |> required "title" string
+        |> required "total_count" int
+        |> required "username" string

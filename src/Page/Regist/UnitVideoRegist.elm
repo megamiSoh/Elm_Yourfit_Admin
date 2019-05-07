@@ -277,12 +277,22 @@ update msg model =
 
 view : Model -> {title : String ,content : Html Msg, menu : Html Msg}
 view model =
+    if model.loading then
     { title = "유어핏 단위 영상 상세"
     , content = 
             div [] [
-                if model.loading then
                 div [class "adminloadingMask"][Page.spinner]
-                else 
+            ]
+            , menu =  
+            aside [ class "menu"] [
+                ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+            ]
+    }
+    else
+    { title = "유어핏 단위 영상 상세"
+    , content = 
+            div [] [
                 div [][] ,
                 Unit.unitRegist
                     "유어핏 단위 영상 등록"
