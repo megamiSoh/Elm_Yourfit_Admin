@@ -47,6 +47,7 @@ type alias Model = {
     , menus : List Menus
     , goRegist : Bool
     , goDetail : Bool
+    , pageNum : Int
     }
 
 type alias Menus =
@@ -190,6 +191,7 @@ init session =
         , todaySave = ""
         , activeId = ""
         , videoShow = False
+        , pageNum = 1
     }, 
     Cmd.batch
     [ videoEncoder listInit session Getbody
@@ -402,10 +404,10 @@ update msg model =
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        ({model | sendBody = new}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
+                        ({model | sendBody = new, pageNum = model.pageNum - 1}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
                         Api.pageNum (Encode.int idx)])
                     "next" ->
-                        ({model | sendBody = new}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
+                        ({model | sendBody = new, pageNum = model.pageNum + 1}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
                         Api.pageNum (Encode.int idx)])
                     "go" -> 
                         ({model | sendBody = new}, Cmd.batch[videoEncoder (allListDataSet idx (oldModel model)) model.session Getbody,
@@ -415,10 +417,10 @@ update msg model =
             else
                 case str of
                 "prev" ->
-                    ({model | sendBody = new}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
+                    ({model | sendBody = new, pageNum = model.pageNum - 1}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
                     , Api.pageNum (Encode.int idx)])
                 "next" ->
-                    ({model | sendBody = new}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
+                    ({model | sendBody = new, pageNum = model.pageNum + 1}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
                     , Api.pageNum (Encode.int idx)])
                 "go" -> 
                     ({model | sendBody = new}, Cmd.batch[videoEncoder (listDataSet idx (oldModel model)) model.session Getbody
@@ -443,7 +445,9 @@ update msg model =
                     let
                         old = model.sendBody
                     in
-                        case datePickerMsg of                            
+                        case datePickerMsg of       
+                            CancelClicked ->
+                                ({newModel | endShow = False}, cmd)                     
                             SubmitClicked currentSelectedDate ->
                                 let
                                     new = {old | end_date = getFormattedDate (Just currentSelectedDate) model.endday}
@@ -475,7 +479,9 @@ update msg model =
                         let
                             old = model.sendBody
                         in
-                        case datePickerMsg of                            
+                        case datePickerMsg of 
+                            CancelClicked ->
+                                ({newModel | show = False}, cmd)                           
                             SubmitClicked currentSelectedDate ->
                                 let
                                      new = {old | start_date = getFormattedDate (Just currentSelectedDate) model.today}
@@ -669,7 +675,11 @@ view model =
             else
             div [ class "table" ] 
                 ([headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.videoData))
-            , Pagenation.pagination PageBtn model.paginate
+            , pagination 
+                PageBtn
+                model.paginate
+                model.pageNum 
+            -- Pagenation.pagination PageBtn model.paginate
             , (yfVideoShow model.videoShow VideoShowClose model.yfvideo model.sort Sort)
         ]  
         , menu =  
@@ -730,7 +740,10 @@ view model =
             else
             div [ class "table" ] 
                 ([headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.videoData))
-            , Pagenation.pagination PageBtn model.paginate
+            ,  pagination 
+                PageBtn
+                model.paginate
+                model.pageNum 
             , (yfVideoShow model.videoShow VideoShowClose model.yfvideo model.sort Sort)
         ]  
         , menu =  

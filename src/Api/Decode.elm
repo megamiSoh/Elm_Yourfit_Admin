@@ -407,6 +407,7 @@ faqlistdata data =
         |> required "inserted_at" string
         |> required "is_answer" bool
         |> required "title"string
+        |> required "username" string
 
 faqlistpage page = 
     Decode.succeed page
@@ -418,4 +419,18 @@ faqlistpage page =
         |> required "start_date" string
         |> required "title" string
         |> required "total_count" int
+        |> required "username" string
+
+faqDetail data detail =
+    Decode.succeed data
+        |> required "data" (faqdetailList detail)
+
+faqdetailList detail = 
+    Decode.succeed detail
+        |> optional "answer" (Decode.map Just string) Nothing
+        |> required "asked_id" int
+        |> required "content" string
+        |> required "id" int
+        |> required "is_answer" bool
+        |> required "title" string
         |> required "username" string

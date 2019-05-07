@@ -48,6 +48,7 @@ type alias Model = {
     , menus : List Menus
     , goDetail : Bool
     , goRegist : Bool
+    , pageNum : Int
      }
 
 type alias Menus =
@@ -164,6 +165,7 @@ init  session =
         , endday = Nothing
         , dateModel = "all"
         , todaySave = ""
+        , pageNum = 1
      }
     , Cmd.batch[Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
     , Api.post Endpoint.instrument (Session.cred session) GetTool
@@ -362,9 +364,9 @@ update msg model =
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        ({model | listmodel = new}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
+                        ({model | listmodel = new, pageNum = model.pageNum - 1}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "next" ->
-                        ({model | listmodel = new}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
+                        ({model | listmodel = new, pageNum = model.pageNum + 1}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "go" -> 
                         ({model | listmodel = new}, Cmd.batch[listEncode (alldataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     _ ->
@@ -372,9 +374,9 @@ update msg model =
             else
                 case str of
                     "prev" ->
-                        ({model | listmodel = new}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
+                        ({model | listmodel = new, pageNum = model.pageNum - 1}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "next" ->
-                        ({model | listmodel = new}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
+                        ({model | listmodel = new, pageNum = model.pageNum + 1}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     "go" -> 
                         ({model | listmodel = new}, Cmd.batch[listEncode (dataListSet idx (originModel (model))) model.session, Api.pageNum (Encode.int idx)])
                     _ ->
@@ -397,7 +399,9 @@ update msg model =
                     let
                         old = model.listmodel
                     in
-                        case datePickerMsg of                            
+                        case datePickerMsg of            
+                            CancelClicked ->
+                                ({newModel | endShow = False}, cmd)                
                             SubmitClicked currentSelectedDate ->
                                 let
                                     new = {old | end_date = getFormattedDate (Just currentSelectedDate) model.endday}
@@ -429,7 +433,9 @@ update msg model =
                         let
                             old = model.listmodel
                         in
-                        case datePickerMsg of                            
+                        case datePickerMsg of      
+                            CancelClicked ->
+                                ({newModel | show = False}, cmd)                      
                             SubmitClicked currentSelectedDate ->
                                 let
                                      new = {old | start_date = getFormattedDate (Just currentSelectedDate) model.today}
@@ -651,7 +657,12 @@ view model =
                     div [ class "table" ] ([headerTable] ++ (List.indexedMap (\ idx x ->
                         tableLayout idx x model
                     ) model.getList) )
-                 , Pagenation.pagination PageBtn model.paginate
+                 , pagination 
+                    PageBtn
+                    model.paginate
+                    model.pageNum 
+                 
+                --  Pagenation.pagination PageBtn model.paginate
                  , (videoShow model.title model.videoShow  VideoClose)
              ] 
              , menu =  

@@ -202,7 +202,7 @@ subscriptions model =
         FaqEmodel faqe ->
             Sub.none
         FaqDmodel faqd ->
-            Sub.none
+            Sub.map FaqDmsg (FaqD.subscriptions faqd)
         LoginModel login ->
             Sub.map LoginMsg (Login.subscriptions login)
 

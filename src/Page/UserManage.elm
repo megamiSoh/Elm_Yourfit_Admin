@@ -43,6 +43,7 @@ type alias Model =
     , username : String
     , goDetail : Bool
     , goRegist : Bool
+    , pageNum : Int
     }
 
 
@@ -114,6 +115,7 @@ init session=
     , goDetail = False
     , goRegist = False
     , menus = []
+    , pageNum = 1
     , resultForm = 
             {
                 data = [],
@@ -254,9 +256,9 @@ update msg model =
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        (model, managelist allList model.session)
+                        ({model | pageNum = model.pageNum - 1}, managelist allList model.session)
                     "next" ->
-                        (model, managelist allList model.session)
+                        ({model | pageNum = model.pageNum + 1}, managelist allList model.session)
                     "go" -> 
                         (model, managelist allList model.session)
                     _ ->
@@ -264,9 +266,9 @@ update msg model =
             else 
                 case str of
                     "prev" ->
-                        (model, managelist list model.session)
+                        ({model | pageNum = model.pageNum - 1}, managelist list model.session)
                     "next" ->
-                        (model, managelist list model.session)
+                        ({model | pageNum = model.pageNum + 1}, managelist list model.session)
                     "go" -> 
                         (model, managelist list model.session)
                     _ ->
@@ -306,7 +308,9 @@ update msg model =
                     let
                         old = model.listForm
                     in
-                        case datePickerMsg of                            
+                        case datePickerMsg of                    
+                            CancelClicked ->
+                                ({newModel | endShow = False}, cmd)       
                             SubmitClicked currentSelectedDate ->
                                 let
                                     new = {old | end_date = getFormattedDate (Just currentSelectedDate) model.endday}
@@ -338,7 +342,9 @@ update msg model =
                         let
                             old = model.listForm
                         in
-                        case datePickerMsg of                            
+                        case datePickerMsg of              
+                            CancelClicked ->
+                                ({newModel | show = False}, cmd)              
                             SubmitClicked currentSelectedDate ->
                                 let
                                      new = {old | start_date = getFormattedDate (Just currentSelectedDate) model.today}
@@ -504,7 +510,12 @@ view model =
                             ]
                         ]
                     ]
-                , Pagenation.pagination PageBtn model.resultForm.pagenate
+                , pagination 
+                    PageBtn
+                    model.resultForm.pagenate
+                    model.pageNum 
+                
+                -- Pagenation.pagination PageBtn model.resultForm.pagenate
             ]
             , menu =  
                 aside [ class "menu"] [

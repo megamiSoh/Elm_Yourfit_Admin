@@ -48,6 +48,7 @@ type alias Model = {
     , username : String
     , goRegist : Bool
     , goDetail : Bool
+    , pageNum : Int
     }
 type alias Menus =
     {
@@ -136,6 +137,7 @@ init session =
         , goDetail = False
         , username = ""
         , menus = []
+        , pageNum = 1
         , resultForm = 
             {
                 data = [],
@@ -244,9 +246,9 @@ update msg model =
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        ({model | listInit = listAll}, managelist listAll model.session)
+                        ({model | listInit = listAll, pageNum = model.pageNum - 1}, managelist listAll model.session)
                     "next" ->
-                        ({model | listInit = listAll}, managelist listAll model.session)
+                        ({model | listInit = listAll, pageNum = model.pageNum + 1}, managelist listAll model.session)
                     "go" -> 
                         ({model | listInit = listAll}, managelist listAll model.session)
                     _ ->
@@ -254,9 +256,9 @@ update msg model =
             else
                 case str of
                     "prev" ->
-                        ({model | listInit = list}, managelist list model.session)
+                        ({model | listInit = list, pageNum = model.pageNum - 1}, managelist list model.session)
                     "next" ->
-                        ({model | listInit = list}, managelist list model.session)
+                        ({model | listInit = list, pageNum = model.pageNum + 1}, managelist list model.session)
                     "go" -> 
                         ({model | listInit = list}, managelist list model.session)
                     _ ->
@@ -279,7 +281,9 @@ update msg model =
                     let
                         old = model.listInit
                     in
-                        case datePickerMsg of                            
+                        case datePickerMsg of     
+                            CancelClicked ->
+                                ({newModel | endShow = False}, cmd)                       
                             SubmitClicked currentSelectedDate ->
                                 let
                                     new = {old | end_date = getFormattedDate (Just currentSelectedDate) model.endday}
@@ -311,7 +315,9 @@ update msg model =
                         let
                             old = model.listInit
                         in
-                        case datePickerMsg of                            
+                        case datePickerMsg of    
+                            CancelClicked ->
+                                ({newModel | show = False}, cmd)                        
                             SubmitClicked currentSelectedDate ->
                                 let
                                      new = {old | start_date = getFormattedDate (Just currentSelectedDate) model.today}
@@ -502,9 +508,10 @@ view model =
                     ]
                     
            ]
-            ,Pagenation.pagination 
-                PageBtn
-                model.resultForm.paginate
+            , pagination 
+                    PageBtn
+                    model.resultForm.paginate
+                    model.pageNum 
         ]
         , menu =  
                 aside [ class "menu"] [
@@ -543,7 +550,9 @@ tableLayout idx item model =
             else
             "no-drop"
         )] [
-                div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text (String.fromInt(idx + 1))],
+                div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text (
+                    String.fromInt(model.resultForm.paginate.total_count - ((model.resultForm.paginate.page - 1) * 10) - (idx)
+            )) ],
                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text item.title],
                 div [ class "tableCell" , onClick (GetId (String.fromInt(item.id)))] [text (String.dropRight 10 (item.inserted_at))],
                 div [ class "tableCell" ] [

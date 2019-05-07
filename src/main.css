@@ -787,20 +787,35 @@ textarea.editorStyle {
   padding: .3rem 0 1rem;
 }
 /* faq */
-.faqtitle {text-align: left; padding: 2rem;}
+.faqtitle {text-align: left; padding: 1rem; font-weight: bold;}
 .faqDate {
   float: right;
 }
 .questionUser {
-padding: 1rem;
+  padding: 1rem;
+  text-align: left;
+  border: 1px solid #cdcdcd;
+  border-radius: 5px;
+  box-shadow: 2px 2px #ececec;
+  min-height: 150px;
+  font-size: 13px;
+}
+.questionContentTitle {
+  text-align: left;
+  padding: .5rem;
 }
 .questionTitle {
   text-align: left;
+  padding: .5rem;
 }
 .questionStyle {
   display: block;
   width: 100%;
-  min-height: 200px;
+  min-height: 150px;
+  padding: 1rem;
+  border: 1px solid #cdcdcd;
+  border-radius: 5px;
+  box-shadow: 2px 2px #ececec;
 }
 
 
@@ -1565,9 +1580,16 @@ padding: 1rem;
 
 .loginErr {
   padding: 1rem;
-  color: red;
+  color: #f12121;
+
 }
 
 .filterExerTitle {
   padding : 1rem 0.5rem;
+}
+.validstyle {
+  color: #f12121;
+    text-align: left;
+    font-size: 12px;
+    text-indent: 1rem;
 }

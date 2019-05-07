@@ -41,6 +41,8 @@ module Api.Endpoint exposing
     , yourfitVideoShow
     , resetpwd
     , faqList
+    , faqDetail
+    , faqanswer
     )
 
 import Http
@@ -222,3 +224,8 @@ resetpwd id=
 faqList = 
     url ["admin", "inquiries"] []
     
+faqDetail id =
+    url ["admin", "inquiries", id] []
+
+faqanswer id = 
+    url ["admin", "inquiries", id, "answer"][]
