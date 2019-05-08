@@ -30,6 +30,7 @@ type alias Model =
     , registItem : RegistData
     , checkModel : Bool
     , menus : List Menus
+    , username : String
     }
 
 type alias RegistData = 
@@ -99,6 +100,7 @@ init session =
         { session = session
         , pop = False
         , checkModel = False
+        , username = ""
         , registItem = 
             { menu_id = 0
             , menu_auth_code = []}
@@ -198,7 +200,7 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.none
@@ -347,9 +349,10 @@ view model =
        ]
        , menu =  
         aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menus)
-        ]
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
     }
 -- menu codemenuId
 adminLayout popEvent title disabled popModel nickModel idModel userData choiceMsg choiceData code menus=

@@ -45,26 +45,18 @@ type Page
     | Login
     | Menus
 
--- type Maybe login =
---     Just login |
---     Nothing
 
--- view: Page -> {title : String, content: Html msg} -> Browser.Document msg
--- view page {title, content} =
---     { title = title 
---     , body = viewHeader page:: contents content page :: [viewFooter]
---     }
 
 view: Maybe Cred ->  Page -> {title : String, content: Html msg, menu: Html msg} -> Browser.Document msg
-view maybeViewer page { title, content, menu } =
+view maybeViewer page { title, content, menu }  =
     case maybeViewer of
         Nothing ->
             { title = title 
-            , body =  contents content Login maybeViewer menu:: [viewFooter]
+            , body =  contents content Login maybeViewer menu :: [viewFooter] 
             }
         Just _ ->
             { title = title 
-            , body = viewHeader page maybeViewer:: contents content page maybeViewer menu:: [viewFooter]
+            , body = viewHeader page maybeViewer:: contents content page maybeViewer menu :: [viewFooter] 
             }
 
 login content  =
@@ -81,6 +73,7 @@ contents content page maybeViewer menu=
                         [ p []
                             [ 
                                 content
+                                
                             ]
                             
                         ]
@@ -143,8 +136,6 @@ viewHeader page maybeViewer =
             ]
 header username = 
     div [class  "userprofile" ] [
-        -- i [class "fa fa-user-circle"] []
-        -- ,
             a [ Route.href  ( Just Route.UserInfo ), class "userProfileInside cursor"] [text username]
             , a [class "button", Route.href (Just Route.Logout) ] [text "로그아웃"]
         ]
@@ -182,27 +173,8 @@ viewMenu item  =
 viewAside page =
     aside [ class "menu"] [
         ul [ class "menu-list yf-list"] 
-        -- <|
-            -- navbarLink page (Just Route.UserManage) [ text "사용자 관리" ]
              [viewMenu page]
     ]
--- viewMenu : Page -> List (Html msg)
--- viewMenu page  =
---     li [] [text page.menu_name ]
-    -- let
-    --     linkTo =
-    --         navbarLink page
-    -- in
-    -- [ linkTo (Just Route.AdminManage) [ div [] [ text "관리자 관리" ] ]
-    -- , linkTo (Just Route.VideoUnit) [ div [] [ text "유어핏 단위 영상" ] ]
-    -- , linkTo (Just Route.Video) [ div [] [ text "유어핏 영상" ] ]
-    -- , linkTo (Just Route.ApiVideo) [ div [] [ text "외부 API영상" ] ]
-    -- , linkTo (Just Route.FoodCalorie) [ div [] [ text "음식칼로리 관리" ] ]
-    -- , linkTo (Just Route.UserPost) [ div [] [ text "사용자 게시물" ] ]
-    -- , linkTo (Just Route.Info) [ div [] [ text "공지사항" ] ]
-    -- , linkTo (Just Route.Faq) [ div [] [ text "1:1 문의" ] ]
-  
-    -- ]
 
 
 viewFooter : Html msg

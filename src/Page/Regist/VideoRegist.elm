@@ -133,12 +133,12 @@ type alias Paginate =
     , total_count : Int}
 
 type alias FilterItem =
-    { difficulty_name : String
-    , exercise_name : String
-    , id : Int
-    , instrument_name : String
-    , part_detail_name : List String
-    , title : String
+    { difficulty_name : Maybe String
+    , exercise_name : Maybe String
+    , id : Maybe Int
+    , instrument_name : Maybe String
+    , part_detail_name : List (Maybe String)
+    , title : Maybe String
     , value : Maybe Int
     , is_rest : Maybe Bool
     , thembnail : String
@@ -148,7 +148,7 @@ type alias FilterItem =
 type alias ExerItem =
     { action_id : Maybe Int
     , difficulty_name :Maybe  String
-    , exercise_id : Int
+    , exercise_id : Maybe Int
     , exercise_name : Maybe String
     , instrument_name : Maybe String
     , is_rest :Bool
@@ -435,7 +435,7 @@ update msg model =
         --             Err _ ->
         --                 (model, Cmd.none)
         GoEditApi (Ok ok) ->
-            (model, Route.pushUrl (Session.navKey model.session) Route.Video)
+            (model, Cmd.batch[Route.pushUrl (Session.navKey model.session) Route.Video, Api.showToast (Encode.string "등록되었습니다.")])
         GoEditApi (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -447,7 +447,13 @@ update msg model =
         GoRegist ->
             let
                 result = List.map (\i ->
-                        { action_id =  String.fromInt(i.id)
+                        { action_id =  
+                        case i.id of
+                                Just int ->
+                                    String.fromInt (int)
+                            
+                                Nothing ->
+                                    "0"
                         , is_rest = 
                             case i.is_rest of
                                 Just a ->
@@ -478,7 +484,7 @@ update msg model =
             else if List.isEmpty result then
             ({model | validationErr = "운동영상을 선택 해 주세요.", validErrShow = True}, Api.validationHeight (True))
             else
-           ({model | validErrShow = False, editItem = result}, Cmd.batch [registVideo model result model.session
+           ({model | validErrShow = False, editItem = result, loading = True}, Cmd.batch [registVideo model result model.session
            , Api.validationHeight (False)
            ])
         PlusMinusDeleteSet idx pattern num->
@@ -498,7 +504,10 @@ update msg model =
                                         else 
                                             n +num
                                     else
-                                        n +num
+                                        if n < 6 then
+                                                    n +num
+                                                else
+                                                    n
                                     
                                 Nothing ->
                                     0
@@ -526,7 +535,10 @@ update msg model =
                     List.map (\x ->
                     case parseVal of
                         Just m ->
+                            if m < 7 then
                             {x | value = Just m}    
+                            else
+                            x   
                     
                         Nothing ->
                             {x | value = Nothing}                        
@@ -570,7 +582,7 @@ update msg model =
                 after = List.drop (idx + 1) model.resultFilterItem
                 result = before ++ after
             in
-            ({model | resultFilterItem = result}, Cmd.none)
+            ({model | resultFilterItem = result, newStyle = ""}, Cmd.none)
         AddItem id->
             let
                 result = 
@@ -579,30 +591,32 @@ update msg model =
                             a
                         Nothing ->
                             0
-                f = List.filter (\x -> x.id == result)model.filterData
+                f = List.filter (\x -> (Video.justInt x.id) == result)model.filterData
                 new = List.map (\x ->
                         {x | value = Just 3}
                     ) f
             in
-            
-            if id == Nothing then
-            ({model | resultFilterItem = 
-            model.resultFilterItem ++
-            [
-                { difficulty_name = ""
-                , exercise_name = ""
-                , id = 0
-                , instrument_name = ""
-                , part_detail_name = []
-                , title = ""
-                , value = Just 1
-                , is_rest = Just True
-                , thembnail = ""
-                , duration = ""
-                }
-            ]},Cmd.none)
+            if List.length model.resultFilterItem < 20 then
+                if id == Nothing then
+                ({model | resultFilterItem = 
+                model.resultFilterItem ++
+                [
+                    { difficulty_name = Nothing
+                    , exercise_name = Nothing
+                    , id = Nothing
+                    , instrument_name = Nothing
+                    , part_detail_name = []
+                    , title = Nothing
+                    , value = Just 1
+                    , is_rest = Just True
+                    , thembnail = ""
+                    , duration = ""
+                    }
+                ]},Cmd.none)
+                else
+                ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
             else
-            ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
+            (model, Cmd.none)
         FilterResultData ->
             ({model | openFilter = False,gofilter = model.filtertitle::model.filterName, filterData = [], page = 1}, videoFilterResult model.filter model.session 1 model.per_page model.filtertitle)
         GetFilterItem (str, category, n) ->
@@ -726,6 +740,8 @@ view model=
             , content =
                 div [] [
                 div [class "adminloadingMask"][spinner]
+                -- , div [class "adminAuthMask"] []
+                   
                 ]
                 , menu =  
                     aside [ class "menu"] [
@@ -788,14 +804,18 @@ view model=
             GoRegist
             TextAreaInput
             FilterTitle
-            , videoShow "영상 미리보기" model.videoShow VideoClose
-            , validationErr model.validationErr model.validErrShow
+            , div [] [
+                videoShow "영상 미리보기" model.videoShow VideoClose
+            ]
+            , div [] [
+                validationErr model.validationErr model.validErrShow
+            ]
             ]
             , menu =  
                 aside [ class "menu"] [
-                    Page.header model.username
-                    ,ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
                 ]
         }
 

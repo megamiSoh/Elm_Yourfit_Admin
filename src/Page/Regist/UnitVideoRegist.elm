@@ -31,6 +31,7 @@ type alias Model =
     , validationErr : String
     , validErrShow : Bool
     , menus : List Menus
+    , username : String
     }
 
 type alias EditData = 
@@ -79,6 +80,7 @@ init session =
     , validationErr = ""
     , validErrShow = False
     , menus = []
+    , username = ""
     , editData =
         { title = "" 
         , difficulty = "H1"
@@ -164,7 +166,7 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.batch[
@@ -285,9 +287,10 @@ view model =
             ]
             , menu =  
             aside [ class "menu"] [
-                ul [ class "menu-list yf-list"] 
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
                     (List.map Page.viewMenu model.menus)
-            ]
+                ]
     }
     else
     { title = "유어핏 단위 영상 상세"
@@ -311,9 +314,10 @@ view model =
             ]
             , menu =  
             aside [ class "menu"] [
-                ul [ class "menu-list yf-list"] 
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
                     (List.map Page.viewMenu model.menus)
-            ]
+                ]
 
         
     }

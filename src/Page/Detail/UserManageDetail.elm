@@ -24,6 +24,7 @@ type alias Model = {
     , menus : List Menus
     , getId : String
     , goEdit : Bool
+    , username : String
     }
 
 
@@ -57,6 +58,7 @@ init : Session -> (Model, Cmd Msg)
 init session = ({
         session = session
         , menus = []
+        , username = ""
         , getId = ""
         , goEdit = False
         , getData =  {
@@ -150,11 +152,11 @@ update msg model =
                         auth num = List.member num a.menu_auth_code
                     in
                     if auth "30" then
-                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                        ( {model |  menus = item.data.menus, goEdit = True, username = item.data.admin.username}, Cmd.none )
                     else
-                        ( {model |  menus = item.data.menus}, Cmd.none )
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
                 Nothing ->
-                    ( {model |  menus = item.data.menus}, Cmd.none )
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
                         
   
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
@@ -197,9 +199,10 @@ view model =
         ]
         , menu =  
         aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menus)
-        ]
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
     }
     else
     { title = "사용자 관리 상세"
@@ -238,10 +241,11 @@ view model =
             ]
         ]
         , menu =  
-        aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menus)
-        ]
+       aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
     }
 
 

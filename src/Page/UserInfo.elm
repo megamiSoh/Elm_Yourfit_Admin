@@ -27,6 +27,7 @@ type alias Model =
         , authCode : List AuthCode
         , menus : List Menus
         , menuss : List Menuss
+        , username : String
     }
 type Problem
     = InvalidEntry String
@@ -87,6 +88,7 @@ init session =
     , menuss = []
     , authMenus = []
     , authCode = []
+    , username = ""
     , data = {
         admin = {
             connected_at = "",
@@ -139,7 +141,7 @@ update msg model =
             )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menuss = item.data.menus}, Cmd.none )
+            ( {model |  menuss = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.batch [
@@ -214,7 +216,8 @@ view model =
         ]
         , menu =  
         aside [ class "menu"] [
-        ul [ class "menu-list yf-list"] 
+        Page.header model.username
+        ,ul [ class "menu-list yf-list"] 
             (List.map Page.viewMenu model.menuss)
     ]
     }

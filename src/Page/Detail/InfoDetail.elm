@@ -39,6 +39,7 @@ type alias Model =
     , noticeId : String
     , menus : List Menus
     , goEdit : Bool
+    , username : String
     }
 
 type alias Data = 
@@ -80,6 +81,7 @@ init session =
     , isEdit = False
     , title = ""
     , menus = []
+    , username = ""
     , goEdit = False
     , noticeId =""
     , data = 
@@ -142,11 +144,11 @@ update msg model =
                         auth num = List.member num a.menu_auth_code
                     in
                     if auth "30" then
-                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goEdit = True}, Cmd.none )
                     else
-                        ( {model |  menus = item.data.menus}, Cmd.none )
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
                 Nothing ->
-                    ( {model |  menus = item.data.menus}, Cmd.none )
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.none
@@ -246,9 +248,10 @@ view model =
             ]
          , menu =  
             aside [ class "menu"] [
-                ul [ class "menu-list yf-list"] 
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
                     (List.map Page.viewMenu model.menus)
-            ]
+                ]
     }
     else
     { title = "공지사항"
@@ -276,8 +279,9 @@ view model =
             ]
          , menu =  
             aside [ class "menu"] [
-                ul [ class "menu-list yf-list"] 
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
                     (List.map Page.viewMenu model.menus)
-            ]
+                ]
     }
    

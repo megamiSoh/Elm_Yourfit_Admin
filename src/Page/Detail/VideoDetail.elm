@@ -62,6 +62,7 @@ type alias Model =
     , total_count : Int
     , screenInfo : ScreenInfo
     , filterItem : FilterItem
+    , username : String
     }
 
 type alias ScreenInfo = 
@@ -137,12 +138,12 @@ type alias Paginate =
     , total_count : Int}
 
 type alias FilterItem =
-    { difficulty_name : String
-    , exercise_name : String
-    , id : Int
-    , instrument_name : String
-    , part_detail_name : List String
-    , title : String
+    { difficulty_name : Maybe String
+    , exercise_name : Maybe String
+    , id : Maybe Int
+    , instrument_name : Maybe String
+    , part_detail_name : List (Maybe String)
+    , title : Maybe String
     , value : Maybe Int
     , is_rest : Maybe Bool
     , thembnail : String
@@ -162,14 +163,14 @@ type alias ExerItem =
     { 
     --     id : Int
     -- ,
-     difficulty_name :String
-    , id : Int
-    , exercise_name : String
-    , instrument_name : String
+     difficulty_name :Maybe String
+    , id : Maybe Int
+    , exercise_name : Maybe String
+    , instrument_name : Maybe String
     , is_rest :Maybe Bool
-    , part_detail_name : List String
+    , part_detail_name : List (Maybe String)
     -- , sort: Int 
-    , title : String
+    , title : Maybe String
     , value: Maybe Int
     , thembnail : String
     , duration : String}
@@ -326,6 +327,7 @@ init session =
             , openFilter = False
             , partDetail = []
             , filterName = []
+            , username = ""
             , description = ""
             , gofilter = []
             , editItem = []
@@ -349,12 +351,12 @@ init session =
             , scrollTop = 0
             , offsetHeight = 0}
             , filterItem = 
-                { difficulty_name = ""
-                , exercise_name = ""
-                , id = 0
-                , instrument_name = ""
+                { difficulty_name = Nothing
+                , exercise_name = Nothing
+                , id = Nothing
+                , instrument_name = Nothing
                 , part_detail_name = []
-                , title = ""
+                , title = Nothing
                 , value = Nothing
                 , is_rest = Nothing
                 , thembnail = ""
@@ -478,11 +480,11 @@ update msg model =
                         auth num = List.member num a.menu_auth_code
                     in
                     if auth "30" then
-                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                        ( {model |  menus = item.data.menus, goEdit = True, username = item.data.admin.username}, Cmd.none )
                     else
-                        ( {model |  menus = item.data.menus}, Cmd.none )
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
                 Nothing ->
-                    ( {model |  menus = item.data.menus}, Cmd.none )
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.batch 
@@ -511,7 +513,14 @@ update msg model =
             let
                 old = model.editItem
                 result = List.map (\i ->
-                        { action_id =  String.fromInt(i.id)
+                        { action_id =  
+                        -- String.fromInt(i.id)
+                            case i.id of
+                                Just int ->
+                                    String.fromInt (int)
+                            
+                                Nothing ->
+                                    "0"
                         , is_rest = 
                             case i.is_rest of
                                 Just a ->
@@ -552,19 +561,22 @@ update msg model =
                     List.map (\x ->
                         {x | value = 
                             Just 
-                            (case x.value of
-                                Just n ->
-                                    if num == -1 then
-                                        if n < 1 then
-                                            0
-                                        else 
-                                            n +num
-                                    else
-                                        n +num
-                                    
-                                Nothing ->
-                                    0
-                            )
+                                (case x.value of
+                                    Just n ->
+                                            if num == -1 then
+                                                if n < 1 then
+                                                    0
+                                                else 
+                                                    n +num
+                                            else
+                                                if n < 6 then
+                                                    n +num
+                                                else
+                                                    n
+                                        
+                                    Nothing ->
+                                        0
+                                )
                         }
                         ) current
                 result = List.take idx target ++ replace ++ List.drop (idx + 1) target
@@ -588,7 +600,10 @@ update msg model =
                     List.map (\x ->
                     case parseVal of
                         Just m ->
+                            if m < 7 then
                             {x | value = Just m}    
+                            else
+                            x
                     
                         Nothing ->
                             {x | value = Nothing}                        
@@ -601,7 +616,6 @@ update msg model =
                 f = List.filter (\x -> 
                         x.value == Just 0 || x.value == Nothing
                     ) model.resultFilterItem
-                    
             in 
             if List.length (f) > 0 then
                     ({model | valueWarn = "1 이상 숫자를 입력 해 주세요.", newStyle = "newStyle"}, Cmd.none)
@@ -634,7 +648,7 @@ update msg model =
                 after = List.drop (idx + 1) model.resultFilterItem
                 result = before ++ after
             in
-            ({model | resultFilterItem = result}, Cmd.none)
+            ({model | resultFilterItem = result, newStyle = ""}, Cmd.none)
         AddItem id->
             let
                 result = 
@@ -643,29 +657,32 @@ update msg model =
                             a
                         Nothing ->
                             0
-                f = List.filter (\x -> x.id == result)model.filterData
+                f = List.filter (\x -> (justInt x.id) == result) model.filterData
                 new = List.map (\x ->
                         {x | value = Just 3}
                     ) f
             in
-            if id == Nothing then
-            ({model | resultFilterItem = 
-            model.resultFilterItem ++
-            [
-                { difficulty_name = ""
-                , exercise_name = ""
-                , id = 0
-                , instrument_name = ""
-                , part_detail_name = []
-                , title = ""
-                , value =  Just 1
-                , is_rest = Just True
-                , thembnail = ""
-                , duration = ""
-                }
-            ]},Cmd.none)
+            if List.length model.resultFilterItem < 20 then
+                if id == Nothing then
+                ({model | resultFilterItem = 
+                model.resultFilterItem ++
+                [
+                    { difficulty_name = Nothing
+                    , exercise_name = Nothing
+                    , id = Nothing
+                    , instrument_name = Nothing
+                    , part_detail_name = []
+                    , title = Nothing
+                    , value =  Just 1
+                    , is_rest = Just True
+                    , thembnail = ""
+                    , duration = ""
+                    }
+                ]},Cmd.none)
+                else
+                ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
             else
-            ({model | resultFilterItem =  model.resultFilterItem ++ new},Cmd.none)
+            (model, Cmd.none)
         FilterResultData ->
             ({model | openFilter = False,gofilter = model.filtertitle :: model.filterName, justFilter = True,filterData= [], page = 1}, videoFilterResult model.filter model.session model.page model.per_page model.filtertitle)
         GetFilterItem (str, category, n) ->
@@ -757,7 +774,7 @@ update msg model =
             , justFilter = False , total_count = ok.paginate.total_count
             }, Cmd.none)
         SucceesEdit (Err err) ->
-            let
+            let 
                 error = Api.decodeErrors err
             in
             if error == "401" then
@@ -843,7 +860,14 @@ emptyList model=
                 )
         ) model.resultFilterItem
         )
+
+justInt item = 
+    case item of
+        Just int ->
+            int
     
+        Nothing ->
+            0
 
 view: Model -> {title: String, content: Html Msg, menu : Html Msg}
 view model=
@@ -853,52 +877,16 @@ view model=
             , content =
                 div [] [
                 div [class "adminloadingMask"][spinner]
-                , div [class "adminAuthMask"] []
+                -- , div [class "adminAuthMask"] []
                    
                 ]
             , menu =  
             aside [ class "menu"] [
-                ul [ class "menu-list yf-list"] 
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
                     (List.map Page.viewMenu model.menus)
-            ]
+                ]
             }
-        -- else
-        -- { title = ""
-        --     , content =
-        --         div [] [
-        --         div [class "adminloadingMask"][spinner]
-        --             , Video.formView
-        --             model.disabled 
-        --             (exerciseMap model) 
-        --             (emptyList model)
-        --             model.levelData
-        --             LevelSelect
-        --             model.detaildata
-        --             model.partData
-        --             PartSelect
-        --             TitleChange
-        --             model.disabledMask
-        --             Route.Video
-        --             DetailOrEdit
-        --             model
-        --             OpenFilter
-        --             GetFilterItem
-        --             FilterResultData
-        --             AddItem
-        --             model.btnTitle
-        --             model.topTitle
-        --             GoEdit
-        --             model.description
-        --             TextAreaInput
-        --             , videoShow "영상 미리보기" model.videoShow VideoClose
-        --             , validationErr model.validationErr model.validErrShow
-        --         ]
-        --     , menu =  
-        --     aside [ class "menu"] [
-        --         ul [ class "menu-list yf-list"] 
-        --             (List.map Page.viewMenu model.menus)
-        --     ]
-        --     }
     else
         if model.videoShow then
         { title = ""
@@ -934,9 +922,10 @@ view model=
             ]
         , menu =  
         aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menus)
-        ]
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+                ]
         }
         else
         { title = ""
@@ -976,10 +965,11 @@ view model=
                 ]
             ]
         , menu =  
-        aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menus)
-        ]
+       aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+                ]
         }
 
 

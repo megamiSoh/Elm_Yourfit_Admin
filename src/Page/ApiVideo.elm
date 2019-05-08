@@ -17,6 +17,7 @@ import Api.Decode as Decoder
 type alias Model = {
     session: Session
     , menus : List Menus
+    , username : String
     }
 
 type alias Menus =
@@ -30,11 +31,12 @@ init : Session -> (Model, Cmd Msg)
 init session = ({
         session = session
         , menus = []
-    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
+        , username =""
+    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.myProfileInfo))
 
 type Msg 
     = NoOp
-    | GetMyInfo (Result Http.Error Decoder.DataWrap)
+    | GetMyInfo (Result Http.Error Decoder.Profile)
 
 
 
@@ -51,7 +53,7 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            ( {model |  menus = Decoder.mymenu item, username = Decoder.myname item}, Cmd.none )
 
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
@@ -81,9 +83,11 @@ view model =
         -- ]
           , menu =  
             aside [ class "menu"] [
-                ul [ class "menu-list yf-list"] 
-            (List.map Page.viewMenu model.menus)
-    ]
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+                ]
+    
     } 
 
 

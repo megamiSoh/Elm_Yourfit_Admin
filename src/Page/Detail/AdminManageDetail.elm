@@ -54,6 +54,7 @@ type alias Model =
     , menuss : List Menuss
     , goEdit : Bool
     , goDelete : Bool
+    , username : String
     }
 type alias Menuss =
     {
@@ -122,6 +123,7 @@ init session =
         , isEdit = False
         , menuAuth = []
         , menuss = []
+        , username = ""
         , closeOpen= False
         , goEdit = False
         , goDelete = False
@@ -233,15 +235,15 @@ update msg model =
                     in
                     if auth "30" then
                         if auth "40" then
-                        ( {model |  menuss = item.data.menus, goEdit = True, goDelete = True}, Cmd.none )
+                        ( {model |  menuss = item.data.menus, goEdit = True, goDelete = True, username = item.data.admin.username}, Cmd.none )
                         else
-                        ( {model |  menuss = item.data.menus, goEdit = True}, Cmd.none )
+                        ( {model |  menuss = item.data.menus, goEdit = True, username = item.data.admin.username}, Cmd.none )
                     else if auth "40" then
-                        ( {model |  menuss = item.data.menus, goDelete = True}, Cmd.none )
+                        ( {model |  menuss = item.data.menus, goDelete = True, username = item.data.admin.username}, Cmd.none )
                     else
-                        ( {model |  menuss = item.data.menus}, Cmd.none )
+                        ( {model |  menuss = item.data.menus, username = item.data.admin.username}, Cmd.none )
                 Nothing ->
-                    ( {model |  menuss = item.data.menus}, Cmd.none )
+                    ( {model |  menuss = item.data.menus, username = item.data.admin.username}, Cmd.none )
         CloseOpen ->
             ({model | closeOpen = not model.closeOpen}, Cmd.none)
         DeleteAdmin ->
@@ -400,9 +402,10 @@ view model =
         ]
         , menu =  
         aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menuss)
-        ]
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menuss)
+                ]
         }
     else
     { title = "관리자 관리"
@@ -429,9 +432,10 @@ view model =
        ]
        , menu =  
         aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menuss)
-        ]
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menuss)
+                ]
     }
 
 subscriptions : Model -> Sub Msg

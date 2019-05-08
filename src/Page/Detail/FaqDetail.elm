@@ -24,6 +24,8 @@ type alias Model = {
     , id : String
     , detail : Detail
     , validMsg : String
+    , goRegist : Bool
+    , goEdit : Bool
     }
 
 type alias Menus =
@@ -76,6 +78,8 @@ init session = ({
         , username = ""
         , id = ""
         , validMsg = ""
+        , goRegist = False
+        , goEdit = False
     }, Cmd.batch [
         Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
         , Api.getParams ()
@@ -130,7 +134,7 @@ update msg model =
                         ""
             }, Cmd.none)
         GetDetail (Err err) ->
-            let _ = Debug.log "err" err
+            let
                 error = Api.decodeErrors err
             in
             case error of
@@ -160,7 +164,22 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            let 
+                menuf = List.head (List.filter (\x -> x.menu_id == 9) item.data.menus)
+            in
+            case menuf of
+                        Just a ->
+                            let
+                                auth num = List.member num a.menu_auth_code
+                            in
+                                if auth "30" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goEdit = True}, Cmd.none )
+                                else if auth "50" then
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                        Nothing ->
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
 
 view: Model -> {title: String, content : Html Msg, menu : Html Msg}
 view model =
@@ -179,9 +198,13 @@ view model =
             ] ,
             div [class "questionUser"] [ text model.detail.content ],
             div [class "questionTitle"] [text "답변"],
-            textarea [ class "questionStyle", disabled model.detail.is_answer, value model.question, placeholder "답변을 등록 해 주세요."] [],
+            textarea [ class "questionStyle", disabled model.detail.is_answer, value model.question, placeholder "답변을 등록 해 주세요.", maxlength 250] [],
                 div [ class "buttons" ] [
-                div [ class "button is-primary", onClick Disabled] [text "수정"],
+                if model.goEdit then
+                div [ class "button is-primary", onClick Disabled] [text "수정"]
+                else
+                div [][]
+                ,
                 a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]
                 ]
         ]
@@ -207,9 +230,13 @@ view model =
             div [class "questionUser"] [ text model.detail.content ],
             div [class "questionTitle"] [text "답변"],
             div [class "validstyle"][text model.validMsg],
-            textarea [ class "questionStyle", disabled model.detail.is_answer, onInput Answer , value model.question, placeholder "답변을 등록 해 주세요."] [],
+            textarea [ class "questionStyle", disabled model.detail.is_answer, onInput Answer , value model.question, placeholder "답변을 등록 해 주세요.", maxlength 250] [],
                 div [ class "buttons" ] [
-                div [ class "button is-primary",  onClick GoAnswer] [text "저장"],
+                if model.goRegist then
+                div [ class "button is-primary",  onClick GoAnswer] [text "저장"]
+                else
+                div [][]
+                ,
                 a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]
                 ]
         ]

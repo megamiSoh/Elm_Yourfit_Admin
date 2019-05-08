@@ -41,6 +41,7 @@ type alias Model =
     , validErrShow : Bool
     , validationErr : String
     , menus : List Menus
+    , username : String
     }
 
 type alias Menus =
@@ -67,6 +68,7 @@ init session=
     , content = ""
     , validErrShow = False
     , validationErr = ""
+    , username = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 infoRegist model =
@@ -115,7 +117,7 @@ update msg model =
             ( model, Cmd.none )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
             , Cmd.none
@@ -172,10 +174,11 @@ view model =
             , validationErr model.validationErr model.validErrShow
         ]
         , menu =  
-    aside [ class "menu"] [
-        ul [ class "menu-list yf-list"] 
-            (List.map Page.viewMenu model.menus)
-    ]
+            aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+                ]
     }
    
 subscriptions : Model -> Sub Msg

@@ -242,12 +242,12 @@ videoPaginate page =
 
 videoFilterItem item=
     Decode.succeed item
-        |> required "difficulty_name" string
-        |> required "exercise_name"  string
-        |> required "id" int
-        |> required "instrument_name"  string
-        |> required "part_detail_name" (Decode.list string)
-        |> required "title"  string
+        |> optional "difficulty_name" (Decode.map Just string) Nothing
+        |> optional "exercise_name"  (Decode.map Just string) Nothing
+        |> optional "id" (Decode.map Just int) Nothing
+        |> optional "instrument_name"  (Decode.map Just string) Nothing
+        |> required "part_detail_name" (Decode.list (Decode.nullable string))
+        |> optional "title"  (Decode.map Just string) Nothing
         |> optional "value" (Decode.map Just int) Nothing
         |> optional "is_rest" (Decode.map Just bool) (Just False)
         |> required "thembnail" string
@@ -269,14 +269,14 @@ videodetail data item =
 videoExerItem item=
     Decode.succeed item
         -- |> required "action_id" int
-        |> required "difficulty_name" string
-        |> required "exercise_id"  int
-        |> required "exercise_name" string
-        |> required "instrument_name" string
+        |> optional "difficulty_name" (Decode.map Just string) Nothing
+        |> optional "exercise_id"  (Decode.map Just int) Nothing
+        |> optional "exercise_name" (Decode.map Just string) Nothing
+        |> optional "instrument_name" (Decode.map Just string) Nothing
         |> optional "is_rest" (Decode.map Just bool)Nothing
-        |> required "part_detail_name" (Decode.list string)
+        |> required "part_detail_name"(Decode.list (Decode.nullable string)) 
         -- |> required "sort" int 
-        |> required "title"  string
+        |> optional "title"  (Decode.map Just string) Nothing
         |> optional "value" (Decode.map Just int) Nothing
         |> required "thembnail" string
         |> required "duration" string
@@ -344,6 +344,13 @@ userInfoMenus menus=
         |> required "menu_auth_code" (Decode.list string) 
         |> required "menu_id" int
         -- |> required "menu_name" string
+type Profile 
+    = Profile DataWrap
+
+myProfileInfo  = 
+    Decode.succeed DataWrap 
+        |> required "data" muserInfoData
+        |> Decode.map Profile
 
 muserInfo  = 
     Decode.succeed DataWrap 
@@ -361,6 +368,12 @@ muserInfoAdmin =
         |> required "joined_at" string
         |> optional "nickname" (Decode.map Just string) Nothing
         |> required "username" string
+
+myname ( Profile info ) = 
+    info.data.admin.username
+mymenu (Profile info) = 
+    info.data.menus
+
 muserInfoMenus = 
     Decode.succeed Menus
         |> required "menu_auth_code" (Decode.list string) 

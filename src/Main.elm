@@ -323,6 +323,7 @@ changeRouteTo maybeRoute model =
         Just Route.FaqEdit ->
             FaqE.init session 
                 |> updateWith FaqEmodel FaqEmsg model
+        
         -- Just Route.Login ->
         --     Login.init session  
         --         |> updateWith LoginModel LoginMsg model
@@ -557,6 +558,7 @@ update msg model =
         ( GotSession session, Redirect _) ->
             (Redirect session
             , Route.replaceUrl (Session.navKey session) Route.Home)
+            
         ( _, _ ) ->
             ( model, Cmd.none )  
         
@@ -574,10 +576,10 @@ view model =
         viewPage page toMsg config =
             let
                 { title, body } =
-                    Page.view (Session.cred (toSession model)) page config 
+                    Page.view (Session.cred (toSession model)) page config  
             in
             { title = title
-            , body = List.map (Html.map toMsg) body
+            , body = List.map (Html.map toMsg) body 
             }
     in
     case Session.cred (toSession model) of
@@ -727,4 +729,5 @@ view model =
                         viewPage Page.FaqDetail FaqDmsg (FaqD.view itemModel)
                     LoginModel itemModel ->
                         viewPage Page.Login LoginMsg (Login.view itemModel)
+
                     

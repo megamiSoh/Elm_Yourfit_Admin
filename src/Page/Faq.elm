@@ -37,6 +37,7 @@ type alias Model = {
     , todaySave : String
     , dateModel : String
     , pageNum : Int
+    , goDetail : Bool
     }
 
 type alias Menus =
@@ -140,6 +141,7 @@ init session =
         , endShow = False
         , todaySave = ""
         , dateModel = "all"
+        , goDetail = False
         , faqList = 
             { data = []
             , pagination = 
@@ -340,7 +342,10 @@ update msg model =
         SaveId complete ->
             (model, Route.pushUrl (Session.navKey model.session) Route.FaqDetail)
         GoDetail id ->
+            if model.goDetail then
             ({model | id = id}, Api.saveData (Encode.string (String.fromInt id)))
+            else
+            (model, Cmd.none)
         GetListData (Ok ok)->
             ({model | faqList = ok}, Cmd.none)
         GetListData (Err err)->
@@ -355,8 +360,21 @@ update msg model =
             ( model, Session.changeInterCeptor (Just serverErrors) )
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
-
+            let 
+                menuf = List.head (List.filter (\x -> x.menu_id == 9) item.data.menus)
+            in
+            case menuf of
+                        Just a ->
+                            let
+                                auth num = List.member num a.menu_auth_code
+                            in
+                            
+                                if auth "20" then
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                        Nothing ->
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
             
 
 

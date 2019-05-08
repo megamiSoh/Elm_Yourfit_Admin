@@ -21,7 +21,7 @@ targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
 registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput filterTitle=
-    div[ ] [
+    div[] [
         columnsHtml [pageTitle "유어핏영상 등록"],
         columnsHtml [
             labelWrap "기본설정" 
@@ -59,8 +59,8 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
                                 i [ class "far fa-plus-square", onClick (addItem Nothing) ]
                                 [],
                                 div [ class "media-left" ]
-                                [ figure [ class "image is-85x85" ]
-                                    [ img [ src "https://bulma.io/images/placeholders/96x96.png", alt "Placeholder image" ]
+                                [  figure [ class "image is-85x85" ]
+                                    [ i [ class "fas fa-coffee" ]
                                         []
                                     ]
                                 ]
@@ -262,32 +262,67 @@ inputBtnx btn model getFile thumb=
         ]
     ]
 
+justString item = 
+    case item of
+        Just ok ->
+            ok
+    
+        Nothing ->
+            ""
 
+justList item = 
+     List.map (\x ->
+        case x of
+            Just ok ->
+                ok
+        
+            Nothing ->
+                ""
+                    
+    ) item
+    
+
+justInt item =
+    case item of
+        Just ok ->
+            ok
+    
+        Nothing ->
+            0
 
 exerciseItem idx item addItem mask preview=
 
         div [ class "media restStyle" ] [
             if mask then
-            i [ class "far fa-plus-square" , onClick (addItem (Just item.id))]
+            i [ class "far fa-plus-square" , onClick (addItem (Just (justInt item.id)))]
                 [  ]
             else
             i [ class "far fa-plus-square noDropCursor" ]
                 [  ]
                 ,
             div [ class "media-left" ]
-            [ figure [ class "image is-85x85", onClick (preview (item.id, item.title)) ]
-                [ img [ src item.thembnail, alt item.title ]
+            [ figure [ class "image is-85x85" ]
+                [
+                if (justString item.title) == "" then
+                    i [ class "fas fa-coffee" ]
+                    []
+                else
+                img [ src 
+                    item.thembnail
+                    , onClick (preview((justInt item.id), (justString 
+                    item.title)))
+                 ]
                     []
                 ]
             ]
-            , div [ class "media-content" , onClick (preview(item.id, item.title)) ]
+            , div [ class "media-content" , onClick (preview((justInt item.id), (justString item.title))) ]
             [ p [ class "textTitleTop"  ]
-                [ text (item.title ++ " - " ++ "3 세트")  ]
+                [ text ((justString item.title) ++ " - " ++ "3 세트")  ]
             , p [ class "textvideoStyle" ]
                [ 
-                   p [] [text (item.difficulty_name ++ " - "),
-                   text (item.exercise_name ++ " - "),
-                   text (item.instrument_name)
+                   p [] [text ((justString item.difficulty_name) ++ " - "),
+                   text ((justString item.exercise_name) ++ " - "),
+                   text (justString item.instrument_name)
                    ]
                ]
             , p [class "textvideoStyle"] [
@@ -296,7 +331,7 @@ exerciseItem idx item addItem mask preview=
                 , text item.duration
             ]
             , p [class "textvideoStyle"] [
-                text (String.join "  " item.part_detail_name)
+                text (String.join "  " (justList item.part_detail_name))
             ]
             ]
         ]
@@ -332,18 +367,19 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
             div [ class "media-left" ]
             [ figure [ class "image is-85x85" ]
                 [
-                if item.title == "" then
+                if (justString item.title) == "" then
                     i [ class "fas fa-coffee" ]
                     []
                 else
                 img [ src 
                     item.thembnail
-                    , onClick (preview(item.id, item.title))
+                    , onClick (preview((justInt item.id), (justString 
+                    item.title)))
                  ]
                     []
                 ]
             ] ,
-            if item.title == "" then
+            if (justString item.title) == "" then
             div [ class "media-content" ]
             [ 
                 p [ class "title is-4"  ]
@@ -371,7 +407,7 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
 
             ]
             else
-            div [ class "media-content", onClick (preview(item.id, item.title)) ]
+            div [ class "media-content", onClick (preview((justInt item.id), (justString item.title))) ]
             [ 
                 
                 p [ class "textTitleTop"  ]
@@ -379,16 +415,16 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
                     text (
                         case item.value of
                             Just x ->
-                                 item.title ++ " - " ++ String.fromInt(x) ++ " 세트"
+                                 (justString item.title) ++ " - " ++ String.fromInt(x) ++ " 세트"
                             Nothing ->
-                                item.title ++ " -  3 세트"
+                                (justString item.title) ++ " -  3 세트"
                     )
                 ]
             , p [ class "textvideoStyle" ]
                [ 
-                   p [] [text (item.difficulty_name ++ " - "),
-                   text (item.exercise_name ++ " - "),
-                   text (item.instrument_name)
+                   p [] [text ((justString item.difficulty_name) ++ " - "),
+                   text ((justString item.exercise_name) ++ " - "),
+                   text (justString item.instrument_name)
                    ]
                ]
              , p [class "textvideoStyle"] [
@@ -398,8 +434,8 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
             ]
             , p [class "textvideoStyle"]
                ( List.map (\x ->
-                    text (x ++"  ")
-                )item.part_detail_name)
+                    text ((justString x) ++"  ")
+                )( item.part_detail_name))
             ]
             , p [] [
                 i [ 
@@ -412,7 +448,7 @@ exerciseBackItem idx item backItem switchItem newStyle settingShow settingShowId
             
             if mask then
                 if String.fromInt(idx) == settingShowIdx then
-                    if item.title == "" then
+                    if (justString item.title) == "" then
                     div [ class ("overlay  settingStyle " ++ newStyle) ] [
                             setRest rest restModel idx item.value pmd backItem settingShow valueWarn
                             ] 

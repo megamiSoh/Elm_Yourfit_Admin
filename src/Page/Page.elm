@@ -166,7 +166,7 @@ searchInput title ph  =
         [ 
             label []
             [ text title ],
-            input [ class "input", placeholder ph ]
+            input [ class "input", placeholder ph, maxlength 50 ]
             []
         ]
         
@@ -175,7 +175,7 @@ normalInput title ph style read=
             div [class style] [
                 label []
                 [ text title ],
-                input [ class "input", placeholder ph, disabled read]
+                input [ class "input", placeholder ph, disabled read, maxlength 50]
                 []
             ]
 
@@ -426,7 +426,7 @@ columnHtmlAdmin title=
 commonInput : String -> String -> Bool -> Html msg
 commonInput title ph read =
     input [
-        class "input" , placeholder ph , disabled read
+        class "input" , placeholder ph , disabled read, maxlength 50
     ] []
 
 commonLabel : String -> Html msg
@@ -455,7 +455,7 @@ inputText ph read msg model=
         div [ class "field-body" ]
             [ div [ class "control inputWidth" ]
                 [  
-                    input [ class "input" , placeholder ph , disabled read, onInput msg, value model ]
+                    input [ class "input" , placeholder ph , disabled read, onInput msg, value model, maxlength 50 ]
                     []
                 ]
             ]
@@ -577,7 +577,7 @@ inputWrap ph read =
         div [ class "field-body" ]
             [ div [ class "control inputWidth" ]
                 [  
-                    input [ class "input" , placeholder ph , disabled read ]
+                    input [ class "input" , placeholder ph , disabled read , maxlength 50]
                     []
                 ]
             ]
@@ -595,7 +595,7 @@ inputBtn ph read btn=
                     [ 
                         div [ class "field has-addons" ]
                         [ div [ class "control inputBtn" ]
-                            [ input [ class "input", placeholder ph , disabled read ]
+                            [ input [ class "input", placeholder ph , disabled read , maxlength 50]
                                 []
                             ]
                         , div [ class "control" ]
@@ -615,7 +615,7 @@ textAreaEvent  title read article msg=
             div [ class "field-body inputWidth" ]
             [  p [ class "control inputWidth" ]
                    [ 
-                      textarea [ class "textarea", placeholder "250자까지 입력 가능", disabled read, onInput msg, value article] []
+                      textarea [ class "textarea", placeholder "250자까지 입력 가능", disabled read, onInput msg, value article,maxlength 250] []
                     ]
             ]
        ]
@@ -626,7 +626,7 @@ textAreaRegist  title read article msg=
             div [ class "field-body inputWidth" ]
             [  p [ class "control inputWidth" ]
                    [ 
-                      textarea [ class "textarea", placeholder article, disabled read, onInput msg] []
+                      textarea [ class "textarea", placeholder article, disabled read, onInput msg, maxlength 250] []
                     ]
             ]
        ]
@@ -638,7 +638,7 @@ textAreaWrap  title read =
             div [ class "field-body inputWidth" ]
             [  p [ class "control inputWidth" ]
                    [ 
-                      textarea [ class "textarea", placeholder "Normal textarea", disabled read] []
+                      textarea [ class "textarea", placeholder "Normal textarea", disabled read, maxlength 250] []
                     ]
             ]
        ]
@@ -829,7 +829,7 @@ textArea title read=
         div [class "control"] [
                 label []
                 [ text title ],
-                textarea [ class "textarea", placeholder "Normal textarea", disabled read]
+                textarea [ class "textarea", placeholder "Normal textarea", disabled read, maxlength 250]
             []
         ]
 

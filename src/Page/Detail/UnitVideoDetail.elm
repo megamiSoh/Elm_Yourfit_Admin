@@ -36,6 +36,7 @@ type alias Model =
     , validErrShow : Bool
     , videoShow : Bool
     , goEdit : Bool
+    , username : String
     }
 
 type alias PreviewWrap =  
@@ -108,6 +109,7 @@ init session =
     , validationErr = ""
     , validErrShow = False
     , goEdit = False
+    , username = ""
     , videoShow = False
     , editData =
         { action_id =  0
@@ -401,11 +403,11 @@ update msg model =
                         auth num = List.member num a.menu_auth_code
                     in
                     if auth "30" then
-                        ( {model |  menus = item.data.menus, goEdit = True}, Cmd.none )
+                        ( {model |  menus = item.data.menus, goEdit = True, username = item.data.admin.username}, Cmd.none )
                     else
-                        ( {model |  menus = item.data.menus}, Cmd.none )
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
                 Nothing ->
-                    ( {model |  menus = item.data.menus}, Cmd.none )
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
             
 
 
@@ -420,10 +422,11 @@ view model =
                         div [class "adminloadingMask"][Page.spinner]
                     ]
             , menu =  
-                aside [ class "menu"] [
-                    ul [ class "menu-list yf-list"] 
+                 aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
                         (List.map Page.viewMenu model.menus)
-                ]
+                    ]
             }
         else
             if model.videoShow then
@@ -451,9 +454,10 @@ view model =
                         , Page.videoShow "영상 미리보기" model.videoShow VideoClose
                     ]
             , menu =  
-                aside [ class "menu"] [
-                    ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
+                 aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
                 ]
             }
             else
@@ -480,9 +484,10 @@ view model =
                         , Page.videoShow "영상 미리보기" model.videoShow VideoClose
                     ]
             , menu =  
-                aside [ class "menu"] [
-                    ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
+                 aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
                 ]
             }
     else
@@ -493,10 +498,11 @@ view model =
                     div [class "adminloadingMask"][Page.spinner]
                 ]
         , menu =  
-            aside [ class "menu"] [
-                ul [ class "menu-list yf-list"] 
+             aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
                     (List.map Page.viewMenu model.menus)
-            ]
+                ]
 
             
         }
@@ -526,9 +532,10 @@ view model =
                         , Page.videoShow "영상 미리보기" model.videoShow VideoClose
                     ]
             , menu =  
-                aside [ class "menu"] [
-                    ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
+                 aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
                 ]
 
                 
@@ -558,9 +565,10 @@ view model =
                         , Page.videoShow "영상 미리보기" model.videoShow VideoClose
                     ]
             , menu =  
-                aside [ class "menu"] [
-                    ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
+                 aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
                 ]
 
                 
