@@ -57,7 +57,7 @@ type alias Data =
     , inserted_at : String
     , is_answer : Bool
     , title : String
-    , username : String
+    , username : Maybe String
     }
 
 type alias Page = 
@@ -208,21 +208,21 @@ update msg model =
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        ({model | sendData = result, pageNum = model.pageNum - 1}, faqEncoder model.sendData model.session "" "")
+                        ({model | sendData = result, pageNum = model.pageNum - 1}, faqEncoder result model.session "" "")
                     "next" ->
-                        ({model | sendData = result, pageNum = model.pageNum + 1}, faqEncoder model.sendData model.session "" "")
+                        ({model | sendData = result, pageNum = model.pageNum + 1}, faqEncoder result model.session "" "")
                     "go" -> 
-                        ({model | sendData = result}, faqEncoder model.sendData model.session "" "")
+                        ({model | sendData = result}, faqEncoder result model.session "" "")
                     _ ->
                         (model, Cmd.none)
             else 
                 case str of
                     "prev" ->
-                        ({model | sendData = result, pageNum = model.pageNum - 1}, faqEncoder model.sendData model.session old.start_date old.end_date)
+                        ({model | sendData = result, pageNum = model.pageNum - 1}, faqEncoder result model.session old.start_date old.end_date)
                     "next" ->
-                        ({model | sendData = result, pageNum = model.pageNum + 1}, faqEncoder model.sendData model.session old.start_date old.end_date)
+                        ({model | sendData = result, pageNum = model.pageNum + 1}, faqEncoder result model.session old.start_date old.end_date)
                     "go" -> 
-                        ({model | sendData = result}, faqEncoder model.sendData model.session old.start_date old.end_date)
+                        ({model | sendData = result}, faqEncoder result model.session old.start_date old.end_date)
                     _ ->
                         (model, Cmd.none)
         SelectAnswer val ->
@@ -532,7 +532,13 @@ tableLayout idx item model =
                     String.fromInt(model.faqList.pagination.total_count - ((model.faqList.pagination.page - 1) * 10) - (idx)
             ))  ],
             div [ class "tableCell"] [text item.title],
-            div [ class "tableCell"] [text item.username ],
+            div [ class "tableCell"] [text 
+                (case item.username of
+                    Just name ->
+                        name
+                    Nothing ->
+                        "Guest"
+                    ) ],
             div [ class "tableCell"] [text (String.dropRight 10 item.inserted_at)],
             if item.is_answer then
                 div [ class "tableCell" ] [text "완료"]

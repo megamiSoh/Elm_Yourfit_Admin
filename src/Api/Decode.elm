@@ -420,7 +420,7 @@ faqlistdata data =
         |> required "inserted_at" string
         |> required "is_answer" bool
         |> required "title"string
-        |> required "username" string
+        |> optional "username" (Decode.map Just string)Nothing
 
 faqlistpage page = 
     Decode.succeed page
@@ -446,4 +446,4 @@ faqdetailList detail =
         |> required "id" int
         |> required "is_answer" bool
         |> required "title" string
-        |> required "username" string
+        |> optional "username" (Decode.map Just string) Nothing

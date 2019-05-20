@@ -45,7 +45,7 @@ type alias Detail =
     , id : Int
     , is_answer : Bool
     , title : String
-    , username : String
+    , username : Maybe String
     }
 
 answerEncode answer session id=
@@ -71,7 +71,7 @@ init session = ({
             , id = 0
             , is_answer = False
             , title = ""
-            , username = ""}
+            , username = Nothing}
         , question = "",
         onlyRead = False
         , menus = []
@@ -173,7 +173,10 @@ update msg model =
                                 auth num = List.member num a.menu_auth_code
                             in
                                 if auth "30" then
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goEdit = True}, Cmd.none )
+                                    if auth "50" then
+                                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True, goEdit = True}, Cmd.none )
+                                    else
+                                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goEdit = True}, Cmd.none )
                                 else if auth "50" then
                                 ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
                                 else

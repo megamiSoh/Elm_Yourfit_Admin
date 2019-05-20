@@ -121,7 +121,7 @@ item  idx num current btn=
         else
         "pagination-link"
         ),  onClick (btn ((num), "go"))] [
-            div [] [ text (String.fromInt (num)) ]
+             text (String.fromInt (num)) 
             -- ]
         ]
 

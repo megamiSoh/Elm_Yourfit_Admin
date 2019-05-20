@@ -4,7 +4,7 @@ module Page.Detail.AdminManageDetail exposing (..)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes as Attr exposing (class, value, src, checked, type_, disabled)
+import Html.Attributes as Attr exposing (class, value, src, checked, type_, disabled, style)
 import Html.Events exposing (..)
 import Page.Page exposing (..)
 import Session exposing (Session)
@@ -421,7 +421,7 @@ view model =
             model.menus
             model,
             div [ class "buttons" ] [
-            div [] [
+            div [style "margin-right" "5px"] [
                 if model.goEdit then
                 div [ class "button is-primary cursor", onClick (DetailOrEdit "detail") ] [text "수정"]
                 else 
