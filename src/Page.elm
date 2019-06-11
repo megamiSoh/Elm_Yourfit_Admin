@@ -44,6 +44,8 @@ type Page
     | VideoCall
     | Login
     | Menus
+    | C
+    | CD
 
 
 
@@ -165,6 +167,8 @@ viewMenu item  =
         8 ->
             li [] [ a [ class "nav-link", Route.href(Just Route.Info) ][text item.menu_name]]
         9 ->  
+            li [] [ a [ class "nav-link", Route.href(Just Route.C) ][text item.menu_name]]
+        10 ->  
             li [] [ a [ class "nav-link", Route.href(Just Route.Faq) ][text item.menu_name]]
         _ ->
             li [] [ a [ class "nav-link", Route.href(Just Route.UserInfo) ][text item.menu_name]]

@@ -175,7 +175,7 @@ init  session =
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
     , listEncode listInit session
-    -- , Api.pageNum (Encode.int 0)
+    , Api.pageNum (Encode.int 0)
      ]
     )
 
@@ -315,14 +315,14 @@ update msg model =
                             new = {old | page = ok, end_date = "", start_date = ""}
                         in
                         
-                        ({model | listmodel = new } , listEncodeSec new model.session)
+                        ({model | listmodel = new , pageNum = ok} , listEncodeSec new model.session)
                     else
                         let
                             old = model.listmodel
                             new = {old | page = ok}
                         in
                         
-                        ({model | listmodel = new } , listEncodeSec new model.session)
+                        ({model | listmodel = new , pageNum = ok} , listEncodeSec new model.session)
                 Err err ->
                     (model, Cmd.none)
         GetMyInfo (Err error) ->

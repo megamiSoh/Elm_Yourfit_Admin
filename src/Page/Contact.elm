@@ -1,4 +1,4 @@
-module Page.Faq exposing (..)
+module Page.Contact exposing (..)
 
 import Browser
 import Route exposing (Route)
@@ -39,8 +39,6 @@ type alias Model = {
     , dateModel : String
     , pageNum : Int
     , goDetail : Bool
-    , goRegist : Bool
-    , auth : List String
     }
 
 type alias Menus =
@@ -58,36 +56,33 @@ type alias Faq =
 type alias Data = 
     { id : Int
     , inserted_at : String
-    , is_use : Bool
+    , is_answer : Bool
     , title : String
+    , username : Maybe String
     }
 
 type alias Page = 
-    { end_date : String
-    , is_use : Maybe Bool
+    { asked_id : Maybe Int
+    , end_date : String
+    , is_answer : Maybe Bool
     , page : Int
     , per_page : Int
     , start_date : String
     , title : String
     , total_count : Int
+    , username : String
     }
 type alias SendData = 
     { page : Int
     , per_page : Int
     , title : String
+    , is_answer: Maybe Bool
+    , username : String
     , start_date : String
     , end_date : String
     } 
 
-usepost is_use session id =
-    let
-        body =
-            Encode.object
-                [( "is_use ", Encode.bool is_use)]
-                    |> Http.jsonBody
-    in
-    
-    Api.post (Endpoint.faqUse id) (Session.cred session) GetUseSuccess body (Decoder.result) 
+
 
 faqEncoder model session start end= 
     let
@@ -96,16 +91,27 @@ faqEncoder model session start end=
                 [ ("page", Encode.int model.page)
                 , ("per_page", Encode.int model.per_page)
                 , ("title", Encode.string model.title)
+                , ("is_answer", 
+                    case model.is_answer of
+                        Just a ->
+                            Encode.bool (a)
+                    
+                        Nothing ->
+                            null
+                )
+                , ("username", Encode.string model.username)
                 , ("start_date", Encode.string start)
                 , ("end_date", Encode.string end)]
                    |> Http.jsonBody 
     in
-    Api.post Endpoint.faqList (Session.cred session) GetListData body (Decoder.faqNewList Faq Data Page)
+    Api.post Endpoint.contactList (Session.cred session) GetListData body (Decoder.faqlist Faq Data Page)
 
 send = 
     { page = 1
     , per_page = 10
     , title = ""
+    , is_answer= Nothing
+    , username = ""
     , start_date = ""
     , end_date = ""
     } 
@@ -137,18 +143,18 @@ init session =
         , todaySave = ""
         , dateModel = "all"
         , goDetail = False
-        , goRegist = False
-        , auth = []
         , faqList = 
             { data = []
             , pagination = 
-                { end_date = ""
-                , is_use = Nothing
+                { asked_id = Nothing
+                , end_date = ""
+                , is_answer = Nothing
                 , page = 1
                 , per_page = 10
                 , start_date = ""
                 , title = ""
                 , total_count = 0
+                , username = ""
                 } }
     }, Cmd.batch[
         Cmd.map DatePickerMsg datePickerCmd
@@ -174,9 +180,6 @@ type Msg
     | SelectAnswer String
     | PageBtn (Int, String)
     | GotSession Session
-    | GetUseSuccess (Result Http.Error Decoder.Success)
-    | UseGo Bool String
-    | SuccessUse (Result Http.Error Decoder.Success)
     | ReceivePnum Encode.Value
 
 subscriptions : Model -> Sub Msg
@@ -210,31 +213,13 @@ update msg model =
                         ({model | sendData = new } , faqEncoder new model.session "" "")
                     else
                         let
+                            -- old = model.sendData
                             new = {old | page = ok}
                         in
                         
                         ({model | sendData = new } , faqEncoder new model.session old.start_date old.end_date)
                 Err err ->
                     (model, Cmd.none)
-        SuccessUse (Ok ok) ->
-            if model.dateModel == "all" then
-            (model, faqEncoder send model.session "" "")
-            else
-            (model, faqEncoder send model.session old.start_date old.end_date)
-        SuccessUse (Err err) ->
-            (model, Cmd.none)
-        UseGo use id ->
-            let
-                body = Encode.object
-                    [("is_use", Encode.bool (not use))]
-                    |> Http.jsonBody
-            in
-            
-            (model, Api.post (Endpoint.faqUse id) (Session.cred model.session) SuccessUse body (Decoder.result) )
-        GetUseSuccess (Ok ok) ->
-            (model, Cmd.none)
-        GetUseSuccess (Err err) ->
-            (model, Cmd.none)
         GotSession session ->
             if model.dateModel == "all" then
             ({model | session = session}, faqEncoder send session "" "")
@@ -272,18 +257,18 @@ update msg model =
                     _ ->
                         (model, Cmd.none)
         SelectAnswer val ->
-            -- let
-            --     result value = {old | is_answer = value}
-            -- in
+            let
+                result value = {old | is_answer = value}
+            in
             
-            -- case val of
-            --     "all" ->
-            --         ({model | sendData = result Nothing}, Cmd.none)
-            --     "True" ->
-            --         ({model | sendData = result (Just True)}, Cmd.none)
-            --     "False" ->                    
-            --         ({model | sendData = result (Just False)}, Cmd.none)
-            --     _ ->
+            case val of
+                "all" ->
+                    ({model | sendData = result Nothing}, Cmd.none)
+                "True" ->
+                    ({model | sendData = result (Just True)}, Cmd.none)
+                "False" ->                    
+                    ({model | sendData = result (Just False)}, Cmd.none)
+                _ ->
                     (model, Cmd.none)
         Title title ->
             let
@@ -292,11 +277,10 @@ update msg model =
             
             ({model | sendData = result}, Cmd.none)
         UserId id ->
-            -- let
-            --     result = {old | username = id}
-            -- in
-            -- ({model | sendData = result}, Cmd.none)
-            (model, Cmd.none)
+            let
+                result = {old | username = id}
+            in
+            ({model | sendData = result}, Cmd.none)
         Search ->
             if model.dateModel == "all" then
             (model, faqEncoder model.sendData model.session "" "")
@@ -387,9 +371,9 @@ update msg model =
                                 ( newModel, cmd )
                    )
         SaveId complete ->
-            (model, Route.pushUrl (Session.navKey model.session) Route.FaqDetail)
+            (model, Route.pushUrl (Session.navKey model.session) Route.CD)
         GoDetail id ->
-            if memberAuth "20" model then
+            if model.goDetail then
             ({model | id = id}, Api.saveData (Encode.string (String.fromInt id)))
             else
             (model, Cmd.none)
@@ -415,103 +399,24 @@ update msg model =
                             let
                                 auth num = List.member num a.menu_auth_code
                             in
-                                ({model | auth = a.menu_auth_code, menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0))
-                                -- if auth "20" then
-                                --     if auth "50" then
-                                --     ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
-                                --     else
-                                --     ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
-                                -- else if auth "50" then
-                                -- ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
-                                -- else
-                                -- ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                            
+                                if auth "20" then
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Api.pageNum (Encode.int 0) )
+                                else
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
                         Nothing ->
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
             
-
-memberAuth num model= List.member num model.auth
 
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     if model.faqList.pagination.total_count > 0 then
-        { title = "FAQ"
+        { title = "1:1 문의"
     , content = 
         div []
         [ 
-            columnsHtml [pageTitle "FAQ"],
-            div [ class "searchWrap" ] [
-                columnsHtml [
-                   searchDate 
-                            "등록일"
-                            Show 
-                            (datepicker model DatePickerMsg) 
-                            (getFormattedDate model.firstSelectedDate model.today) 
-                            EndShow (endDatePicker model EndDatePickerMsg) 
-                            (getFormattedDate model.secondSelectedDate model.endday) DateValue model.dateModel
-                            (if model.dateModel == "all" then
-                                "readOnly"
-                            else
-                                ""
-                            )
-                ],
-                columnsHtml [
-                    formInputEvent "제목명" "제목 명을 입력 해 주세요." False Title model.sendData.title
-                    -- ,
-                    -- div [ class "field is-horizontal" ] [
-                    --     labelWrap "게시"
-                    --     , div [ class "field-body" ]
-                    --     [ 
-                    --         p [ class "control inputWidth" ]
-                    --         [ 
-                    --         div [ class "select inputWidth"] [
-                    --             select [ class "inputWidth", onInput SelectAnswer  ]
-                    --             [ option [ value "all" ]
-                    --                 [ text "전체"]
-                    --             , option [ value "True"]
-                    --                 [ text "완료"]
-                    --             , option [ value "False"]
-                    --                 [text "미완료"]
-                    --             ]
-                    --         ]
-                    --         ]
-                    --     ] 
-                    --     ]
-                ]
-                ,
-                columnsHtml [
-                    -- formInputEvent "사용자" "사용자 아이디를 입력 해 주세요." False UserId model.sendData.username,
-                    searchB Search Reset
-                ]
-                
-            ],
-            dataCount (String.fromInt model.faqList.pagination.total_count)
-            , div [] [
-                if memberAuth "50" model then
-                registRoute "등록" Route.FaqRegist
-                else
-                div [] []
-            ]
-            ,  div [class "table"] (
-                [headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.faqList.data))
-            , pagination 
-                    PageBtn
-                    model.faqList.pagination
-                    model.pageNum
-        ] 
-      , menu =  
-                aside [ class "menu"] [
-                    Page.header model.username
-                    ,ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
-                ]
-    }
-    else
-    { title = "FAQ"
-    , content = 
-        div []
-        [ 
-            columnsHtml [pageTitle "FAQ"],
+            columnsHtml [pageTitle "1:1 문의"],
             div [ class "searchWrap" ] [
                 columnsHtml [
                    searchDate 
@@ -530,27 +435,91 @@ view model =
                 columnsHtml [
                     formInputEvent "제목명" "제목 명을 입력 해 주세요." False Title model.sendData.title,
                     div [ class "field is-horizontal" ] [
-                        -- labelWrap "게시"
-                        -- , div [ class "field-body" ]
-                        -- [ 
-                            -- p [ class "control inputWidth" ]
-                            -- [ 
-                            -- div [ class "select inputWidth"] [
-                            --     select [ class "inputWidth", onInput SelectAnswer]
-                            --     [ option [ value "all" , selected (model.sendData.is_answer == Nothing)]
-                            --         [ text "전체"]
-                            --     , option [ value "True", selected (model.sendData.is_answer == Just True)]
-                            --         [ text "완료"]
-                            --     , option [ value "False", selected (model.sendData.is_answer == Just False)]
-                            --         [text "미완료"]
-                            --     ]
-                            -- ]
-                            -- ]
-                        -- ] 
+                        labelWrap "답변"
+                        , div [ class "field-body" ]
+                        [ 
+                            p [ class "control inputWidth" ]
+                            [ 
+                            div [ class "select inputWidth"] [
+                                select [ class "inputWidth", onInput SelectAnswer  ]
+                                [ option [ value "all" ]
+                                    [ text "전체"]
+                                , option [ value "True"]
+                                    [ text "완료"]
+                                , option [ value "False"]
+                                    [text "미완료"]
+                                ]
+                            ]
+                            ]
+                        ] 
                         ]
+                ],
+                columnsHtml [
+                    formInputEvent "사용자" "사용자 아이디를 입력 해 주세요." False UserId model.sendData.username,
+                    searchB Search Reset
                 ]
-                , columnsHtml [
-                    -- formInputEvent "사용자" "사용자 아이디를 입력 해 주세요." False UserId model.sendData.username,
+                
+            ],
+            dataCount (String.fromInt model.faqList.pagination.total_count)
+            ,  div [class "table"] (
+                [headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.faqList.data))
+            , pagination 
+                    PageBtn
+                    model.faqList.pagination
+                    model.pageNum
+        ] 
+      , menu =  
+                aside [ class "menu"] [
+                    Page.header model.username
+                    ,ul [ class "menu-list yf-list"] 
+                        (List.map Page.viewMenu model.menus)
+                ]
+    }
+    else
+    { title = "1:1 문의"
+    , content = 
+        div []
+        [ 
+            columnsHtml [pageTitle "1:1 문의"],
+            div [ class "searchWrap" ] [
+                columnsHtml [
+                   searchDate 
+                            "등록일"
+                            Show 
+                            (datepicker model DatePickerMsg) 
+                            (getFormattedDate model.firstSelectedDate model.today) 
+                            EndShow (endDatePicker model EndDatePickerMsg) 
+                            (getFormattedDate model.secondSelectedDate model.endday) DateValue model.dateModel
+                            (if model.dateModel == "all" then
+                                "readOnly"
+                            else
+                                ""
+                            )
+                ],
+                columnsHtml [
+                    formInputEvent "제목명" "제목 명을 입력 해 주세요." False Title model.sendData.title,
+                    div [ class "field is-horizontal" ] [
+                        labelWrap "답변"
+                        , div [ class "field-body" ]
+                        [ 
+                            p [ class "control inputWidth" ]
+                            [ 
+                            div [ class "select inputWidth"] [
+                                select [ class "inputWidth", onInput SelectAnswer]
+                                [ option [ value "all" , selected (model.sendData.is_answer == Nothing)]
+                                    [ text "전체"]
+                                , option [ value "True", selected (model.sendData.is_answer == Just True)]
+                                    [ text "완료"]
+                                , option [ value "False", selected (model.sendData.is_answer == Just False)]
+                                    [text "미완료"]
+                                ]
+                            ]
+                            ]
+                        ] 
+                        ]
+                ],
+                columnsHtml [
+                    formInputEvent "사용자" "사용자 아이디를 입력 해 주세요." False UserId model.sendData.username,
                     searchB Search Reset
                 ]
                 
@@ -582,38 +551,29 @@ headerTable =
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
          div [ class "tableCell" ] [text "제목"],
+         div [ class "tableCell" ] [text "사용자"],
          div [ class "tableCell" ] [text "등록일"],
-         div [ class "tableCell" ] [text "게시"]
+         div [ class "tableCell" ] [text "답변"]
      ]
 
 --, Route.href (Just Route.UvideoDetail)
 tableLayout idx item model = 
-        div [ class "tableRow cursor"] [
-            div [ class "tableCell", onClick (GoDetail item.id)] [ text (
+        div [ class "tableRow cursor", onClick (GoDetail item.id)] [
+            div [ class "tableCell"] [ text (
                     String.fromInt(model.faqList.pagination.total_count - ((model.faqList.pagination.page - 1) * 10) - (idx)
             ))  ],
-            div [ class "tableCell", onClick (GoDetail item.id)] [text item.title],
-            -- div [ class "tableCell"] [text 
-            --     (case item.username of
-            --         Just name ->
-            --             name
-            --         Nothing ->
-            --             "Guest"
-            --         ) ],
+            div [ class "tableCell"] [text item.title],
+            div [ class "tableCell"] [text 
+                (case item.username of
+                    Just name ->
+                        name
+                    Nothing ->
+                        "Guest"
+                    ) ],
             div [ class "tableCell"] [text (String.dropRight 10 item.inserted_at)],
-            if memberAuth "30" model then
-                if item.is_use then
-                div [ class "tableCell " ] [
-                    p [class "button is-small is-success", onClick (UseGo item.is_use (String.fromInt item.id))][text "게시 중"]]
-                else
-                    div [ class "tableCell" ] [
-                        p [class "button is-small", onClick (UseGo item.is_use (String.fromInt item.id))][text "게시 하기"]]
+            if item.is_answer then
+                div [ class "tableCell" ] [text "완료"]
             else
-                if item.is_use then
-                div [ class "tableCell " ] [
-                    p [class "button is-small is-success"][text "게시 중"]]
-                else
-                    div [ class "tableCell" ] [
-                        p [class "button is-small"][text "게시 하기"]]
+                div [ class "tableCell" ] [text "미완료"]
          ]
 

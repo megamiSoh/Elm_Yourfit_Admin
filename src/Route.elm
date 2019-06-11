@@ -48,6 +48,8 @@ type Route
     | FaqRegist
     | FaqEdit
     | Login
+    | C
+    | CD
 
 -- decoder : Decoder (Cred -> Page)
 -- decoder =
@@ -91,6 +93,8 @@ parser =
         , Parser.map Other (s "other")
         , Parser.map Logout (s "logout")
         , Parser.map Login (s "login")
+        , Parser.map C (s "contact")
+        , Parser.map CD (s "contactDetail")
         ]
 
 
@@ -202,5 +206,9 @@ routeToString page =
                     ["other"]
                 Login ->
                     ["login"]
+                C ->
+                    ["contact"]
+                CD ->
+                    ["contactDetail"]
     in
     "#/" ++ String.join "/" pages

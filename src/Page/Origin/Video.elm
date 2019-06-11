@@ -20,7 +20,7 @@ onChange tagger =
 targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
-registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput filterTitle=
+registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput filterTitle pointCheck payMsg sexMsg=
     div[] [
         columnsHtml [pageTitle "유어핏영상 등록"],
         columnsHtml [
@@ -34,9 +34,16 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
             noEmptyselectForm "난이도" False levelmodel seletmsg  model.levelModel,
             noEmptyselectForm "운동 부위" False partmodel partmsg  model.partModel
             ]
+            ,columnsHtml [
+            noEmptyselectForm "유 / 무료" False [{code = "false", name = "무료"}, {code = "true", name = "유료"}] payMsg  model.is_pay
+            , noEmptyselectForm "성별" (if model.is_pay == "false" then True else False) [{code = "", name = "구분 없음"},{code = "true", name = "남성"}, {code = "false", name = "여성"}] sexMsg model.is_sex
+            ]
             , columnsHtml [
-           textAreaRegist "운동 설명" False "250자까지 입력 가능" textAreaInput
+            checkBoxCustom model.pointCode (if model.is_pay == "false" then True else False) model.checkPoint pointCheck model.checkPoint
+           , textAreaRegist "운동 설명" False "250자까지 입력 가능" textAreaInput
         ]
+        
+
         ]
         ,
         columnsHtml [
@@ -100,8 +107,95 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
         videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult filterTitle model.filtertitle
     ]
 
+checkBoxCustom list disabled checkV partMsg checkModel=
+        div [ class "field is-horizontal" ]
+            [ 
+            labelWrap "운동 방향",
+            div [ class "field-body customCheck" ]
+                [ div [ class "field  is-fullwidth" ]
+                    [ p [ class "control customCheck" ]
+                        (
+                            List.map (
+                                \title ->
+                                checkBoxReadOnly checkModel title partMsg disabled 
+                                -- checkBoxReadOnly checkModel title partMsg disabled(
+                                --     let 
+                                --         match = 
+                                --             List.head(List.filter(\f ->
+                                --             f.code == title.code
+                                --             )checkV  )
+                                --     in
+                                --     case match of
+                                --         Just m ->
+                                --             m
+                                --         Nothing ->
+                                --             { code= ""
+                                --             , name= ""}
+                                --     )
+                                ) list
+                            )
+                    ]
+                ]
+            ]
 
-formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit description textareaInput filterTitle=
+
+checkBoxReadOnly checkModel title partMsg readOnly = 
+    label [ class "checkbox" ]
+        [ input 
+        [ type_ "checkbox"
+        , disabled readOnly
+        -- , value checkModel
+        -- , checked (val.code == title.code)
+        , onClick (partMsg (title.code , title.name))
+        ]
+            [], text title.name 
+        ]
+
+checkBoxReadOnlyDetail checkModel title partMsg readOnly checkVal = 
+    label [ class "checkbox" ]
+        [ input 
+        [ type_ "checkbox"
+        , disabled readOnly
+        , value title.code
+        , checked (List.member title.code checkVal)
+        , onClick (partMsg (title.code , title.name))
+        ]
+            [], text title.name 
+        ]
+
+
+checkBoxCustomDetail list disabled checkV partMsg checkModel checkVal =
+        div [ class "field is-horizontal" ]
+            [ 
+            labelWrap "운동 방향",
+            div [ class "field-body customCheck" ]
+                [ div [ class "field  is-fullwidth" ]
+                    [ p [ class "control customCheck" ]
+                        (
+                            List.map (
+                                \title ->
+                                checkBoxReadOnlyDetail checkModel title partMsg disabled checkVal
+                                -- checkBoxReadOnly checkModel title partMsg disabled(
+                                --     let 
+                                --         match = 
+                                --             List.head(List.filter(\f ->
+                                --             f.code == title.code
+                                --             )checkV  )
+                                --     in
+                                --     case match of
+                                --         Just m ->
+                                --             m
+                                --         Nothing ->
+                                --             { code= ""
+                                --             , name= ""}
+                                --     )
+                                ) list
+                            )
+                    ]
+                ]
+            ]
+
+formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit description textareaInput filterTitle payMsg sexMsg pointCheck =
     let
         textInput text =
             text
@@ -121,9 +215,14 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
             columnsHtml [
             noEmptyselectForm "난이도" dis levelmodel seletmsg seletmodel.difficulty_code ,
             noEmptyselectForm "운동 부위" dis partmodel partmsg seletmodel.exercise_part_code
-            ] ,
-            columnsHtml [
-                textAreaEvent "운동설명" dis description textareaInput
+            ] 
+            ,columnsHtml [
+            noEmptyselectForm "유 / 무료" model.disabled [{code = "false", name = "무료"}, {code = "true", name = "유료"}] payMsg  model.is_pay
+            , noEmptyselectForm "성별" (if model.disabled || model.is_pay =="false" then True else False) [{code = "", name = "구분 없음"},{code = "true", name = "남성"}, {code = "false", name = "여성"}] sexMsg model.is_sex
+            ]
+            , columnsHtml [
+            checkBoxCustomDetail model.pointCode (if model.disabled || model.is_pay =="false" then True else False) model.checkPoint pointCheck model.checkPoint model.checkVal
+            , textAreaEvent "운동설명" dis description textareaInput
             ]
             
         ]

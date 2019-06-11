@@ -1,32 +1,55 @@
 module Page.Detail.FaqDetail exposing (..)
 
-import Browser exposing (..)
+import Browser exposing (Document)
 import Html exposing (..)
-import Html.Attributes exposing (..)
-import Session exposing (Session)
+import Html.Attributes exposing (class, style)
+import Html.Events exposing (onCheck, onClick, onInput)
+import Markdown.Block as Block exposing (Block)
+import Markdown.Config exposing (HtmlOption(..),  defaultSanitizeOptions)
+import Markdown.Inline as Inline
 import Page.Page exposing(..)
+import Page.Origin.Info as Info
+import Session exposing (Session)
 import Route exposing(..)
-import Html.Events exposing(..)
-import Page as Page
 import Api as Api
-import Http as Http
-import Api.Endpoint as Endpoint
-import Api.Decode as Decoder
 import Json.Encode as Encode
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (..)
+import Http exposing(..)
+import Api.Endpoint as Endpoint
+import Json.Decode.Pipeline exposing (custom, required, hardcoded, optional)
+import Page as Page
+import Api.Decode as Decoder
 
-type alias Model = {
-    session: Session,
-    question: String,
-    onlyRead: Bool
-    , menus : List Menus
-    , username : String 
-    , id : String
-    , detail : Detail
-    , validMsg : String
-    , goRegist : Bool
-    , goEdit : Bool
+defaultOptions =
+    { softAsHardLineBreak = False
+    , rawHtml = ParseUnsafe
     }
+
+type alias Model =
+    { textarea : String
+    , onDemandText : String
+    , options : Markdown.Config.Options
+    , showToC : Bool
+    , selectedTab : EditorTab
+    , selectedPreviewTab : PreviewTab
+    , session : Session
+    , data : DataWrap
+    , isEdit : Bool
+    , title : String
+    , noticeId : String
+    , menus : List Menus
+    , goEdit : Bool
+    , username : String
+    }
+
+type alias Data = 
+    { content : String
+    , id : Int
+    , title : String
+    }
+
+type alias DataWrap = 
+    { data : Data }
 
 type alias Menus =
     {
@@ -35,219 +58,239 @@ type alias Menus =
         menu_name : String
     }
 
-type alias DetailData = 
-    { data : Detail }
+dataWrapDecoder =
+    Decode.succeed DataWrap
+        |> required "data" dataDecoder
 
-type alias Detail = 
-    { answer : Maybe String
-    , asked_id : Int
-    , content : String
-    , id : Int
-    , is_answer : Bool
-    , title : String
-    , username : Maybe String
-    }
+dataDecoder = 
+    Decode.succeed Data
+        |> required "content" string
+        |> required "id" int
+        |> required "title" string
 
-answerEncode answer session id=
-    let
-        newInput = 
-            answer
-                |> String.replace "&" "%26"
-                |> String.replace "%" "%25"
-
-        body = ("answer=" ++ newInput)
-            |> Http.stringBody "application/x-www-form-urlencoded"
-
-    in
-    Api.post (Endpoint.faqanswer id) (Session.cred session) AnswerComplete body Decoder.result
 
 init : Session -> (Model, Cmd Msg)
-init session = ({
-        session = session,
-        detail = 
-            { answer = Nothing
-            , asked_id = 0
-            , content = ""
+init session =
+    ({ textarea = ""
+    , onDemandText = ""
+    , options = defaultOptions
+    , showToC = False
+    , selectedTab = Editor
+    , selectedPreviewTab = RealTime
+    , session = session
+    , isEdit = False
+    , title = ""
+    , menus = []
+    , username = ""
+    , goEdit = False
+    , noticeId =""
+    , data = 
+        {
+            data = 
+            { content = ""
             , id = 0
-            , is_answer = False
-            , title = ""
-            , username = Nothing}
-        , question = "",
-        onlyRead = False
-        , menus = []
-        , username = ""
-        , id = ""
-        , validMsg = ""
-        , goRegist = False
-        , goEdit = False
-    }, Cmd.batch [
-        Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-        , Api.getParams ()
-    ])
-
-type Msg 
-    = Disabled
-    | GetMyInfo (Result Http.Error Decoder.DataWrap)
-    | GetId Encode.Value
-    | GetDetail (Result Http.Error DetailData)
-    | AnswerComplete (Result Http.Error Decoder.Success)
-    | Answer String
-    | GoAnswer
-    | GotSession Session
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch[Api.params GetId
-    , Session.changes GotSession (Session.navKey model.session)]
+            , title = ""}
+            }
+    }, Cmd.batch[
+        Api.getParams ()
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+        ])
 
 toSession : Model -> Session
 toSession model =
     model.session
 
-update : Msg -> Model -> (Model, Cmd Msg)
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch 
+    [ Api.onSucceesSession SessionCheck
+    , Session.changes GotSession (Session.navKey model.session)
+    , Api.params GetId
+    ]
+    
+
+type EditorTab
+    = Editor
+
+
+type PreviewTab
+    = RealTime
+
+
+type Msg
+    = TextAreaInput String
+    | GetId Encode.Value
+    | GetData (Result Http.Error DataWrap)
+    | TitleText String
+    | IsEdit 
+    | HttpResult(Result Http.Error Code)
+    | SessionCheck Encode.Value
+    | GotSession Session
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
+
+update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
-        GotSession session ->
-            ({model | session = session}, Api.get GetDetail (Endpoint.faqDetail model.id) (Session.cred session) (Decoder.faqDetail DetailData Detail))
-        GoAnswer ->
-            if String.isEmpty model.question then
-            ({model | validMsg = "답변을 입력 해 주세요."}, Cmd.none)
-            else if String.length model.question > 250 then
-            ({model | validMsg = "250자 이상 입력할 수 없습니다."}, Cmd.none)
-            else
-            (model, answerEncode model.question model.session model.id)
-        Answer str->
-            ({model | question = str}, Cmd.none)
-        AnswerComplete (Ok ok) ->
-            (model,Cmd.batch[Api.get GetDetail (Endpoint.faqDetail model.id) (Session.cred model.session) (Decoder.faqDetail DetailData Detail)
-            , Api.showToast (Encode.string "답변이 등록 되었습니다.")])
-        AnswerComplete (Err err) ->
-            (model,Cmd.none)
-        GetDetail (Ok ok) ->
-            ({model | detail = ok.data, question = 
-                case ok.data.answer of
-                    Just answer ->
-                        answer
-                            |> String.replace "%26" "&"
-                            |> String.replace "%25" "%"
-                    option2 ->
-                        ""
-            }, Cmd.none)
-        GetDetail (Err err) ->
+        GetMyInfo (Err err) ->
             let
                 error = Api.decodeErrors err
             in
-            case error of
-                "401" ->
-                    (model, Api.thirdRefreshFetch ())
-            
-                _ ->
-                    (model, Cmd.none)   
-        GetId id ->
-            let
-                result = Decode.decodeValue Decode.string id
-            in
-            case result of
-                Ok ok ->
-                    ({model | id = ok}, Api.get GetDetail (Endpoint.faqDetail ok) (Session.cred model.session) (Decoder.faqDetail DetailData Detail))   
-            
-                Err err ->
-                    (model, Cmd.none)
-        Disabled ->
-            let
-                old = model.detail
-                new = {old | is_answer = not old.is_answer}
-            in
-            
-             ({model | detail = new}, Cmd.none)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+            if error == "401" then
+                (model, Api.thirdRefreshFetch ())
+            else 
+                (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
-            let 
-                menuf = List.head (List.filter (\x -> x.menu_id == 9) item.data.menus)
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 8) item.data.menus)
             in
             case menuf of
-                        Just a ->
-                            let
-                                auth num = List.member num a.menu_auth_code
-                            in
-                                if auth "30" then
-                                    if auth "50" then
-                                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True, goEdit = True}, Cmd.none )
-                                    else
-                                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goEdit = True}, Cmd.none )
-                                else if auth "50" then
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
-                                else
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
-                        Nothing ->
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    if auth "30" then
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goEdit = True}, Cmd.none )
+                    else
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                Nothing ->
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+        GotSession session ->
+            ({model | session = session}
+            , Cmd.batch[Api.get GetData (Endpoint.faqDetail model.noticeId)(Session.cred session) dataWrapDecoder
+            ,  Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
+            )
+        SessionCheck check ->
+            let
+                decodeCheck = Decode.decodeValue Decode.string check
+            in
+                case decodeCheck of
+                    Ok continue ->
+                        (model, Cmd.batch [
+                             Api.get GetData (Endpoint.faqDetail model.noticeId)(Session.cred model.session) dataWrapDecoder
+                        ])
+                    Err _ ->
+                        (model, Cmd.none)
+        TextAreaInput str ->
+             ({ model | textarea = str }, Cmd.none)
+        
+        GetId id ->
+            let
+                decode = 
+                    Decode.decodeValue Decode.string id
+            in
+                case decode of
+                    Ok str ->
+                        ({model | noticeId = str}, Api.get GetData (Endpoint.faqDetail str)(Session.cred model.session) dataWrapDecoder)
+                
+                    Err _->
+                        (model , Cmd.none)
 
-view: Model -> {title: String, content : Html Msg, menu : Html Msg}
+        GetData (Ok item ) ->
+            ({model | data = item, textarea = item.data.content , title = item.data.title}, Cmd.none)
+
+        GetData (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401" then
+            (model, Session.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
+        TitleText str->
+            ({model| title = str},Cmd.none)
+        IsEdit ->
+            ({model | isEdit = not model.isEdit}, 
+            if model.isEdit then
+            Cmd.batch [
+                encodeList model
+            ]
+            else
+            Cmd.none
+            )
+
+        HttpResult (Ok item)->
+            (model ,Api.get GetData (Endpoint.faqDetail model.noticeId)(Session.cred model.session) dataWrapDecoder )
+        HttpResult (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            (model,Session.changeInterCeptor (Just error))
+
+encodeList model  = 
+    let
+        body = 
+            Encode.object
+                [ ("title", Encode.string model.title)
+                , ("content", Encode.string model.textarea)]
+                    |> Http.jsonBody
+    in
+        Api.post (Endpoint.faqEdit model.noticeId) (Session.cred model.session) HttpResult body resultDecoder
+
+resultDecoder = 
+    Decode.succeed Code
+        |>required "result" string
+
+type alias Code = 
+    { result : String}
+
+view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
-    if model.detail.is_answer then
-    { title = ""
+    if model.isEdit then
+    { title = "FAQ"
     , content = 
-        div [] [
-            pageTitle "1 : 1 문의상세",
-            div [class "faqtitle"] [
-                span [] [text "제목 : "] ,
-                span [] [text model.detail.title],
-                span [class "faqDate"] [text "" ]
-            ],
-            div [class "questionContentTitle"] [
-                text "내용 "
-            ] ,
-            div [class "questionUser"] [ text model.detail.content ],
-            div [class "questionTitle"] [text "답변"],
-            textarea [ class "questionStyle", disabled model.detail.is_answer, value model.question, placeholder "답변을 등록 해 주세요.", maxlength 250] [],
-                div [ class "buttons" ] [
-                if model.goEdit then
-                div [ class "button is-primary", onClick Disabled] [text "수정"]
-                else
-                div [][]
+            div [] [
+                Info.infoDetail 
+                model
+                TextAreaInput 
+                False
+                "FAQ 수정"
+                (routeDetail Route.Faq Route.Faq)
+                TitleText
+                model.title
+                model.data.data.content
                 ,
-                a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]
+                div [ class "buttons" ] [
+                    div [ class "button is-primary cursur", onClick IsEdit ] [text "저장"],
+                    a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]
                 ]
-        ]
-        , menu =
+            ]
+         , menu =  
             aside [ class "menu"] [
-                    Page.header model.username
-                    ,ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
                 ]
     }
     else
-    { title = ""
+    { title = "FAQ"
     , content = 
-        div [] [
-            pageTitle "1 : 1 문의상세",
-            div [class "faqtitle"] [
-                span [] [text "제목 : "] ,
-                span [] [text model.detail.title]
-            ],
-             div [class "questionContentTitle"] [
-                text "내용 "
-            ] ,
-            div [class "questionUser"] [ text model.detail.content ],
-            div [class "questionTitle"] [text "답변"],
-            div [class "validstyle"][text model.validMsg],
-            textarea [ class "questionStyle", disabled model.detail.is_answer, onInput Answer , value model.question, placeholder "답변을 등록 해 주세요.", maxlength 250] [],
-                div [ class "buttons" ] [
-                if model.goRegist then
-                div [ class "button is-primary",  onClick GoAnswer] [text "저장"]
-                else
-                div [][]
+            div [] [
+                Info.infoDetail 
+                model
+                TextAreaInput 
+                True
+                "FAQ 상세"
+                (routeDetail Route.Faq Route.Faq)
+                TitleText
+                model.data.data.title
+                model.data.data.content
                 ,
-                a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]
+                div [ class "buttons" ] [
+                    div [style "margin-right" "5px"][
+                        if model.goEdit then
+                        div [ class "button is-primary cursur", onClick IsEdit ] [text "수정"]
+                        else
+                        div [] []
+                    ]
+                    , a [ class "button is-warning", Route.href (Just Route.Faq) ] [text "취소"]
                 ]
-        ]
-        , menu =
+            ]
+         , menu =  
             aside [ class "menu"] [
-                    Page.header model.username
-                    ,ul [ class "menu-list yf-list"] 
-                        (List.map Page.viewMenu model.menus)
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
                 ]
     }
-
+   

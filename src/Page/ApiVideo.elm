@@ -100,7 +100,7 @@ headerTable =
          div [ class "tableCell" ] [text "영상개수"],
          div [ class "tableCell" ] [text "카테고리"],
          div [ class "tableCell" ] [text "등록일"],
-         div [ class "tableCell" ] [text "활성화"],
+         div [ class "tableCell" ] [text "게시"],
          div [ class "tableCell" ] [text "미리보기"]
      ]
 
@@ -114,9 +114,9 @@ tableLayout item =
                 a [ class "tableCell" , Route.href (Just Route.ApiDetail) ] [text item.createDate],
                  div [ class "tableCell" ] [
                         if item.isActive then
-                            button [ class "button is-small"] [ text "활성" ]
+                            button [ class "button is-small is-success"] [ text "게시 중" ]
                         else
-                            button [class "button is-small"] [text "비활성"]
+                            button [class "button is-small"] [text "게시 하기"]
                     ],
                  div [ class "tableCell" ] [
                         button [class "button is-small"] [text "미리보기"]

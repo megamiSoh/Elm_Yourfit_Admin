@@ -59,7 +59,18 @@ type alias Model =
     , per_page : Int
     , total_count : Int
     , filtertitle : String
+    , pointCode : List Pointcode
+    , checkPoint : List String
+    , is_sex : String
+    , is_pay : String
     }
+
+type alias PointCodeWrap = 
+    { data : List Pointcode}
+
+type alias Pointcode =  
+    { code : String
+    , name : String}
 
 type alias ScreenInfo = 
     { scrollHeight : Int
@@ -219,6 +230,13 @@ listformUrlencoded object =
             )
         |> String.join ","
 
+directionEncoded object =
+    object
+        |> List.map
+            (\x ->
+                x
+            )
+        |> String.join ","
 
 registVideo model edit session=
     let
@@ -232,8 +250,10 @@ registVideo model edit session=
             , ("description", (newInput model.description))
             , ("difficulty", model.levelModel)
             , ("exercise_part", model.partModel)
-            , ("items", "[" ++ listformUrlencoded edit ++ "]"
-            )
+            , ("items", "[" ++ listformUrlencoded edit ++ "]")
+            , ("exercise_points", "[" ++ directionEncoded model.checkPoint ++ "]")
+            , ("is_male" , model.is_sex)
+            , ("is_pay", model.is_pay)
             ]
 
             |> Http.stringBody "application/x-www-form-urlencoded"
@@ -314,6 +334,10 @@ init session =
             , per_page = 20
             , total_count = 0
             , filtertitle = ""
+            , pointCode = []
+            , checkPoint = []
+            , is_sex = ""
+            , is_pay = "false"
             }
             , Cmd.batch
             [ Api.getParams ()
@@ -326,6 +350,7 @@ init session =
             , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , videoFilterResult f session 1 20 ""
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            , Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap Pointcode)
             ]
             )
 
@@ -365,6 +390,10 @@ type Msg
     | TextAreaInput String
     | ScrollEvent ScreenInfo
     | FilterTitle String
+    | GetPointData (Result Http.Error PointCodeWrap)
+    | PointCheck (String, String)
+    | Pay String
+    | Sex String
 
 takeLists idx model = 
     List.take idx model
@@ -375,6 +404,22 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        Sex value ->
+            ({model | is_sex = value }, Cmd.none)
+        Pay value ->
+            ({model | is_pay =  value }, Cmd.none)
+        PointCheck (code, name) ->
+            let
+                f = List.filter(\x -> x /= code) model.checkPoint
+            in
+            if List.member code model.checkPoint then
+            ({model | checkPoint = f }, Cmd.none)
+            else
+            ({model | checkPoint = code :: model.checkPoint}, Cmd.none)
+        GetPointData (Ok ok) ->
+            ({model | pointCode = ok.data}, Cmd.none)
+        GetPointData (Err err) ->
+            (model, Cmd.none)
         FilterTitle title ->
             ({model | filtertitle = title}, Cmd.none)
         ScrollEvent { scrollHeight, scrollTop, offsetHeight } ->
@@ -477,6 +522,8 @@ update msg model =
             ({model | validationErr = "운동제목을 입력 해 주세요.", validErrShow = True}, Api.validationHeight (True))
             else if String.length model.titleModel > 100 then
             ({model | validationErr = "운동제목은 100자까지 입력 가능합니다.", validErrShow = True} ,Api.validationHeight (True))
+            else if model.is_pay == "true" && List.isEmpty model.checkPoint then
+                ({model | validationErr = "운동방향을 하나 이상 선택 해 주세요.", validErrShow = True}, Api.validationHeight (True))
             else if String.isEmpty model.description then
             ({model | validationErr = "운동설명을 입력 해 주세요.", validErrShow = True}, Api.validationHeight (True))
             else if String.length model.description > 350 then
@@ -773,6 +820,9 @@ view model=
             GoRegist
             TextAreaInput
             FilterTitle
+            PointCheck
+            Pay
+            Sex
             , videoShow "영상 미리보기" model.videoShow VideoClose
             , validationErr model.validationErr model.validErrShow
             ]
@@ -804,6 +854,9 @@ view model=
             GoRegist
             TextAreaInput
             FilterTitle
+            PointCheck
+            Pay
+            Sex
             , div [] [
                 videoShow "영상 미리보기" model.videoShow VideoClose
             ]

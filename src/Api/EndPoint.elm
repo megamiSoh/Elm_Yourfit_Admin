@@ -40,9 +40,15 @@ module Api.Endpoint exposing
     , unitVideoShow
     , yourfitVideoShow
     , resetpwd
-    , faqList
-    , faqDetail
+    , contactList
+    , contactDetail
     , faqanswer
+    , faqList
+    , faqUse
+    , faqRegist
+    , faqDetail
+    , faqEdit
+    , pointCode
     )
 
 import Http
@@ -76,7 +82,10 @@ unwrap (Endpoint str) =
 
 url : List String -> List QueryParameter -> Endpoint
 url paths queryParams =
+    -- *****develope Api
     Url.Builder.crossOrigin "http://13.209.49.169:4000/api"
+    -- *****production Api
+    -- Url.Builder.crossOrigin "https://api.yfit.co.kr/api"
         ("v1" :: paths)
         queryParams
         |> Endpoint
@@ -221,11 +230,27 @@ resetpwd id=
 
 
 -- faq
-faqList = 
+contactList = 
     url ["admin", "inquiries"] []
     
-faqDetail id =
+contactDetail id =
     url ["admin", "inquiries", id] []
 
 faqanswer id = 
     url ["admin", "inquiries", id, "answer"][]
+
+faqList = 
+    url ["admin", "faqs"][]
+faqUse id = 
+    url ["admin" , "faqs" , id , "use"][]
+
+faqRegist = 
+    url ["admin", "faqs", "new"][]
+faqDetail id = 
+    url ["admin" , "faqs" , id] []
+
+faqEdit id = 
+    url ["admin", "faqs", id, "edit"][]
+
+pointCode = 
+    url ["admin", "exercises", "exercise_point_code"][]

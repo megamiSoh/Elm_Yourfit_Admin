@@ -3,8 +3,10 @@ import './main.css';
 import './css/all.min.css'
 import { Elm } from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
-
+// *****develope Api
 const url ='http://13.209.49.169:4000/api/v1/'
+// *****production Api
+// const url ='https://api.yfit.co.kr/api/v1/'
 var flags = 
   localStorage.getItem("token")
 
@@ -289,21 +291,26 @@ app.ports.showToast.subscribe(function (text) {
 })
 
 app.ports.pageNum.subscribe(function(num) {
-//   if (num == 0) {
-//     var pathcheck = document.cookie.match('(^|;) ?' + "pathCheck" + '=([^;]*)(;|$)');
-//       if (pathcheck[2] == window.location.hash) {
-//         var val = document.cookie.match('(^|;) ?' + "pageNum" + '=([^;]*)(;|$)');
-//         app.ports.sendPageNum.send(parseInt(val[2]))
-//       }
-//       else {
-//         app.ports.sendPageNum.send(1)
-//         document.cookie = "pageNum" + '=' + 1 + ';expires=' + ';path=/';
-//       }
-//   } else {
-//   document.cookie = "pageNum" + '=' + num + ';expires=' + ';path=/';
-//   document.cookie = "pathCheck" + '=' + window.location.hash + ';expires=' + ';path=/';
+  
+  if (num == 0) {
+    var pathcheck = document.cookie.match('(^|;) ?' + "pathCheck" + '=([^;]*)(;|$)');
+    if(pathcheck == null ) {
+      return ;
+    } else {
+      if (pathcheck[2] == window.location.hash) {
+        var val = document.cookie.match('(^|;) ?' + "pageNum" + '=([^;]*)(;|$)');
+        app.ports.sendPageNum.send(parseInt(val[2]))
+      }
+      else {
+        app.ports.sendPageNum.send(1)
+        document.cookie = "pageNum" + '=' + 1 + ';expires=' + ';path=/';
+      }
+    }
+  } else {
+  document.cookie = "pageNum" + '=' + num + ';expires=' + ';path=/';
+  document.cookie = "pathCheck" + '=' + window.location.hash + ';expires=' + ';path=/';
 
-// }
+}
 })
 
 registerServiceWorker();

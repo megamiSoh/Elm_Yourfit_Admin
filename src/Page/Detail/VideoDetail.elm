@@ -63,6 +63,11 @@ type alias Model =
     , screenInfo : ScreenInfo
     , filterItem : FilterItem
     , username : String
+    , checkPoint : List CheckPoint
+    , is_pay : String
+    , is_sex : String
+    , pointCode : List CheckPoint
+    , checkVal : List String
     }
 
 type alias ScreenInfo = 
@@ -157,8 +162,16 @@ type alias DetailData =
     , exercise_part_name :String
     , id: Int
     , title: String
-    , description : Maybe String}
+    , description : Maybe String
+    , is_male : Maybe Bool
+    , is_pay : Bool
+    , exercise_points : Maybe (List CheckPoint)}
 
+type alias CheckPoint = 
+    { code : String
+    , name : String }
+type alias PointCodeWrap = 
+    { data : List CheckPoint}
 type alias ExerItem =
     { 
     --     id : Int
@@ -244,7 +257,15 @@ listformUrlencoded object =
             )
         |> String.join ","
 
-editVideo detaildata edit session id description=
+pointEncoded item = 
+    item
+        |> List.map
+            (\x ->
+                x
+            )
+        |> String.join ","    
+
+editVideo detaildata edit session id description model =
     let
         newText text = 
             text
@@ -256,8 +277,10 @@ editVideo detaildata edit session id description=
             , ("difficulty", detaildata.difficulty_code)
             , ("exercise_part", detaildata.exercise_part_code)
             , ("description", (newText description))
-            , ("items", "[" ++ listformUrlencoded edit ++ "]"
-            )
+            , ("items", "[" ++ listformUrlencoded edit ++ "]")
+            , ("is_male", model.is_sex)
+            , ("is_pay", model.is_pay)
+            , ("exercise_points", "[" ++ pointEncoded model.checkVal ++"]")
             ]
 
             |> Http.stringBody "application/x-www-form-urlencoded"
@@ -302,7 +325,10 @@ init session =
                 , exercise_part_name  =""
                 , id = 0
                 , title = ""
-                , description = Nothing}
+                , description = Nothing
+                , is_male = Nothing
+                , is_pay = False
+                , exercise_points = Nothing}
         in
             ({ 
              filter = f
@@ -346,6 +372,7 @@ init session =
             , page = 1
             , per_page = 20
             , total_count = 0
+            , checkPoint = []
             , screenInfo = 
             { scrollHeight = 0
             , scrollTop = 0
@@ -362,6 +389,10 @@ init session =
                 , thembnail = ""
                 , duration = ""
                 }
+            , is_pay = "false"
+            , is_sex = ""
+            , pointCode = []
+            , checkVal = []
             }
             , Cmd.batch
             [ Api.getParams ()
@@ -373,6 +404,7 @@ init session =
             , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            , Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap CheckPoint)
             -- , Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem)
             ]
             )
@@ -417,6 +449,10 @@ type Msg
     | TextAreaInput String
     | FilterTitle String
     | ScrollEvent ScreenInfo
+    | Pay String
+    | Sex String
+    | PointCheck (String, String)
+    | GetPointData (Result Http.Error PointCodeWrap)
 
 
 takeLists idx model = 
@@ -428,6 +464,22 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        GetPointData (Ok ok) ->
+            ({model | pointCode = ok.data}, Cmd.none)
+        GetPointData (Err err) ->
+            (model, Cmd.none)
+        PointCheck (code, name) ->
+            let
+                f = List.filter(\x -> x/= code) model.checkVal
+            in
+            if List.member code model.checkVal then
+            ({model | checkVal = f }, Cmd.none)
+            else
+            ({model | checkVal = code :: model.checkVal}, Cmd.none)
+        Pay val ->
+            ({model | is_pay = val}, Cmd.none)
+        Sex val ->
+            ({model | is_sex = val}, Cmd.none)
         ScrollEvent { scrollHeight, scrollTop, offsetHeight } ->
              if (scrollHeight - scrollTop) <= (offsetHeight + 77) then
                 if  model.total_count // model.per_page + 1 > model.page then
@@ -462,7 +514,7 @@ update msg model =
             , Api.heightControll (not model.videoShow)]
             )
         VideoRetry session ->
-            ({model | session = session}, editVideo model.detaildata model.editItem session model.getId model.description)
+            ({model | session = session}, editVideo model.detaildata model.editItem session model.getId model.description model)
         RetryRequest session ->
             ({model | session = session }, videoFilterResult model.filter session model.page model.per_page model.filtertitle)
         GetMyInfo (Err err) ->
@@ -496,7 +548,7 @@ update msg model =
             Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem)
+            , Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint)
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
             ])
         GoEditApi (Ok ok) ->
@@ -543,6 +595,8 @@ update msg model =
             in
             if model.detaildata.title == "" then
                 ({model | validationErr = "운동 제목을 입력 해 주세요.", validErrShow = True}, Cmd.none)
+            else if model.is_pay == "true" && List.isEmpty model.checkVal then
+                ({model | validationErr = "운동방향을 하나 이상 선택 해 주세요.", validErrShow = True}, Api.validationHeight (True))
             else if List.length result == 0 then
                 ({model | validationErr = "운동을 선택 해 주세요.", validErrShow = True}, Cmd.none)
             else if model.description == "" then
@@ -550,7 +604,7 @@ update msg model =
             else
             (
                 {model | editItem = result, loading = True, validationErr = "" , validErrShow = False}
-            , editVideo model.detaildata result model.session model.getId model.description
+            , editVideo model.detaildata result model.session model.getId model.description model
             )
         PlusMinusDeleteSet idx pattern num->
             let
@@ -815,7 +869,7 @@ update msg model =
             case idDecode of
                 Ok i ->
                     ({model | getId = i},
-                    Api.get GetData ( Endpoint.videoDetail i) (Session.cred model.session)  (D.videoDetailDecoder Detail DetailData ExerItem))
+                    Api.get GetData ( Endpoint.videoDetail i) (Session.cred model.session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint))
             
                 Err _ ->
                     (model , Cmd.none)    
@@ -826,6 +880,15 @@ update msg model =
                     text
                         |> String.replace "%26" "&"
                         |> String.replace "%25" "%"
+                justList = 
+                    case ok.data.exercise_points of
+                        Just list ->
+                            list
+                    
+                        Nothing ->
+                            []
+                checkStringCode = 
+                    List.map (\x -> x.code) justList
             in
             ({model | detaildata = ok.data, description = 
             (case ok.data.description of
@@ -835,7 +898,24 @@ update msg model =
                 Nothing ->
                     "") ,
               loading = False,
-               resultFilterItem = ok.data.exercise_items}, videoFilterResult model.filter model.session model.page model.per_page model.filtertitle)
+               resultFilterItem = ok.data.exercise_items
+               , checkPoint = justList
+               , checkVal = checkStringCode
+               , is_sex = 
+                case ok.data.is_male of
+                    Just male ->
+                        if male then
+                            "true"
+                        else
+                            "false"
+                    Nothing ->
+                        ""
+                , is_pay = 
+                    if ok.data.is_pay then
+                        "true"
+                    else
+                        "false"
+                }, videoFilterResult model.filter model.session model.page model.per_page model.filtertitle)
         GetData(Err err) ->
             (model, Cmd.none)
             
@@ -917,6 +997,9 @@ view model=
                 model.description
                 TextAreaInput
                 FilterTitle
+                Pay
+                Sex
+                PointCheck
                 , videoShow "영상 미리보기" model.videoShow VideoClose
                 , validationErr model.validationErr model.validErrShow
             ]
@@ -956,6 +1039,9 @@ view model=
                     model.description
                     TextAreaInput
                     FilterTitle
+                    Pay 
+                    Sex
+                    PointCheck
                 ]
                 , div [] [
                     videoShow "영상 미리보기" model.videoShow VideoClose

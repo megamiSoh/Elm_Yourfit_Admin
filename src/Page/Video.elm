@@ -48,6 +48,7 @@ type alias Model = {
     , goRegist : Bool
     , goDetail : Bool
     , pageNum : Int
+    , auth : List String
     }
 
 type alias Menus =
@@ -192,6 +193,7 @@ init session =
         , activeId = ""
         , videoShow = False
         , pageNum = 1
+        , auth = []
     }, 
     Cmd.batch
     [ videoEncoder listInit session Getbody
@@ -328,16 +330,15 @@ update msg model =
                             let
                                 auth num = List.member num a.menu_auth_code
                             in
-                            
                                 if auth "20" then
                                     if auth "50" then
-                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True, auth = a.menu_auth_code}, Cmd.none )
                                     else
-                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, auth = a.menu_auth_code}, Cmd.none )
                                 else if auth "50" then
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True, auth = a.menu_auth_code}, Cmd.none )
                                 else
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code}, Cmd.none )
                         Nothing ->
                             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         VideoRetry retry ->
@@ -773,7 +774,7 @@ headerTable =
         div [ class "tableCell" ] [text "난이도"],
         div [ class "tableCell" ] [text "운동시간"],
         div [ class "tableCell" ] [text "등록일"],
-        div [ class "tableCell" ] [text "활성"],
+        div [ class "tableCell" ] [text "게시"],
         div [ class "tableCell" ] [text "미리보기"]
     ]
 
@@ -801,10 +802,16 @@ tableLayout idx item model=
                 div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text item.duration],
                 div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell" ] [
-                    if item.is_use then
-                    div [class "button is-small", onClick (IsActive( item.is_use, String.fromInt(item.id)))] [text "활성화"]
-                    else 
-                    div [class "button is-small", onClick (IsActive( item.is_use,  String.fromInt(item.id)))] [text "비활성화"]
+                    if List.member "30" model.auth then
+                        if item.is_use then
+                        div [class "button is-small is-success", onClick (IsActive( item.is_use, String.fromInt(item.id)))] [text "게시 중"]
+                        else 
+                        div [class "button is-small", onClick (IsActive( item.is_use,  String.fromInt(item.id)))] [text "게시 하기"]
+                    else
+                        if item.is_use then
+                        div [class "button is-small is-success"] [text "게시 중"]
+                        else 
+                        div [class "button is-small"] [text "게시 하기"]
                 ],
                 if item.is_use then
                 div [ class "tableCell" ] [

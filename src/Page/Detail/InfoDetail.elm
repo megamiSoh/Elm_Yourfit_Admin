@@ -2,7 +2,7 @@ module Page.Detail.InfoDetail exposing (..)
 
 import Browser exposing (Document)
 import Html exposing (..)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, style)
 import Html.Events exposing (onCheck, onClick, onInput)
 import Markdown.Block as Block exposing (Block)
 import Markdown.Config exposing (HtmlOption(..),  defaultSanitizeOptions)
@@ -268,7 +268,7 @@ view model =
                 model.data.data.content
                 ,
                 div [ class "buttons" ] [
-                    div [][
+                    div [style "margin-right" "5px"][
                         if model.goEdit then
                         div [ class "button is-primary cursur", onClick IsEdit ] [text "수정"]
                         else

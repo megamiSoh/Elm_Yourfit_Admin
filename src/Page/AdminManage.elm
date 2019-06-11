@@ -157,7 +157,8 @@ init session =
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
         , managelist listInit session
-        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) ]
+        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) 
+        ]
      )
 
 type Msg = 
@@ -178,6 +179,7 @@ type Msg =
         | DateValue String    
         | PageBtn (Int, String)
         | GetMyInfo (Result Http.Error Decoder.DataWrap)    
+        | ReceivePnum Encode.Value
 
 
 toSession : Model -> Session
@@ -189,6 +191,29 @@ toSession model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ReceivePnum num ->
+            let 
+                val = Decode.decodeValue Decode.int num
+            in
+            
+            case val of
+                Ok ok ->
+                    if model.dateModel == "all" then
+                        let
+                            old = model.listForm
+                            new = {old | page = ok, end_date = "", start_date = ""}
+                        in
+                        
+                        ({model | listForm = new } , managelist new model.session)
+                    else
+                        let
+                            old = model.listForm
+                            new = {old | page = ok}
+                        in
+                        
+                        ({model | listForm = new } , managelist new model.session)
+                Err err ->
+                    (model, Cmd.none)
         GetMyInfo (Err error) ->
             ( model, Cmd.none )
 
@@ -203,15 +228,15 @@ update msg model =
                             in
                                 if auth "20" then
                                     if auth "50" then
-                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Api.pageNum (Encode.int 0) )
                                     else
-                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Api.pageNum (Encode.int 0) )
                                 else if auth "50" then
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Api.pageNum (Encode.int 0) )
                                 else
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
                         Nothing ->
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
         PageBtn (idx, str) ->
             let
                 old = model.listForm
@@ -235,21 +260,27 @@ update msg model =
             if model.dateModel == "all" then
                 case str of
                     "prev" ->
-                        ({model | pageNum = model.pageNum - 1}, managelist allList model.session)
+                        ({model | pageNum = model.pageNum - 1}, Cmd.batch[managelist allList model.session
+                        , Api.pageNum (Encode.int idx)])
                     "next" ->
-                        ({model | pageNum = model.pageNum + 1}, managelist allList model.session)
+                        ({model | pageNum = model.pageNum + 1}, Cmd.batch[managelist allList model.session
+                        , Api.pageNum (Encode.int idx)])
                     "go" -> 
-                        (model, managelist allList model.session)
+                        (model, Cmd.batch[managelist allList model.session
+                        , Api.pageNum (Encode.int idx)])
                     _ ->
                         (model, Cmd.none)
             else 
                 case str of
                     "prev" ->
-                        ({model | pageNum = model.pageNum - 1}, managelist list model.session)
+                        ({model | pageNum = model.pageNum - 1}, Cmd.batch[managelist list model.session
+                        , Api.pageNum (Encode.int idx)])
                     "next" ->
-                        ({model | pageNum = model.pageNum + 1}, managelist list model.session)
+                        ({model | pageNum = model.pageNum + 1}, Cmd.batch[managelist list model.session
+                        , Api.pageNum (Encode.int idx)])
                     "go" -> 
-                        (model, managelist list model.session)
+                        (model, Cmd.batch[managelist list model.session
+                        , Api.pageNum (Encode.int idx)])
                     _ ->
                         (model, Cmd.none)
 
@@ -521,5 +552,5 @@ subscriptions model =
     Sub.batch[
     Session.changes GotSession (Session.navKey model.session)
     , Api.saveCheck CheckResult
-    -- , Api.onSucceesSession SessionCheck
+    , Api.sendPageNum ReceivePnum
     ]

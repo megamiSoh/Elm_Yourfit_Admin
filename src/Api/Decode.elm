@@ -212,9 +212,9 @@ videoPage page=
         |> required "title" string
         |> required "total_count" int
     
-videoDetailDecoder detaildata data item =
+videoDetailDecoder detaildata data item point =
     Decode.succeed detaildata
-        |> required "data" (videodetail data item )
+        |> required "data" (videodetail data item point )
 videoFilterDecoder detaildata item page=
     Decode.succeed detaildata
         |> required "data" (Decode.list (videoFilterItem item) )
@@ -254,7 +254,7 @@ videoFilterItem item=
         |> required "duration" string
 
 
-videodetail data item =
+videodetail data item point =
     Decode.succeed data
         |> required "difficulty_code" string
         |> required "difficulty_name" string
@@ -264,7 +264,13 @@ videodetail data item =
         |> required "id" int
         |> required "title" string
         |> optional "description" (Decode.map Just string) Nothing
-        
+        |> optional "is_male" (Decode.map Just bool) Nothing
+        |> required "is_pay" bool
+        |> optional "exercise_points" (Decode.map Just ((Decode.list (exercise_points point)))) Nothing
+exercise_points point = 
+    Decode.succeed point
+        |> required "code" string
+        |> required "name" string
 
 videoExerItem item=
     Decode.succeed item
@@ -407,7 +413,27 @@ type alias Menus =
         menu_name : String
     }
 
+faqNewList faq data page = 
+    Decode.succeed faq
+        |> required "data" (Decode.list (faqNewListData data))
+        |> required "paginate" (faqNewPage page)
 
+faqNewListData data = 
+    Decode.succeed data 
+        |> required "id" int
+        |> required "inserted_at" string
+        |> required "is_use" bool
+        |> required "title" string
+
+faqNewPage page = 
+    Decode.succeed page
+        |> required "end_date" string
+        |> optional "is_use" (Decode.map Just bool) Nothing
+        |> required "page" int
+        |> required "per_page" int
+        |> required "start_date" string
+        |> required "title" string
+        |> required "total_count" int
 
 faqlist faq data page=
     Decode.succeed faq
@@ -447,3 +473,14 @@ faqdetailList detail =
         |> required "is_answer" bool
         |> required "title" string
         |> optional "username" (Decode.map Just string) Nothing
+
+
+pointCode data item = 
+    Decode.succeed data
+        |> required "data" (Decode.list (pointCodeData item))
+
+
+pointCodeData item = 
+    Decode.succeed item
+        |> required "code" string
+        |> required "name" string

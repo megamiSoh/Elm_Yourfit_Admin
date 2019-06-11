@@ -721,6 +721,8 @@ textarea.editorStyle {
   margin: 0;
   max-width: 800px;
   position: relative;
+  overflow: scroll;
+  background-color: #80808017;
 }
 .backgroundText {
   position: absolute;
@@ -728,7 +730,7 @@ textarea.editorStyle {
   top: 0;
   width: 100%;
   height: 100%;
-  background-color: #80808017;
+  /* background-color: #80808017; */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -738,7 +740,7 @@ textarea.editorStyle {
 .preview {
   overflow-wrap: break-word;
   height: 300px;
-  overflow-y: scroll;
+  /* overflow-y: scroll; */
   padding: 1rem;
 }
 /* faq */

@@ -49,6 +49,8 @@ import Api exposing(..)
 import Login exposing(..)
 import Json.Decode as Decode exposing (Value)
 import Viewer exposing (Viewer)
+import Page.Contact as C
+import Page.Detail.ContactDetail as CD
 type alias Flags =
     {}
 
@@ -88,7 +90,10 @@ type Model
      | FaqDmodel FaqD.Model
      | LoginModel Login.Model
      | NotFound Session
-   
+     | CModel C.Model
+     | CDModel CD.Model
+
+
 main : Program Value Model Msg
 main =
     Api.application Api.storageDecoder
@@ -136,6 +141,8 @@ type Msg
     | FaqDmsg FaqD.Msg
     | LoginMsg Login.Msg
     | GotSession Session
+    | CMsg C.Msg
+    | CDMsg CD.Msg
 
 subscriptions model = 
     case model of
@@ -205,6 +212,11 @@ subscriptions model =
             Sub.map FaqDmsg (FaqD.subscriptions faqd)
         LoginModel login ->
             Sub.map LoginMsg (Login.subscriptions login)
+        CModel c ->
+            Sub.map CMsg(C.subscriptions c)
+        CDModel c ->
+            Sub.map CDMsg (CD.subscriptions c)
+
 
 init : Maybe Cred -> Url -> Key -> ( Model, Cmd Msg )
 init maybeViewer url navKey =
@@ -323,7 +335,12 @@ changeRouteTo maybeRoute model =
         Just Route.FaqEdit ->
             FaqE.init session 
                 |> updateWith FaqEmodel FaqEmsg model
-        
+        Just Route.C ->
+            C.init session
+                |> updateWith CModel CMsg model
+        Just Route.CD ->
+            CD.init session
+                |> updateWith CDModel CDMsg model
         -- Just Route.Login ->
         --     Login.init session  
         --         |> updateWith LoginModel LoginMsg model
@@ -398,6 +415,10 @@ toSession page =
             FaqD.toSession faqd
         LoginModel login ->
             Login.toSession login
+        CModel c ->
+            C.toSession c
+        CDModel c ->
+            CD.toSession c
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -558,7 +579,12 @@ update msg model =
         ( GotSession session, Redirect _) ->
             (Redirect session
             , Route.replaceUrl (Session.navKey session) Route.Home)
-            
+        (CMsg subMsg, CModel itemModel) ->
+            C.update subMsg itemModel
+                |> updateWith CModel CMsg model
+        (CDMsg subMsg, CDModel itemModel) ->
+            CD.update subMsg itemModel
+                |> updateWith CDModel CDMsg model
         ( _, _ ) ->
             ( model, Cmd.none )  
         
@@ -655,6 +681,10 @@ view model =
                         viewPage Page.Other (\_ -> Ignored) Blank.view
                     FaqDmodel itemModel ->
                         viewPage Page.Other (\_ -> Ignored) Blank.view
+                    CModel itemModel ->
+                        viewPage Page.Other (\_ -> Ignored) Blank.view
+                    CDModel itemModel ->
+                        viewPage Page.Other (\_ -> Ignored) Blank.view
             Just _ ->
                 case model of
                     Redirect _ ->
@@ -729,5 +759,8 @@ view model =
                         viewPage Page.FaqDetail FaqDmsg (FaqD.view itemModel)
                     LoginModel itemModel ->
                         viewPage Page.Login LoginMsg (Login.view itemModel)
-
+                    CModel itemModel ->
+                        viewPage Page.C CMsg (C.view itemModel)
+                    CDModel itemModel ->
+                        viewPage Page.CD CDMsg (CD.view itemModel)
                     
