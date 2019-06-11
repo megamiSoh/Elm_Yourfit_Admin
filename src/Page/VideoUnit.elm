@@ -174,7 +174,7 @@ init  session =
     , Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-    -- , listEncode listInit session
+    , listEncode listInit session
     -- , Api.pageNum (Encode.int 0)
      ]
     )
@@ -508,9 +508,9 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            (model, listEncode new model.session)
+            ({model | listmodel = new, pageNum = 1}, listEncode new model.session)
             else
-            ({model | listmodel = date}, listEncode date model.session)
+            ({model | listmodel = date, pageNum = 1}, listEncode date model.session)
         Reset ->
             let
                 list = 

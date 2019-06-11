@@ -297,9 +297,9 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | sendData = date }, faqEncoder date model.session "" "")
+            ({model | sendData = date , pageNum = 1}, faqEncoder date model.session "" "")
             else
-            ({model | sendData = date }, faqEncoder date model.session old.start_date old.end_date)
+            ({model | sendData = date, pageNum = 1 }, faqEncoder date model.session old.start_date old.end_date)
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =

@@ -459,9 +459,9 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            (model, managelist list model.session)
+            ({model | pageNum = 1}, managelist list model.session)
             else
-            ({model | listForm = date}, managelist date model.session)
+            ({model | listForm = date, pageNum = 1}, managelist date model.session)
         Reset ->
             let
                 old = model.listForm

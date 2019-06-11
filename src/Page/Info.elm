@@ -413,9 +413,9 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            (model, managelist list model.session)
+            ({model | pageNum = 1}, managelist list model.session)
             else
-            ({model | listInit = date }, managelist date model.session)
+            ({model | listInit = date , pageNum = 1}, managelist date model.session)
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =

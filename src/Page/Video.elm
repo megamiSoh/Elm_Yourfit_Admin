@@ -563,9 +563,9 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            (model, videoEncoder new model.session Getbody)
+            ({model | pageNum = 1}, videoEncoder new model.session Getbody)
             else
-            ({model | sendBody = date }, videoEncoder date model.session Getbody)
+            ({model | sendBody = date , pageNum = 1}, videoEncoder date model.session Getbody)
         Reset ->
             let
                 list = 
