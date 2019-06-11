@@ -205,19 +205,29 @@ update msg model =
             
             case val of
                 Ok ok ->
+                    let
+                        pageNum = 
+                            if ok < 10 then 1 
+                            else 
+                                if (((ok // 10) * 10) - ok) == 0 then
+                                ok // 10
+                                else
+                                ok // 10 + 1
+                        
+                    in
                     if model.dateModel == "all" then
                         let
                             new = {old | page = ok, end_date = "", start_date = ""}
                         in
                         
-                        ({model | sendData = new } , faqEncoder new model.session "" "")
+                        ({model | sendData = new , pageNum = pageNum} , faqEncoder new model.session "" "")
                     else
                         let
                             -- old = model.sendData
                             new = {old | page = ok}
                         in
                         
-                        ({model | sendData = new } , faqEncoder new model.session old.start_date old.end_date)
+                        ({model | sendData = new , pageNum = pageNum} , faqEncoder new model.session old.start_date old.end_date)
                 Err err ->
                     (model, Cmd.none)
         GotSession session ->
@@ -282,10 +292,14 @@ update msg model =
             in
             ({model | sendData = result}, Cmd.none)
         Search ->
+            let
+                date = {old | page = 1}
+            in
+            
             if model.dateModel == "all" then
-            (model, faqEncoder model.sendData model.session "" "")
+            ({model | sendData = date }, faqEncoder date model.session "" "")
             else
-            (model, faqEncoder model.sendData model.session old.start_date old.end_date)
+            ({model | sendData = date }, faqEncoder date model.session old.start_date old.end_date)
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =

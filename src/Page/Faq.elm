@@ -202,18 +202,28 @@ update msg model =
             
             case val of
                 Ok ok ->
+                    let
+                        pageNum = 
+                            if ok < 10 then 1 
+                            else 
+                                if (((ok // 10) * 10) - ok) == 0 then
+                                ok // 10
+                                else
+                                ok // 10 + 1
+                        
+                    in
                     if model.dateModel == "all" then
                         let
                             new = {old | page = ok, end_date = "", start_date = ""}
                         in
                         
-                        ({model | sendData = new } , faqEncoder new model.session "" "")
+                        ({model | sendData = new , pageNum = pageNum} , faqEncoder new model.session "" "")
                     else
                         let
                             new = {old | page = ok}
                         in
                         
-                        ({model | sendData = new } , faqEncoder new model.session old.start_date old.end_date)
+                        ({model | sendData = new , pageNum = pageNum} , faqEncoder new model.session old.start_date old.end_date)
                 Err err ->
                     (model, Cmd.none)
         SuccessUse (Ok ok) ->
@@ -272,18 +282,6 @@ update msg model =
                     _ ->
                         (model, Cmd.none)
         SelectAnswer val ->
-            -- let
-            --     result value = {old | is_answer = value}
-            -- in
-            
-            -- case val of
-            --     "all" ->
-            --         ({model | sendData = result Nothing}, Cmd.none)
-            --     "True" ->
-            --         ({model | sendData = result (Just True)}, Cmd.none)
-            --     "False" ->                    
-            --         ({model | sendData = result (Just False)}, Cmd.none)
-            --     _ ->
                     (model, Cmd.none)
         Title title ->
             let
@@ -292,16 +290,16 @@ update msg model =
             
             ({model | sendData = result}, Cmd.none)
         UserId id ->
-            -- let
-            --     result = {old | username = id}
-            -- in
-            -- ({model | sendData = result}, Cmd.none)
             (model, Cmd.none)
         Search ->
+            let
+                date = {old | page = 1}
+            in
+            
             if model.dateModel == "all" then
-            (model, faqEncoder model.sendData model.session "" "")
+            (model, faqEncoder date model.session "" "")
             else
-            (model, faqEncoder model.sendData model.session old.start_date old.end_date)
+            ({model | sendData = date}, faqEncoder date model.session old.start_date old.end_date)
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =
@@ -416,15 +414,6 @@ update msg model =
                                 auth num = List.member num a.menu_auth_code
                             in
                                 ({model | auth = a.menu_auth_code, menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0))
-                                -- if auth "20" then
-                                --     if auth "50" then
-                                --     ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True}, Cmd.none )
-                                --     else
-                                --     ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Cmd.none )
-                                -- else if auth "50" then
-                                -- ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Cmd.none )
-                                -- else
-                                -- ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
                         Nothing ->
                             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
             
@@ -457,30 +446,9 @@ view model =
                 ],
                 columnsHtml [
                     formInputEvent "제목명" "제목 명을 입력 해 주세요." False Title model.sendData.title
-                    -- ,
-                    -- div [ class "field is-horizontal" ] [
-                    --     labelWrap "게시"
-                    --     , div [ class "field-body" ]
-                    --     [ 
-                    --         p [ class "control inputWidth" ]
-                    --         [ 
-                    --         div [ class "select inputWidth"] [
-                    --             select [ class "inputWidth", onInput SelectAnswer  ]
-                    --             [ option [ value "all" ]
-                    --                 [ text "전체"]
-                    --             , option [ value "True"]
-                    --                 [ text "완료"]
-                    --             , option [ value "False"]
-                    --                 [text "미완료"]
-                    --             ]
-                    --         ]
-                    --         ]
-                    --     ] 
-                    --     ]
                 ]
                 ,
                 columnsHtml [
-                    -- formInputEvent "사용자" "사용자 아이디를 입력 해 주세요." False UserId model.sendData.username,
                     searchB Search Reset
                 ]
                 
@@ -528,29 +496,9 @@ view model =
                             )
                 ],
                 columnsHtml [
-                    formInputEvent "제목명" "제목 명을 입력 해 주세요." False Title model.sendData.title,
-                    div [ class "field is-horizontal" ] [
-                        -- labelWrap "게시"
-                        -- , div [ class "field-body" ]
-                        -- [ 
-                            -- p [ class "control inputWidth" ]
-                            -- [ 
-                            -- div [ class "select inputWidth"] [
-                            --     select [ class "inputWidth", onInput SelectAnswer]
-                            --     [ option [ value "all" , selected (model.sendData.is_answer == Nothing)]
-                            --         [ text "전체"]
-                            --     , option [ value "True", selected (model.sendData.is_answer == Just True)]
-                            --         [ text "완료"]
-                            --     , option [ value "False", selected (model.sendData.is_answer == Just False)]
-                            --         [text "미완료"]
-                            --     ]
-                            -- ]
-                            -- ]
-                        -- ] 
-                        ]
+                    formInputEvent "제목명" "제목 명을 입력 해 주세요." False Title model.sendData.title
                 ]
                 , columnsHtml [
-                    -- formInputEvent "사용자" "사용자 아이디를 입력 해 주세요." False UserId model.sendData.username,
                     searchB Search Reset
                 ]
                 
@@ -586,20 +534,12 @@ headerTable =
          div [ class "tableCell" ] [text "게시"]
      ]
 
---, Route.href (Just Route.UvideoDetail)
 tableLayout idx item model = 
         div [ class "tableRow cursor"] [
             div [ class "tableCell", onClick (GoDetail item.id)] [ text (
                     String.fromInt(model.faqList.pagination.total_count - ((model.faqList.pagination.page - 1) * 10) - (idx)
             ))  ],
             div [ class "tableCell", onClick (GoDetail item.id)] [text item.title],
-            -- div [ class "tableCell"] [text 
-            --     (case item.username of
-            --         Just name ->
-            --             name
-            --         Nothing ->
-            --             "Guest"
-            --         ) ],
             div [ class "tableCell"] [text (String.dropRight 10 item.inserted_at)],
             if memberAuth "30" model then
                 if item.is_use then

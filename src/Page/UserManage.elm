@@ -212,20 +212,31 @@ update msg model =
             
             case val of
                 Ok ok ->
+                    let
+                        pageNum = 
+                            if ok < 10 then 1 
+                            else 
+                                if (((ok // 10) * 10) - ok) == 0 then
+                                ok // 10
+                                else
+                                ok // 10 + 1
+                        
+                    in
+                    
                     if model.dateModel == "all" then
                         let
                             old = model.listForm
                             new = {old | page = ok, end_date = "", start_date = ""}
                         in
                         
-                        ({model | listForm = new } , managelist new model.session)
+                        ({model | listForm = new ,  pageNum = pageNum} , managelist new model.session)
                     else
                         let
                             old = model.listForm
                             new = {old | page = ok}
                         in
                         
-                        ({model | listForm = new } , managelist new model.session)
+                        ({model | listForm = new ,  pageNum = pageNum} , managelist new model.session)
                 Err err ->
                     (model, Cmd.none)
         GetMyInfo (Err error) ->
@@ -443,12 +454,14 @@ update msg model =
                     start_date = "",
                     end_date = ""
                     }
+                date = 
+                    {old | page = 1}
             in
             
             if model.dateModel == "all" then
             (model, managelist list model.session)
             else
-            (model, managelist model.listForm model.session)
+            ({model | listForm = date}, managelist date model.session)
         Reset ->
             let
                 old = model.listForm

@@ -228,13 +228,21 @@ update msg model =
                             title= old.title,
                             start_date = "",
                             end_date = ""}
+
+                        pageNum = 
+                            if ok < 10 then 1 
+                            else 
+                                if (((ok // 10) * 10) - ok) == 0 then
+                                ok // 10
+                                else
+                                ok // 10 + 1
                     in
                     
                     if model.dateModel == "all" then
                         
-                        ({model | listInit = listAll } , managelist listAll model.session)
+                        ({model | listInit = listAll , pageNum = pageNum} , managelist listAll model.session)
                     else
-                        ({model | listInit = list } , managelist list model.session)
+                        ({model | listInit = list , pageNum = pageNum} , managelist list model.session)
                 Err err ->
                     (model, Cmd.none)
         GetMyInfo (Err error) ->
@@ -401,12 +409,13 @@ update msg model =
                     start_date= "",
                     end_date= ""
                     }
+                date = {old | page = 1}
             in
             
             if model.dateModel == "all" then
             (model, managelist list model.session)
             else
-            (model, managelist model.listInit model.session)
+            ({model | listInit = date }, managelist date model.session)
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =

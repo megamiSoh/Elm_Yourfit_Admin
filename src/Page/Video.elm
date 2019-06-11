@@ -302,20 +302,30 @@ update msg model =
             
             case val of
                 Ok ok ->
+                    let
+                        pageNum = 
+                            if ok < 10 then 1 
+                            else 
+                                if (((ok // 10) * 10) - ok) == 0 then
+                                ok // 10
+                                else
+                                ok // 10 + 1
+                        
+                    in
                     if model.dateModel == "all" then
                         let
                             old = model.sendBody
                             new = {old | page = ok, end_date = "", start_date = ""}
                         in
                         
-                        ({model | sendBody = new } , videoEncoder new model.session GetbodySecond)
+                        ({model | sendBody = new , pageNum = pageNum} , videoEncoder new model.session GetbodySecond)
                     else
                         let
                             old = model.sendBody
                             new = {old | page = ok}
                         in
                         
-                        ({model | sendBody = new } , videoEncoder new model.session GetbodySecond)
+                        ({model | sendBody = new , pageNum = pageNum} , videoEncoder new model.session GetbodySecond)
                 Err err ->
                     (model, Cmd.none)
         GetMyInfo (Err err) ->
@@ -332,13 +342,13 @@ update msg model =
                             in
                                 if auth "20" then
                                     if auth "50" then
-                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True, auth = a.menu_auth_code}, Cmd.none )
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, goRegist = True, auth = a.menu_auth_code}, Api.pageNum (Encode.int 0) )
                                     else
-                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, auth = a.menu_auth_code}, Cmd.none )
+                                    ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True, auth = a.menu_auth_code}, Api.pageNum (Encode.int 0) )
                                 else if auth "50" then
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True, auth = a.menu_auth_code}, Cmd.none )
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True, auth = a.menu_auth_code}, Api.pageNum (Encode.int 0) )
                                 else
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code}, Cmd.none )
+                                ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code}, Api.pageNum (Encode.int 0) )
                         Nothing ->
                             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         VideoRetry retry ->
@@ -546,10 +556,16 @@ update msg model =
             in
             (model, Api.saveData new)
         Search ->
+            let
+                old = model.sendBody
+                date = {old | page = 1}
+                new = {old | page = 1, end_date = "", start_date = ""}
+            in
+            
             if model.dateModel == "all" then
-            (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session Getbody)
+            (model, videoEncoder new model.session Getbody)
             else
-            (model, videoEncoder model.sendBody model.session Getbody)
+            ({model | sendBody = date }, videoEncoder date model.session Getbody)
         Reset ->
             let
                 list = 
@@ -604,7 +620,7 @@ update msg model =
                 activeEncode model.session (not active) id
             ])
         Getbody (Ok ok) ->
-            ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Api.pageNum (Encode.int 0))
+            ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Cmd.none)
         Getbody (Err err) ->
             let
                 error = Api.decodeErrors err
