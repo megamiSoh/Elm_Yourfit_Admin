@@ -829,12 +829,9 @@ tableLayout idx item model=
                         else 
                         div [class "button is-small"] [text "게시 하기"]
                 ],
-                if item.is_use then
                 div [ class "tableCell" ] [
                     div [class "button is-small", onClick (VideoIsShow (String.fromInt(item.id)))] [text "미리보기"]
                 ]
-                else
-                div [ class "tableCell" ] []
         ]
 
 subscriptions : Model -> Sub Msg
