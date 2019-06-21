@@ -276,7 +276,7 @@ videoExerItem item=
     Decode.succeed item
         -- |> required "action_id" int
         |> optional "difficulty_name" (Decode.map Just string) Nothing
-        |> optional "exercise_id"  (Decode.map Just int) Nothing
+        |> optional "action_id"  (Decode.map Just int) Nothing
         |> optional "exercise_name" (Decode.map Just string) Nothing
         |> optional "instrument_name" (Decode.map Just string) Nothing
         |> optional "is_rest" (Decode.map Just bool)Nothing

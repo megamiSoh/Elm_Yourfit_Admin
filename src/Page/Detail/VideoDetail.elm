@@ -177,7 +177,7 @@ type alias ExerItem =
     --     id : Int
     -- ,
      difficulty_name :Maybe String
-    , id : Maybe Int
+    , action_id : Maybe Int
     , exercise_name : Maybe String
     , instrument_name : Maybe String
     , is_rest :Maybe Bool
@@ -266,7 +266,7 @@ pointEncoded item =
         |> String.join ","    
 
 editVideo detaildata edit session id description model =
-    let
+    let _ = Debug.log "edit" edit
         newText text = 
             text
                 |> String.replace "&" "%26"
@@ -562,7 +562,7 @@ update msg model =
             else
                 (model, Cmd.none)
         GoEdit ->
-            let
+            let _ = Debug.log "data" model.resultFilterItem
                 old = model.editItem
                 result = List.map (\i ->
                         { action_id =  
@@ -591,7 +591,6 @@ update msg model =
                                     String.fromInt (3)
                         }
                         ) model.resultFilterItem
-                detailFind = model.detaildata
             in
             if model.detaildata.title == "" then
                 ({model | validationErr = "운동 제목을 입력 해 주세요.", validErrShow = True}, Cmd.none)
@@ -875,7 +874,7 @@ update msg model =
                     (model , Cmd.none)    
 
         GetData (Ok ok) ->
-            let
+            let _ = Debug.log "hewlod"  ok.data.exercise_items
                 newInput text = 
                     text
                         |> String.replace "%26" "&"
@@ -889,6 +888,20 @@ update msg model =
                             []
                 checkStringCode = 
                     List.map (\x -> x.code) justList
+                exerItem = 
+                    List.map (\x -> 
+                        { difficulty_name = x.difficulty_name
+                        , exercise_name = x.exercise_name
+                        , id = x.action_id
+                        , instrument_name = x.instrument_name
+                        , part_detail_name = x.part_detail_name
+                        , title = x.title
+                        , value = x.value
+                        , is_rest = x.is_rest
+                        , thembnail = x.thembnail
+                        , duration = x.duration
+                        }
+                    )ok.data.exercise_items
             in
             ({model | detaildata = ok.data, description = 
             (case ok.data.description of
@@ -898,7 +911,7 @@ update msg model =
                 Nothing ->
                     "") ,
               loading = False,
-               resultFilterItem = ok.data.exercise_items
+               resultFilterItem = exerItem
                , checkPoint = justList
                , checkVal = checkStringCode
                , is_sex = 
