@@ -405,8 +405,8 @@ update msg model =
             ( model, Session.changeInterCeptor (Just serverErrors) )
 
         GetMyInfo (Ok item) -> 
-            let 
-                menuf = List.head (List.filter (\x -> x.menu_id == 9) item.data.menus)
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 10) item.data.menus)
             in
             case menuf of
                         Just a ->
@@ -504,6 +504,12 @@ view model =
                 
             ],
             dataCount (String.fromInt model.faqList.pagination.total_count)
+            , div [] [
+                if memberAuth "50" model then
+                registRoute "등록" Route.FaqRegist
+                else
+                div [] []
+            ]
             ,  div [class "table"] [
                 headerTable
                 , tr [] [
@@ -512,6 +518,7 @@ view model =
                     ]
                 ]
             ]
+            
             , pagination 
                     PageBtn
                     model.faqList.pagination
