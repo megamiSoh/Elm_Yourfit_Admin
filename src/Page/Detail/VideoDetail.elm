@@ -266,7 +266,7 @@ pointEncoded item =
         |> String.join ","    
 
 editVideo detaildata edit session id description model =
-    let _ = Debug.log "edit" edit
+    let
         newText text = 
             text
                 |> String.replace "&" "%26"
@@ -562,7 +562,7 @@ update msg model =
             else
                 (model, Cmd.none)
         GoEdit ->
-            let _ = Debug.log "data" model.resultFilterItem
+            let
                 old = model.editItem
                 result = List.map (\i ->
                         { action_id =  
@@ -874,7 +874,7 @@ update msg model =
                     (model , Cmd.none)    
 
         GetData (Ok ok) ->
-            let _ = Debug.log "hewlod"  ok.data.exercise_items
+            let
                 newInput text = 
                     text
                         |> String.replace "%26" "&"

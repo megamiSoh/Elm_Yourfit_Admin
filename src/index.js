@@ -4,9 +4,9 @@ import './css/all.min.css'
 import { Elm } from './Main.elm';
 import registerServiceWorker from './registerServiceWorker';
 // *****develope Api
-const url ='http://13.209.49.169:4000/api/v1/'
+// const url ='http://13.209.49.169:4000/api/v1/'
 // *****production Api
-// const url ='https://api.yfit.co.kr/api/v1/'
+const url ='https://api.yfit.co.kr/api/v1/'
 var flags = 
   localStorage.getItem("token")
 
