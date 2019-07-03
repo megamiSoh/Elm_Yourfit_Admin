@@ -280,13 +280,12 @@ newdecodeErrors error =
                 changeInterCeptor (Just "badbody")
 
 
-changeInterCeptor error=
+changeInterCeptor error =
     case error of
         Just err ->
             if err == "401" then
             Cmd.batch[
-                -- Api.getRefreshToken (), 
-                secRefreshFetch ()
+                refreshFetchData ()
             ]
             else
                 Cmd.none

@@ -28,6 +28,7 @@ type alias Model =
         , menus : List Menus
         , menuss : List Menuss
         , username : String
+        , errType : String
     }
 type Problem
     = InvalidEntry String
@@ -99,9 +100,10 @@ init session =
             profile = Nothing
         } ,
         menus = []
-    },
-    problems = "" ,
-    session = session}, 
+    }
+    , problems = "" 
+    , session = session
+    , errType = ""}, 
     Cmd.batch[ managelist session
     , Api.post Endpoint.authCode (Session.cred session)
         GetCode Http.emptyBody (Decoder.authCodeDecoder AuthCodes AuthCode)
@@ -131,43 +133,61 @@ type Msg
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        GetMyInfo (Err error) ->
+        GetMyInfo (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors error
+                error = Api.decodeErrors err
             in
-            ( { model | problems = "Err" }
-            , Session.changeInterCeptor (Just serverErrors)
-            )
-
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             ( {model |  menuss = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch [
-            managelist session
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            , Api.post Endpoint.authCode (Session.cred session)
-                GetCode Http.emptyBody (Decoder.authCodeDecoder AuthCodes AuthCode)
-            , Api.post Endpoint.authMenu (Session.cred session) GetMenus Http.emptyBody (Decoder.authMenusDecoder Authmenus Authmenu)
-            ]
+            ,  case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            
+                "GetMenus" ->
+                    Api.post Endpoint.authMenu (Session.cred session) GetMenus Http.emptyBody (Decoder.authMenusDecoder Authmenus Authmenu)
+                "GetCode" ->
+                    Api.post Endpoint.authCode (Session.cred session)
+                    GetCode Http.emptyBody (Decoder.authCodeDecoder AuthCodes AuthCode)
+                "GetList" ->
+                    managelist session
+                _ ->
+                    managelist session
+        
             )
         GetMenus (Ok menu) ->
             ({model| authMenus = menu.data }, Cmd.none)
         GetMenus (Err err) ->
-            (model,  Cmd.none)
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMenus"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetCode (Ok menu) ->
             ({model| authCode =[{code = "메뉴", name = "메뉴"}] ++ menu.data}, Cmd.none)
         GetCode (Err err) ->
-            (model,  Cmd.none)
-        GetList (Err error) ->
             let
-                serverErrors =
-                    Api.decodeErrors error
+                error = Api.decodeErrors err
             in
-            ( { model | problems = "Err" }
-            , Session.changeInterCeptor (Just serverErrors)
-            )
+            if error == "401"then
+            ({model | errType = "GetCode"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
+        GetList (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetList (Ok item) ->
             let

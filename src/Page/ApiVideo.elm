@@ -37,6 +37,7 @@ init session = ({
 type Msg 
     = NoOp
     | GetMyInfo (Result Http.Error Decoder.Profile)
+    | GotSession Session
 
 
 
@@ -47,14 +48,27 @@ toSession model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GotSession session ->
+            ({ model | session = session}, 
+            Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.myProfileInfo)
+            )
         NoOp ->
             ( model, Cmd.none )
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
-
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             ( {model |  menus = Decoder.mymenu item, username = Decoder.myname item}, Cmd.none )
 
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =

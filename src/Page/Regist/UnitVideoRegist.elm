@@ -32,6 +32,7 @@ type alias Model =
     , validErrShow : Bool
     , menus : List Menus
     , username : String
+    , errType : String
     }
 
 type alias EditData = 
@@ -90,6 +91,7 @@ init session =
         , description = ""
         , part_details =  []
         } 
+    , errType = ""
     }, 
     Cmd.batch 
     [ Api.getParams ()
@@ -151,7 +153,7 @@ type Msg
     | SucceesEdit (Result Http.Error ResultDecoder)
     | GoEdit
     | AreaMsg String
-    | RetryChange Session
+    -- | RetryChange Session
     | GotSession Session
     | GetMyInfo (Result Http.Error D.DataWrap)
 
@@ -160,23 +162,36 @@ type Msg
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
-        RetryChange session ->
-            ({model | session = session}, editEncoder model.editData session)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
-
+        -- RetryChange session ->
+        --     ({model | session = session}, editEncoder model.editData session)
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch[
-                Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.instrument (Session.cred session) GetTool
-                Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            ]
+            , case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            
+                "SucceesEdit" ->
+                    editEncoder model.editData session
+                "ExerCode" ->
+                     Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetPart" ->
+                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetTool" ->
+                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetLevel" ->
+                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                _ ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
             )
         AreaMsg str ->
             let
@@ -205,8 +220,8 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            if error == "401" then
-                (model , Api.thirdRefreshFetch ())
+            if error == "401"then
+            ({model | errType = "SucceesEdit"}, Api.changeInterCeptor (Just error))
             else if error == "500" then
                  ({model | validationErr = "등록할 수 없습니다.", validErrShow = True}, Cmd.none)
             else
@@ -254,19 +269,43 @@ update msg model =
         ExerCode (Ok ok) -> 
             ({model | exerCode = ok.data} ,Cmd.none)
         ExerCode (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "ExerCode"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetPart (Ok ok) -> 
             ({model | part = ok.data} ,Cmd.none)
         GetPart (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetPart"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
-               (model, Cmd.none)
+               let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetTool"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
             
         GetLevel (Ok ok ) ->
             ({model | levels = ok.data, loading = False}, Cmd.none)
         GetLevel (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetLevel"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         TitleText str ->
             let
@@ -326,7 +365,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
     [ Session.changes GotSession (Session.navKey model.session)
-    , Session.retryChange RetryChange (Session.navKey model.session)
+    -- , Session.retryChange RetryChange (Session.navKey model.session)
     ]
 
 validtitle model = 

@@ -40,6 +40,7 @@ type alias Model =
     , menus : List Menus
     , goEdit : Bool
     , username : String
+    , errType : String
     }
 
 type alias Data = 
@@ -91,6 +92,7 @@ init session =
             , id = 0
             , title = ""}
             }
+    , errType = ""
     }, Cmd.batch[
         Api.getParams ()
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -103,8 +105,7 @@ toSession model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
-    [ Api.onSucceesSession SessionCheck
-    , Session.changes GotSession (Session.navKey model.session)
+    [  Session.changes GotSession (Session.navKey model.session)
     , Api.params GetId
     ]
     
@@ -124,7 +125,6 @@ type Msg
     | TitleText String
     | IsEdit 
     | HttpResult(Result Http.Error Code)
-    | SessionCheck Encode.Value
     | GotSession Session
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
@@ -135,10 +135,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            if error == "401" then
-                (model, Api.thirdRefreshFetch ())
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
             else 
-                (model, Cmd.none)
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             let
@@ -157,20 +157,18 @@ update msg model =
                     ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch[Api.get GetData (Endpoint.faqDetail model.noticeId)(Session.cred session) dataWrapDecoder
-            ,  Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
+            , case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+
+                "GetData" ->
+                    Api.get GetData (Endpoint.faqDetail model.noticeId)(Session.cred session) dataWrapDecoder
+                "HttpResult" ->
+                    encodeList model
+                _ ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.batch [
-                             Api.get GetData (Endpoint.faqDetail model.noticeId)(Session.cred model.session) dataWrapDecoder
-                        ])
-                    Err _ ->
-                        (model, Cmd.none)
+        
         TextAreaInput str ->
              ({ model | textarea = str }, Cmd.none)
         
@@ -193,8 +191,8 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            if error == "401" then
-            (model, Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
         TitleText str->
@@ -215,7 +213,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "HttpResult"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
 encodeList model  = 
     let

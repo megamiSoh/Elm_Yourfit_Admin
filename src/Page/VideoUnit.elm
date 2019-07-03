@@ -49,6 +49,7 @@ type alias Model = {
     , goDetail : Bool
     , goRegist : Bool
     , pageNum : Int
+    , errType : String
      }
 
 type alias Menus =
@@ -166,6 +167,7 @@ init  session =
         , dateModel = "all"
         , todaySave = ""
         , pageNum = 1
+        , errType = ""
      }
     , Cmd.batch[Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
     , Api.post Endpoint.instrument (Session.cred session) GetTool
@@ -222,7 +224,7 @@ subscriptions model =
     Sub.batch[
         Api.receiveData ReceivedDataFromJS
         , Api.saveCheck ReceiveId
-        , Session.retryChange RetryRequest (Session.navKey model.session)
+        -- , Session.retryChange RetryRequest (Session.navKey model.session)
         , Session.changes GotSession (Session.navKey model.session)
         , Api.sendPageNum ReceivePnum
         
@@ -250,7 +252,7 @@ type Msg
     | Reset
     | GetId String
     | ReceiveId E.Value
-    | RetryRequest Session
+    -- | RetryRequest Session
     | GotSession Session
     | EndDatePickerMsg DatePicker.Msg
     | DatePickerMsg DatePicker.Msg
@@ -338,15 +340,14 @@ update msg model =
                         } , listEncode new model.session)
                 Err err ->
                     (model, Cmd.none)
-        GetMyInfo (Err error) ->
+        GetMyInfo (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors error
+                error = Api.decodeErrors err
             in
-            ( model
-            , Cmd.none
-            )
-
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let 
                 menuf = List.head (List.filter (\x -> x.menu_id == 3) item.data.menus)
@@ -469,17 +470,25 @@ update msg model =
                    )
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch [
-            if model.dateModel == "all" then
-                listEncode (allDataList (originModel model)) session
-            else
-                listEncode model.listmodel session
-            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
-            , Api.post Endpoint.instrument (Session.cred session) GetTool
-            Http.emptyBody (D.unitLevelsDecoder Data Level)
-            , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder Data Level)
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            ]
+            , case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            
+                "GetList" ->
+                    if model.dateModel == "all" then
+                        listEncode (allDataList (originModel model)) session
+                    else
+                        listEncode model.listmodel session
+                "GetPart" ->
+                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder Data Level)
+                "GetTool" ->
+                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder Data Level)
+                "GetLevel" ->
+                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
+                "SendDataToJS" ->
+                    Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred session) (D.videoData VideoData VideoDetailData)
+                _ ->
+                    Cmd.none
             )
         ReceiveId data ->
             let
@@ -568,20 +577,41 @@ update msg model =
             ({model | getList = ok.data, paginate = ok.paginate}, Cmd.none)
         GetList (Err err) ->
             let
-                error = Api.newdecodeErrors err
+                error = Api.decodeErrors err
             in
-            (model, Api.newdecodeErrors err)
+            if error == "401"then
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetPart (Ok ok) -> 
             ({model | part = ok.data} ,Cmd.none)
         GetPart (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetPart"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetTool"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levels = ok.data}, Cmd.none)
         GetLevel (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetLevel"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         SendDataToJS (Ok ok)->     
             let
@@ -592,9 +622,15 @@ update msg model =
             in
             ( model, Api.sendData data )
         SendDataToJS (Err err)->     
-            (model, Api.thirdRefreshFetch ())
-        RetryRequest retry->
-            ({model | session = retry}, Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred retry) (D.videoData VideoData VideoDetailData))
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "SendDataToJS"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
+        -- RetryRequest retry->
+        --     ({model | session = retry}, Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred retry) (D.videoData VideoData VideoDetailData))
         GetVideoFile (title, id)->   
                 ({model | title = title, videoShow = not model.videoShow, videoId = id }, 
                 Cmd.batch [

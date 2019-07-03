@@ -40,6 +40,7 @@ type alias Model =
     , menus : List Menus
     , goEdit : Bool
     , username : String
+    , errType : String
     }
 
 type alias Data = 
@@ -91,6 +92,7 @@ init session =
             , id = 0
             , title = ""}
             }
+    , errType = ""
     }, Cmd.batch[
         Api.getInfo()
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -127,12 +129,19 @@ type Msg
     | SessionCheck Encode.Value
     | GotSession Session
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
+    
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             let
@@ -151,7 +160,15 @@ update msg model =
                     ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                "GetData" ->
+                    Api.get GetData (Endpoint.infoDetail model.noticeId)(Session.cred session) dataWrapDecoder
+                "HttpResult" ->
+                    encodeList model
+                _ ->
+                    Api.get GetData (Endpoint.infoDetail model.noticeId)(Session.cred session) dataWrapDecoder
             )
         SessionCheck check ->
             let
@@ -186,8 +203,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         TitleText str->
             ({model| title = str},Cmd.none)
         IsEdit ->
@@ -206,7 +225,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "HttpResult"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
 encodeList model  = 
     let

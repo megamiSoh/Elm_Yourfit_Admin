@@ -37,6 +37,7 @@ type alias Model =
     , videoShow : Bool
     , goEdit : Bool
     , username : String
+    , errType : String
     }
 
 type alias PreviewWrap =  
@@ -130,6 +131,7 @@ init session =
         , part_detail_code= []
         , title= ""
         , video= "" }
+    , errType = ""
     }, 
     Cmd.batch 
     [ Api.getParams ()
@@ -192,7 +194,6 @@ type Msg
     | SucceesEdit (Result Http.Error ResultDecoder)
     | GoEdit
     | AreaMsg String
-    | RetryRequest Session
     | GotSession Session
     | GetMyInfo (Result Http.Error D.DataWrap)
     | GetPreview 
@@ -213,24 +214,40 @@ update msg model =
             in
             (model, Api.sendData data)
         PreviewComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "PreviewComplete"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetPreview ->
             ({model | videoShow = not model.videoShow}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow model.contentsId) (Session.cred model.session) (D.videoData PreviewWrap DataPreview)
             , Api.heightControll (not model.videoShow)]
             )
-        RetryRequest session ->
-            ({model | session = session}, editEncoder model.editData session model.contentsId)
+        -- RetryRequest session ->
+        --     ({model | session = session}, editEncoder model.editData session model.contentsId)
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch [
-                Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.instrument (Session.cred session) GetTool
-                Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-                , Api.get GetData (Endpoint.unitDetail model.contentsId)(Session.cred session) (D.unitDetailDecoder Data DetailList PartDetail)
-            ]
+            , case model.errType of
+                "PreviewComplete" ->
+                    Api.get PreviewComplete (Endpoint.unitVideoShow model.contentsId) (Session.cred session) (D.videoData PreviewWrap DataPreview)
+                "SucceesEdit" ->
+                    editEncoder model.editData session model.contentsId
+                "ExerCode" ->
+                    Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetPart" ->
+                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetTool" ->
+                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetLevel" ->
+                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetData" ->
+                    Api.get GetData (Endpoint.unitDetail model.contentsId)(Session.cred session) (D.unitDetailDecoder Data DetailList PartDetail)
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                _ ->
+                    Api.get GetData (Endpoint.unitDetail model.contentsId)(Session.cred session) (D.unitDetailDecoder Data DetailList PartDetail)
             )
         AreaMsg str ->
             let
@@ -262,10 +279,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            if error == "401" then
-                (model, Api.thirdRefreshFetch ())
+            if error == "401"then
+            ({model | errType = "SucceesEdit"}, Api.changeInterCeptor (Just error))
             else 
-                (model, Cmd.none)
+            (model, Cmd.none)
         DetailOrEdit ->
             ({model | edit = not model.edit}, Cmd.none)
         VideoId str ->
@@ -324,18 +341,42 @@ update msg model =
         ExerCode (Ok ok) -> 
             ({model | exerCode = ok.data} ,Cmd.none)
         ExerCode (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "ExerCode"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetPart (Ok ok) -> 
             ({model | part = ok.data} ,Cmd.none)
         GetPart (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetPart"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetTool"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levels = ok.data}, Cmd.none)
         GetLevel (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetLevel"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         TitleText str ->
             let
@@ -375,6 +416,12 @@ update msg model =
             
             ({model | detailList = ok.data, editData = new, loading = False}, Cmd.none)
         GetData (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
 
         GetId id ->
@@ -389,9 +436,12 @@ update msg model =
                     (model, Cmd.none)
         GetMyInfo (Err err) ->
             let
-                error = Api.decodeErrors err  
+                error = Api.decodeErrors err
             in
-            (model, Session.changeInterCeptor (Just error) )
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             let
@@ -581,6 +631,5 @@ subscriptions model =
     Sub.batch 
     [ Session.changes GotSession (Session.navKey model.session)
     , Api.params GetId
-    , Session.retryChange RetryRequest (Session.navKey model.session)
     ]
     

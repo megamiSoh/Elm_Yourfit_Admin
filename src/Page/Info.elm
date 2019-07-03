@@ -50,6 +50,8 @@ type alias Model = {
     , goDetail : Bool
     , pageNum : Int
     , auth : List String
+    , errType : String
+    , activeId : String
     }
 type alias Menus =
     {
@@ -152,6 +154,8 @@ init session =
                     total_count = 0
                 }
             }
+        , errType = ""
+        , activeId = ""
     }, 
     Cmd.batch
     [ managelist listInitial session
@@ -245,9 +249,14 @@ update msg model =
                         ({model | listInit = list , pageNum = pageNum} , managelist list model.session)
                 Err err ->
                     (model, Cmd.none)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
-
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let 
                 menuf = List.head (List.filter (\x -> x.menu_id == 8) item.data.menus)
@@ -386,15 +395,14 @@ update msg model =
                    )
         NoOp ->
             ( model, Cmd.none )
-        GetList (Err error) ->
+        GetList (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors error
+                error = Api.decodeErrors err
             in
-            ( model
-           , Session.changeInterCeptor (Just serverErrors) 
-            )
-
+            if error == "401"then
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetList (Ok item) ->
             ( {model | resultForm = item}, Cmd.none )
 
@@ -447,10 +455,16 @@ update msg model =
 
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch [
-            managelist listInitial session
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) 
-            ]
+            ,  case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            
+                "GetList" ->
+                    managelist listInitial session
+                "HttpResult" ->
+                    encodeList model model.activeId
+                _ ->
+                    managelist listInitial session
             )
         GetId id ->
             let
@@ -473,7 +487,7 @@ update msg model =
                 else
                 (model, Cmd.none)
         IsActive id->
-            ({model | isActive = not model.isActive}, Cmd.batch[encodeList model id])
+            ({model | isActive = not model.isActive, activeId = id}, Cmd.batch[encodeList model id])
         HttpResult (Ok item)->
             let
                 old = model.listInit
@@ -494,8 +508,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "HttpResult"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         SessionCheck check ->
             let
                 decodeCheck = Decode.decodeValue Decode.string check

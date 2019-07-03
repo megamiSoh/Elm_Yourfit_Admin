@@ -63,6 +63,8 @@ type alias Model =
     , checkPoint : List String
     , is_sex : String
     , is_pay : String
+    , errType : String
+    , previewId : Int
     }
 
 type alias PointCodeWrap = 
@@ -338,6 +340,8 @@ init session =
             , checkPoint = []
             , is_sex = ""
             , is_pay = "false"
+            , errType = ""
+            , previewId = 0
             }
             , Cmd.batch
             [ Api.getParams ()
@@ -381,9 +385,9 @@ type Msg
     | PlusMinusDeleteSet Int String Int
     | GoRegist 
     | GoEditApi(Result Http.Error Success)
-    | RetryChange Session
+    -- | RetryChange Session
     | GotSession Session
-    | SecRetry Session
+    -- | SecRetry Session
     | GetPreview (Int, String)
     | PreviewComplete (Result Http.Error PreviewWrap)
     | VideoClose
@@ -419,6 +423,12 @@ update msg model =
         GetPointData (Ok ok) ->
             ({model | pointCode = ok.data}, Cmd.none)
         GetPointData (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetPointData"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         FilterTitle title ->
             ({model | filtertitle = title}, Cmd.none)
@@ -443,52 +453,68 @@ update msg model =
             in
             (model, Api.sendData data)
         PreviewComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "PreviewComplete"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GetPreview (id, title)->
-            ({model | videoShow = not model.videoShow}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(id))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview),
+            ({model | videoShow = not model.videoShow , previewId = id}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(id))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview),
              Api.heightControll (not model.videoShow)])
-        SecRetry session ->
-            ({model | session = session }, videoFilterResult model.filter session model.page model.per_page model.filtertitle)
-        RetryChange session ->
-            ({model | session = session} , registVideo model model.editItem session)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        -- SecRetry session ->
+        --     ({model | session = session }, videoFilterResult model.filter session model.page model.per_page model.filtertitle)
+        -- RetryChange session ->
+        --     ({model | session = session} , registVideo model model.editItem session)
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            ,  Cmd.batch 
-            [
-                Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                , Api.post Endpoint.exerPartCode (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                , Api.post Endpoint.instrument (Session.cred session) GetTool
-                Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            ]
+            , case model.errType of
+                "GetPointData" ->
+                    Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap Pointcode)
+            
+                "PreviewComplete" ->
+                    Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(model.previewId))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview)
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                "GoEditApi" ->
+                    registVideo model model.editItem session
+                "GetPartDetail" ->
+                    Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                "ExerCode" ->
+                    Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                "GetTool" ->
+                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                "SucceesEdit" ->
+                    videoFilterResult model.filter session model.page model.per_page model.filtertitle
+                "GetPart" ->
+                    Api.post Endpoint.exerPartCode (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                "GetLevel" ->
+                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                _ ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
             )
-        -- SessionCheck check ->
-        --     let
-        --         decodeCheck = Decode.decodeValue Decode.string check
-        --     in
-        --         case decodeCheck of
-        --             Ok continue ->
-        --                 (model,)
-        --             Err _ ->
-        --                 (model, Cmd.none)
         GoEditApi (Ok ok) ->
             (model, Cmd.batch[Route.pushUrl (Session.navKey model.session) Route.Video, Api.showToast (Encode.string "등록되었습니다.")])
         GoEditApi (Err err) ->
             let
                 error = Api.decodeErrors err
             in
-            if error == "401" then
-                (model, Api.thirdRefreshFetch ())
-            else
-                (model, Cmd.none)
+            if error == "401"then
+            ({model | errType = "GoEditApi"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GoRegist ->
             let
                 result = List.map (\i ->
@@ -715,27 +741,45 @@ update msg model =
         GetPartDetail (Ok ok) -> 
             ({model|partDetail = ok.data}, Cmd.none)
         GetPartDetail (Err err) ->
-            (model,Cmd.none)
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetPartDetail"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         OpenFilter ->
             ({model | openFilter = not model.openFilter} , Cmd.none)
         ExerCode (Ok ok) -> 
             ({model | exerCode = ok.data} ,Cmd.none)
         ExerCode (Err err) ->
-            (model,Cmd.none)
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "ExerCode"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetTool (Ok ok) ->
             ({model | instrument =ok.data}, Cmd.none)
         GetTool (Err err) ->
-            (model,Cmd.none)
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetTool"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         SucceesEdit (Ok ok) ->
             ({model | filterData = model.filterData ++ ok.data, loading = False, total_count = ok.paginate.total_count}, Cmd.none)
         SucceesEdit (Err err) ->
             let
                 error = Api.decodeErrors err
             in
-            if error == "401" then
-                (model, Api.fourRefreshFetch ())
-            else
-                (model, Cmd.none)
+            if error == "401"then
+            ({model | errType = "SucceesEdit"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         TitleChange str ->
             ({model | titleModel = str}, Cmd.none)
         PartSelect str ->
@@ -748,16 +792,20 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "GetPart"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levelData = ok.data}, Cmd.none)
         GetLevel (Err err) ->
             let
                 error = Api.decodeErrors err
             in
-            
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "GetLevel"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
             
 -- helperFunction
 
@@ -878,6 +926,6 @@ subscriptions model =
     [ 
         -- Api.onSucceesSession SessionCheck
     Session.changes GotSession (Session.navKey model.session)
-    , Session.retryChange RetryChange (Session.navKey model.session)
-    , Session.secRetryChange SecRetry (Session.navKey model.session)
+    -- , Session.retryChange RetryChange (Session.navKey model.session)
+    -- , Session.secRetryChange SecRetry (Session.navKey model.session)
     ]

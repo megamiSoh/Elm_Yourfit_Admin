@@ -38,6 +38,8 @@ type alias Model =
     , session: Session
     , data : DataWrap
     , menus : List Menus
+    , errType : String
+    , getId : String
     }
 
 type alias Menus =
@@ -83,6 +85,8 @@ init session =
                 , id = 0
                 , title = ""}
                 }
+    , errType = ""
+    , getId = ""
         }, Cmd.batch [
             Api.getInfo()
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -95,7 +99,10 @@ toSession model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Api.getInfoParams GetId
+    Sub.batch
+    [ Api.getInfoParams GetId
+    , Session.changes GotSession (Session.navKey model.session)
+    ]
 
 
 type EditorTab
@@ -112,11 +119,24 @@ type Msg
     | GetData (Result Http.Error DataWrap)
     | NoOp String
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
+    | GotSession Session
 
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        GotSession session ->
+            ({model | session = session},
+            case model.errType of
+                "GetData" ->
+                    Api.get GetData (Endpoint.infoDetail model.getId)(Session.cred session) dataWrapDecoder
+            
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                _ ->
+                    Api.get GetData (Endpoint.infoDetail model.getId)(Session.cred session) dataWrapDecoder
+                    
+            )
         TextAreaInput str ->
              ({ model | textarea = str }, Cmd.none)
         
@@ -127,7 +147,7 @@ update msg model =
             in
                 case decode of
                     Ok str ->
-                        (model, Api.get GetData (Endpoint.infoDetail str)(Session.cred model.session) dataWrapDecoder)
+                        ({model | getId = str}, Api.get GetData (Endpoint.infoDetail str)(Session.cred model.session) dataWrapDecoder)
                 
                     Err _->
                         (model , Cmd.none)
@@ -136,11 +156,23 @@ update msg model =
             ({model | data = item, textarea = model.data.data.content}, Cmd.none)
 
         GetData (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         NoOp str->
             (model, Cmd.none)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus}, Cmd.none )

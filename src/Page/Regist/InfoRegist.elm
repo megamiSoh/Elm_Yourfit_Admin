@@ -42,6 +42,7 @@ type alias Model =
     , validationErr : String
     , menus : List Menus
     , username : String
+    , errType : String
     }
 
 type alias Menus =
@@ -69,6 +70,7 @@ init session=
     , validErrShow = False
     , validationErr = ""
     , username = ""
+    , errType = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 infoRegist model =
@@ -106,45 +108,49 @@ type Msg
     | GetList (Result Http.Error ResultForm)
     | SubmitInfo
     | Title String
-    | SessionCheck Encode.Value
     | GotSession Session
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.none
+            , case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            
+                "GetList" ->
+                    infoRegist model
+                _ ->
+                    infoRegist model
             )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.batch [
-                            infoRegist model
-                        ])
-                    Err _ ->
-                        (model, Cmd.none)
+        
         Title str ->    
             ({model | title = str}, Cmd.none)
         TextAreaInput str ->
              ({ model | textarea = str }, Cmd.none)
         GetList (Ok item)->
             (model , Route.pushUrl(Session.navKey model.session) Route.Info  )
-        GetList (Err error) ->
+        GetList (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors error
+                error = Api.decodeErrors err
             in
-            (model, Session.changeInterCeptor (Just serverErrors) )
+            if error == "401"then
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         SubmitInfo ->
             if String.isEmpty model.title then
                 ({model | validErrShow = True, validationErr = "제목을 입력 해 주세요."}, Cmd.none)
@@ -184,6 +190,5 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
-    [ Api.onSucceesSession SessionCheck
-    , Session.changes GotSession (Session.navKey model.session)
+    [ Session.changes GotSession (Session.navKey model.session)
     ]

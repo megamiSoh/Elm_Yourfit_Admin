@@ -44,6 +44,7 @@ type alias Model =
     , goDetail : Bool
     , goRegist : Bool
     , pageNum : Int
+    , errType : String
     }
 
 
@@ -130,7 +131,8 @@ init session=
                     username  = "" 
                 }
             }
-      }
+    , errType = ""
+    }
     , Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
@@ -239,14 +241,14 @@ update msg model =
                         ({model | listForm = new ,  pageNum = pageNum} , managelist new model.session)
                 Err err ->
                     (model, Cmd.none)
-        GetMyInfo (Err error) ->
+        GetMyInfo (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors error
+                error = Api.decodeErrors err
             in
-            ( { model | problems = "Err" }
-            , Cmd.none
-            )
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             let 
@@ -316,14 +318,14 @@ update msg model =
                         (model, Cmd.none)
         DateValue str->
             ({model | dateModel = str},Cmd.none)
-        GetList (Err error) ->
+        GetList (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors error  
-            in  
-            ( { model | problems = serverErrors, err = Just (serverErrors) }
-             , Session.changeInterCeptor (Just serverErrors) 
-            )
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetList (Ok item) ->
             ( {model | resultForm = item, dataForm = item.data}, Cmd.none )
@@ -333,9 +335,15 @@ update msg model =
             ( {model | show = not model.show, endShow = False }, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch 
-            [ managelist listInit session
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
+            , 
+            case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            
+                "GetList" ->
+                    managelist listInit session
+                _ ->
+                    managelist listInit session
             )
         EndDatePickerMsg datePickerMsg ->
             DatePicker.update datePickerMsg model.endDatePickerData

@@ -36,13 +36,31 @@ init session=
         , username = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)) 
 
-type Msg = PopClose | PopOpen | GetMyInfo (Result Http.Error Decoder.DataWrap)
+type Msg 
+    = PopClose 
+    | PopOpen 
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
+    | GotSession Session
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        GotSession session ->
+            ({model| session = session} ,
+            Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )

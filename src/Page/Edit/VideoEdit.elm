@@ -92,6 +92,9 @@ init session =
                  menus = []
                  , session = session}, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
 
 toSession: Model -> Session
 toSession model = 
@@ -100,17 +103,27 @@ toSession model =
 type Msg 
     = NoOp
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
+    | GotSession Session
 --  ChoiceItem Int | BackItem Int | FilterOpen | FilterClose | Check Int | Level Int | Exer Int | Tool Int | Total | SwitchItem Int | Setting Int | SettingInput String | SetCal (String, String, Int) | SetSave (Int, String) | GetFile String
 
            
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        GotSession session ->
+            ({ model | session = session }, 
+             Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+             )
         NoOp ->
             (model, Cmd.none)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
-
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus}, Cmd.none )
         -- ChoiceItem idx ->

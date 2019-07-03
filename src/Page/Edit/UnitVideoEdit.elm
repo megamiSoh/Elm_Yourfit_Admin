@@ -34,24 +34,39 @@ type alias Menus =
 
 init: Session -> (Model, Cmd Msg)
 init session = 
-    ({disabled = False, fileName = "", session = session , menus = []}, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
+    ({disabled = False, fileName = "", session = session , menus = []},
+     Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 toSession : Model -> Session
 toSession model =
     model.session
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
 
 type Msg 
     = GetFile String 
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
+    | GotSession Session
 
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        GotSession session ->
+            ({ model | session = session }, 
+             Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+             )
         GetFile filename ->
            ({model | fileName = filename}, Cmd.none)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus}, Cmd.none )

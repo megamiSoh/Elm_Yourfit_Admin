@@ -15,10 +15,10 @@ import Api.Decode as Decoder
 import Json.Encode as Encode
 import Json.Decode as Decode
 
-type alias Model = {
-    session: Session,
-    question: String,
-    onlyRead: Bool
+type alias Model = 
+    { session: Session
+    , question: String
+    , onlyRead: Bool
     , menus : List Menus
     , username : String 
     , id : String
@@ -26,6 +26,7 @@ type alias Model = {
     , validMsg : String
     , goRegist : Bool
     , goEdit : Bool
+    , errType : String
     }
 
 type alias Menus =
@@ -80,6 +81,7 @@ init session = ({
         , validMsg = ""
         , goRegist = False
         , goEdit = False
+        , errType = ""
     }, Cmd.batch [
         Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
         , Api.getParams ()
@@ -108,7 +110,18 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         GotSession session ->
-            ({model | session = session}, Api.get GetDetail (Endpoint.contactDetail model.id) (Session.cred session) (Decoder.faqDetail DetailData Detail))
+            ({model | session = session}, 
+            case model.errType of
+                "AnswerComplete" ->
+                    answerEncode model.question session model.id
+            
+                "GetDetail" ->
+                    Api.get GetDetail (Endpoint.contactDetail model.id) (Session.cred session) (Decoder.faqDetail DetailData Detail)
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                _ ->
+                    Api.get GetDetail (Endpoint.contactDetail model.id) (Session.cred session) (Decoder.faqDetail DetailData Detail)
+                )
         GoAnswer ->
             if String.isEmpty model.question then
             ({model | validMsg = "답변을 입력 해 주세요."}, Cmd.none)
@@ -122,7 +135,13 @@ update msg model =
             (model,Cmd.batch[Api.get GetDetail (Endpoint.contactDetail model.id) (Session.cred model.session) (Decoder.faqDetail DetailData Detail)
             , Api.showToast (Encode.string "답변이 등록 되었습니다.")])
         AnswerComplete (Err err) ->
-            (model,Cmd.none)
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "AnswerComplete"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetDetail (Ok ok) ->
             ({model | detail = ok.data, question = 
                 case ok.data.answer of
@@ -137,12 +156,10 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            case error of
-                "401" ->
-                    (model, Api.thirdRefreshFetch ())
-            
-                _ ->
-                    (model, Cmd.none)   
+            if error == "401"then
+            ({model | errType = "GetDetail"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetId id ->
             let
                 result = Decode.decodeValue Decode.string id
@@ -160,8 +177,14 @@ update msg model =
             in
             
              ({model | detail = new}, Cmd.none)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             let 

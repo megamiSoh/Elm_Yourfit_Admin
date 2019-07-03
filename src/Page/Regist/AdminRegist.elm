@@ -31,6 +31,8 @@ type alias Model =
     , checkModel : Bool
     , menus : List Menus
     , username : String
+    , errType : String
+    , choidId : String
     }
 
 type alias RegistData = 
@@ -132,7 +134,8 @@ init session =
             , username = ""
             , nickname = ""
             }
-        
+        , errType = ""
+        , choidId = ""
         }
         , Cmd.batch[ 
         Api.post Endpoint.authCode (Session.cred session) GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
@@ -196,14 +199,38 @@ type Msg
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
-
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
         GotSession session ->
+            let
+                sort =  List.sortBy .menu_id model.registData
+            in
             ({model | session = session}
-            , Cmd.none
+            , case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            
+                "RegistSuccess" ->
+                    registEncoder sort model session
+                "GetMenu" ->
+                    Api.post Endpoint.authMenu (Session.cred session) GetMenu Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
+                "GetCode" ->
+                    Api.post Endpoint.authCode (Session.cred session) GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
+                "GetUser" ->
+                    Api.get  GetUser (Endpoint.userDetail model.choidId) (Session.cred session) (D.userdataDecoder Data User GetBody)
+                "GetData" ->
+                    encoderSendBody model.sendBody session
+                _ ->
+                    Cmd.none
+            
             )
         SessionCheck check ->
             let
@@ -225,10 +252,12 @@ update msg model =
             (model,  Route.pushUrl (Session.navKey model.session) Route.AdminManage)
         RegistSuccess (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors err
+                error = Api.decodeErrors err
             in
-            (model, Session.changeInterCeptor (Just serverErrors))
+            if error == "401"then
+            ({model | errType = "RegistSuccess"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         AdminRegist(menu, code) -> 
             let
                 old = model.registItem
@@ -276,16 +305,22 @@ update msg model =
             ({model| authMenus = menu.data }, Cmd.none)
         GetMenu (Err err) ->
             let
-               serverErrors = Api.decodeErrors err
+                error = Api.decodeErrors err
             in
-            (model,  Session.changeInterCeptor (Just serverErrors))
+            if error == "401"then
+            ({model | errType = "GetMenu"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetCode (Ok menu) ->
             ({model| authCode =[{code = "메뉴", name = "메뉴"}] ++ menu.data}, Cmd.none)
         GetCode (Err err) ->
             let
-               serverErrors = Api.decodeErrors err
+                error = Api.decodeErrors err
             in
-            (model,  Session.changeInterCeptor (Just serverErrors))
+            if error == "401"then
+            ({model | errType = "GetCode"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         PopEvent ->
             ({model | pop = not model.pop}, Cmd.none)   
         NickName str ->
@@ -303,27 +338,31 @@ update msg model =
              
             ({model | sendBody = new}, Cmd.none)
         Search ->
-            (model ,encoderSendBody model.sendBody model.session)
+            (model , encoderSendBody model.sendBody model.session)
         Reset ->
             (model, Cmd.none)
         GetUser (Ok ok)->
             ({model | choiceData = ok.data.user, pop = False}, Cmd.none)
         GetUser (Err err) ->
-            let 
-                serverErrors =
-                    Api.decodeErrors err
+            let
+                error = Api.decodeErrors err
             in
-            (model, Session.changeInterCeptor (Just serverErrors))
+            if error == "401"then
+            ({model | errType = "GetUser"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetData (Ok ok)->
             ({model | userData = ok}, Cmd.none)
         GetData (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors err
+                error = Api.decodeErrors err
             in
-            (model, Session.changeInterCeptor (Just serverErrors))
+            if error == "401"then
+            ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         ChoiceItem id ->
-            (model , Api.get  GetUser (Endpoint.userDetail id) (Session.cred model.session) (D.userdataDecoder Data User GetBody) )
+            ({model | choidId = id} , Api.get  GetUser (Endpoint.userDetail id) (Session.cred model.session) (D.userdataDecoder Data User GetBody) )
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =

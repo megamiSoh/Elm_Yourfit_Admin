@@ -39,6 +39,7 @@ type alias Model = {
     , dateModel : String
     , pageNum : Int
     , goDetail : Bool
+    , errType : String
     }
 
 type alias Menus =
@@ -156,6 +157,7 @@ init session =
                 , total_count = 0
                 , username = ""
                 } }
+        , errType = ""
     }, Cmd.batch[
         Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
@@ -231,10 +233,20 @@ update msg model =
                 Err err ->
                     (model, Cmd.none)
         GotSession session ->
-            if model.dateModel == "all" then
-            ({model | session = session}, faqEncoder send session "" "")
-            else
-            ({model | session = session}, faqEncoder send session old.start_date old.end_date)
+            ( {model | session = session} , 
+            case model.errType of
+                "GetListData" ->
+                    if model.dateModel == "all" then
+                    faqEncoder send session "" ""
+                    else
+                    faqEncoder send session old.start_date old.end_date
+            
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                _ ->
+                    Cmd.none
+            )
+            
         PageBtn (idx, str) ->
             let
                 result = {old | page = idx}
@@ -394,15 +406,23 @@ update msg model =
         GetListData (Ok ok)->
             ({model | faqList = ok}, Cmd.none)
         GetListData (Err err)->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetListData"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         NoOp ->
             ( model, Cmd.none )
-        GetMyInfo (Err error) ->
+        GetMyInfo (Err err) ->
             let
-                serverErrors = 
-                    Api.decodeErrors error
-            in 
-            ( model, Session.changeInterCeptor (Just serverErrors) )
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             let 

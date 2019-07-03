@@ -49,6 +49,7 @@ type alias Model = {
     , goDetail : Bool
     , pageNum : Int
     , auth : List String
+    , errType : String
     }
 
 type alias Menus =
@@ -194,6 +195,7 @@ init session =
         , videoShow = False
         , pageNum = 1
         , auth = []
+        , errType = ""
     }, 
     Cmd.batch
     [ videoEncoder listInit session Getbody
@@ -244,7 +246,7 @@ type Msg
     | DetailGo String
     | Complete Encode.Value
     | GoActive (Result Http.Error Success)
-    | RetryRequest Session
+    -- | RetryRequest Session
     | GotSession Session
     | EndDatePickerMsg DatePicker.Msg
     | DatePickerMsg DatePicker.Msg
@@ -256,7 +258,7 @@ type Msg
     | VideoShowResult (Result Http.Error YfVideo)
     | VideoShowClose
     | Sort Int
-    | VideoRetry Session
+    -- | VideoRetry Session
     | GetMyInfo (Result Http.Error D.DataWrap)
     | ReceivePnum Encode.Value
     | GetbodySecond (Result Http.Error GetBody)
@@ -329,7 +331,13 @@ update msg model =
                 Err err ->
                     (model, Cmd.none)
         GetMyInfo (Err err) ->
-           (model, Cmd.none)
+           let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             let 
@@ -351,10 +359,10 @@ update msg model =
                                 ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code}, Api.pageNum (Encode.int 0) )
                         Nothing ->
                             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
-        VideoRetry retry ->
-            ({model | session = retry},
-                Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred retry) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
-            )
+        -- VideoRetry retry ->
+            -- ({model | session = retry},
+            --     Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred retry) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
+            -- )
         Sort id ->
             let
                 s = List.head (
@@ -392,11 +400,11 @@ update msg model =
         VideoShowClose ->
             ({model | videoShow = not model.videoShow}, Api.heightControll (not model.videoShow))
         VideoShowResult (Err err) ->
-            let 
+            let
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            (model, Api.fourRefreshFetch ())
+            ({model | errType = "VideoShowResult"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
         VideoIsShow id ->
@@ -513,30 +521,38 @@ update msg model =
                    )
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch [
-            if model.dateModel == "all" then
-                videoEncoder (allListDataSetComplete(oldModel model) ) session Getbody
-            else 
-            videoEncoder model.sendBody session Getbody
-            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-            , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            ]
+            ,  case model.errType of
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+            
+                "VideoShowResult" ->
+                    Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred session) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
+                "GoActive" ->
+                    activeEncode session model.isActive model.activeId
+                "GetPart" ->
+                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "GetLevel" ->
+                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+                "Getbody" ->
+                    videoEncoder model.sendBody session Getbody
+                "GetbodySecond" ->
+                    videoEncoder model.sendBody session GetbodySecond
+                _ ->
+                    Cmd.none
             )
-        RetryRequest retry ->
-            ({model | session = retry}, 
-            Cmd.batch[
-            activeEncode retry model.isActive model.activeId
-            ]
-            )
-
         GoActive (Ok ok) ->
             if model.dateModel == "all" then
                 (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session Getbody)
             else
             (model, videoEncoder model.sendBody model.session Getbody)
         GoActive (Err err) ->
-            (model, Api.thirdRefreshFetch ())
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GoActive"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         Complete str ->
             let
                 result = Decode.decodeValue Decode.string str
@@ -602,11 +618,23 @@ update msg model =
         GetPart (Ok ok ) ->
             ({model | partData = ok.data}, Cmd.none)
         GetPart (Err err) ->
-            (model,Cmd.none)
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetPart"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetLevel (Ok ok ) ->
             ({model | levelData = ok.data}, Cmd.none)
         GetLevel (Err err) ->
-            (model,Cmd.none)
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetLevel"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetTitle str ->
             let
                 old = model.sendBody
@@ -625,14 +653,20 @@ update msg model =
             let
                 error = Api.decodeErrors err
             in
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "Getbody"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetbodySecond (Ok ok)->
             ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Cmd.none)
         GetbodySecond (Err err)->
             let
                 error = Api.decodeErrors err
             in
-            (model,Session.changeInterCeptor (Just error))
+            if error == "401"then
+            ({model | errType = "GetbodySecond"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
             
 
@@ -839,7 +873,7 @@ subscriptions model =
     Sub.batch 
     [ Api.saveCheck Complete
     , Session.changes GotSession (Session.navKey model.session)
-    , Session.retryChange RetryRequest (Session.navKey model.session)
-    , Session.secRetryChange VideoRetry (Session.navKey model.session)
+    -- , Session.retryChange RetryRequest (Session.navKey model.session)
+    -- , Session.secRetryChange VideoRetry (Session.navKey model.session)
     , Api.sendPageNum ReceivePnum
     ]

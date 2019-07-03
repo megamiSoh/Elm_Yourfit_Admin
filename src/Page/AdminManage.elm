@@ -41,6 +41,7 @@ type alias Model = {
     , menus : List Menus
     , username: String
     , pageNum : Int
+    , errType : String
     }
 
 type alias Menus =
@@ -152,7 +153,7 @@ init session =
                     username  = "" 
                 }
             }
-
+        , errType = ""
     }, Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
@@ -224,9 +225,14 @@ update msg model =
                         ({model | listForm = new , pageNum = pageNum} , managelist new model.session)
                 Err err ->
                     (model, Cmd.none)
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
-
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let 
                 menuf = List.head (List.filter (\x -> x.menu_id == 2) item.data.menus)
@@ -369,15 +375,14 @@ update msg model =
                    )
         NoOp ->
             ( model, Cmd.none )
-        GetList (Err error) ->
+        GetList (Err err) ->
             let
-                serverErrors =
-                    Api.decodeErrors error
+                error = Api.decodeErrors err
             in
-            ( { model | problems = serverErrors }
-           , Session.changeInterCeptor (Just serverErrors) 
-            )
-
+            if error == "401"then
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetList (Ok item) ->
             ( {model | resultForm = item}, Cmd.none )
 
@@ -435,10 +440,14 @@ update msg model =
                 , Cmd.map EndDatePickerMsg enddatePickerCmd])
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch [
-             managelist listInit session
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            ]
+            , case model.errType of
+                "GetList" ->
+                    managelist listInit session
+            
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                _ ->
+                    managelist listInit session
             )
         
         GetUserId id ->

@@ -25,6 +25,7 @@ type alias Model = {
     , getId : String
     , goEdit : Bool
     , username : String
+    , errType : String
     }
 
 
@@ -70,8 +71,8 @@ init session = ({
                     , username = ""
                     , profile = Nothing}
                 }  
-                  }
-            
+            }
+        , errType = ""            
     } 
     , Cmd.batch[ 
         Api.getParams()
@@ -86,7 +87,6 @@ type Msg
     | GetId E.Value
     | GetData (Result Http.Error Data)
     | GotSession Session
-    | SessionCheck E.Value
     | GetMyInfo (Result Http.Error D.DataWrap)
     | ResetPwd
     | ResetComplete (Result Http.Error D.Success)
@@ -103,6 +103,12 @@ update msg model =
         ResetComplete (Ok ok) ->
             (model, Api.showToast (E.string "임시 비밀번호가 발송되었습니다."))
         ResetComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "ResetComplete"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         ResetPwd ->
             (model, Api.get ResetComplete (Endpoint.resetpwd model.getId) (Session.cred model.session) D.result)
@@ -118,30 +124,39 @@ update msg model =
                         (model,Cmd.none)
         GetData (Ok item) ->
             ({model | getData = item}, Cmd.none)
-        GetData (Err error) ->
+        GetData (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         GotSession session ->
             ({model | session = session}
-            , Cmd.batch 
-            [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            , Api.get  GetData (Endpoint.userDetail model.getId) (Session.cred session) (D.userdataDecoder Data User UserData) ]
+            , case model.errType of
+                "ResetComplete" ->
+                    Api.get ResetComplete (Endpoint.resetpwd model.getId) (Session.cred session) D.result
+            
+                "GetData" ->
+                    Cmd.batch
+                    [ Api.get  GetData (Endpoint.userDetail model.getId) (Session.cred session) (D.userdataDecoder Data User UserData)
+                    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                _ ->
+                    Api.get  GetData (Endpoint.userDetail model.getId) (Session.cred session) (D.userdataDecoder Data User UserData)
             )
         NoOp ->
             ( model, Cmd.none)
-        SessionCheck str ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string str
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.none)
-                    Err _ ->
-                        (model, Cmd.none)
         GetMyInfo (Err err) ->
             let
-                error = Api.decodeErrors err  
+                error = Api.decodeErrors err
             in
-            (model, Session.changeInterCeptor (Just error) )
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let
                 menuf = List.head (List.filter (\x -> x.menu_id == 1) item.data.menus)
@@ -254,6 +269,5 @@ subscriptions model =
     Sub.batch[
     Api.params  GetId, 
     Session.changes GotSession (Session.navKey model.session)
-    , Api.onSucceesSession SessionCheck
     
     ]

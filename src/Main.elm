@@ -157,19 +157,19 @@ subscriptions model =
         UserMmodel user ->
             Sub.map UserMmsg (UserM.subscriptions user)
         UserPmodel home ->
-            Sub.none
+            Sub.map UserPmsg (UserP.subscriptions home)
         VideoUnitmodel video ->
             Sub.map VideoUnitmsg (VideoU.subscriptions video)
         VideoModel video ->
             Sub.map Videomsg (Video.subscriptions video)
         ApiModel api ->
-            Sub.none
+            Sub.map Apimsg (ApiV.subscriptions api)
         InfoModel info ->
             Sub.map Infomsg (Info.subscriptions info)
         FaqModel faq ->
             Sub.map Faqmsg (Faq.subscriptions faq)
         FoodCmodel food ->
-            Sub.none
+            Sub.map FoodCmsg (FoodC.subscriptions food)
         UserImodel useri ->
             Sub.map UserImsg (UserI.subscriptions useri)
         UsermDmodel usermd->
@@ -181,7 +181,7 @@ subscriptions model =
         AdminEmodel admine ->
             Sub.none
         UvideoEmodel uvideo ->
-            Sub.none
+            Sub.map UvideoEmsg (UvideoEdit.subscriptions uvideo)
         UvideoDmodel uvideod ->
             Sub.map UvideoDmsg (UvideoDetail.subscriptions uvideod)
         UvideoRmodel uvideoR ->
@@ -191,11 +191,11 @@ subscriptions model =
         VideoRmodel videor ->
             Sub.map VideoRmsg (VideoRegist.subscriptions videor)
         VideoEmodel videoe ->
-            Sub.none
+            Sub.map VideoEmsg (VideoEdit.subscriptions videoe)
         ApiRmodel apir ->
-            Sub.none
+            Sub.map ApiRmsg (ApiRegist.subscriptions apir)
         ApiDmodel apid ->
-            Sub.none
+            Sub.map ApiDmsg (ApiDetail.subscriptions apid)
         ApiEmodel apie ->
             Sub.none
         InfoRmodel infor ->

@@ -70,14 +70,34 @@ toSession : Model -> Session
 toSession model =
     model.session
 
-type Msg = PopUpOpen | PopUpClose | SelectVideo Int | VideoResult | DeleteItem Int | GetMyInfo (Result Http.Error Decoder.DataWrap)
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
+
+type Msg 
+    = PopUpOpen 
+    | PopUpClose 
+    | SelectVideo Int 
+    | VideoResult 
+    | DeleteItem Int 
+    | GotSession Session
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
-
+        GotSession session ->
+            ({model | session = session},
+                 Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus}, Cmd.none )
         PopUpOpen ->

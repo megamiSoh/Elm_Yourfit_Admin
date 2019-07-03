@@ -26,13 +26,12 @@ type alias VideoItem = {
 
 
 type alias Model = 
-    {
-        popup : Bool,
-        videoSelected : List VideoItem,
-        originVideo : List VideoItem,
-        videoShow : List VideoItem,
-        session: Session
-        , menus : List Menus
+    { popup : Bool
+    , videoSelected : List VideoItem
+    , originVideo : List VideoItem
+    , videoShow : List VideoItem
+    , session: Session
+    , menus : List Menus
     }
 
 
@@ -71,14 +70,27 @@ toSession : Model -> Session
 toSession model =
     model.session
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
 
-type Msg = PopUpOpen | PopUpClose | SelectVideo Int | VideoResult | DeleteItem Int | GetMyInfo (Result Http.Error Decoder.DataWrap)
+type Msg = PopUpOpen | PopUpClose | SelectVideo Int | VideoResult | DeleteItem Int | GetMyInfo (Result Http.Error Decoder.DataWrap) | GotSession Session
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        GetMyInfo (Err error) ->
-            ( model, Cmd.none )
+        GotSession session ->
+            ({model | session = session},
+                 Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            )
+        GetMyInfo (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
             ( {model |  menus = item.data.menus}, Cmd.none )

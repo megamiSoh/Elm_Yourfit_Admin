@@ -41,6 +41,9 @@ type alias Model = {
     , goDetail : Bool
     , goRegist : Bool
     , auth : List String
+    , errType : String
+    , useId : String
+    , use : Bool
     }
 
 type alias Menus =
@@ -79,15 +82,15 @@ type alias SendData =
     , end_date : String
     } 
 
-usepost is_use session id =
-    let
-        body =
-            Encode.object
-                [( "is_use ", Encode.bool is_use)]
-                    |> Http.jsonBody
-    in
+-- usepost is_use session id =
+--     let
+--         body =
+--             Encode.object
+--                 [( "is_use ", Encode.bool is_use)]
+--                     |> Http.jsonBody
+--     in
     
-    Api.post (Endpoint.faqUse id) (Session.cred session) GetUseSuccess body (Decoder.result) 
+--     Api.post (Endpoint.faqUse id) (Session.cred session) GetUseSuccess body (Decoder.result) 
 
 faqEncoder model session start end= 
     let
@@ -150,6 +153,9 @@ init session =
                 , title = ""
                 , total_count = 0
                 } }
+        , errType = ""
+        , useId = ""
+        , use = False
     }, Cmd.batch[
         Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
@@ -174,7 +180,7 @@ type Msg
     | SelectAnswer String
     | PageBtn (Int, String)
     | GotSession Session
-    | GetUseSuccess (Result Http.Error Decoder.Success)
+    -- | GetUseSuccess (Result Http.Error Decoder.Success)
     | UseGo Bool String
     | SuccessUse (Result Http.Error Decoder.Success)
     | ReceivePnum Encode.Value
@@ -232,6 +238,12 @@ update msg model =
             else
             (model, faqEncoder send model.session old.start_date old.end_date)
         SuccessUse (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "SuccessUse"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         UseGo use id ->
             let
@@ -240,16 +252,40 @@ update msg model =
                     |> Http.jsonBody
             in
             
-            (model, Api.post (Endpoint.faqUse id) (Session.cred model.session) SuccessUse body (Decoder.result) )
-        GetUseSuccess (Ok ok) ->
-            (model, Cmd.none)
-        GetUseSuccess (Err err) ->
-            (model, Cmd.none)
+            ({model | useId = id, use = use}, Api.post (Endpoint.faqUse id) (Session.cred model.session) SuccessUse body (Decoder.result) )
+        -- GetUseSuccess (Ok ok) ->
+        --     (model, Cmd.none)
+        -- GetUseSuccess (Err err) ->
+        --     let
+        --         error = Api.decodeErrors err
+        --     in
+        --     if error == "401"then
+        --     ({model | errType = "GetUseSuccess"}, Api.changeInterCeptor (Just error))
+        --     else 
+        --     (model, Cmd.none)
         GotSession session ->
-            if model.dateModel == "all" then
-            ({model | session = session}, faqEncoder send session "" "")
-            else
-            ({model | session = session}, faqEncoder send session old.start_date old.end_date)
+            let
+                body = Encode.object
+                    [("is_use", Encode.bool (not model.use))]
+                    |> Http.jsonBody
+            in
+            
+            ( {model | session = session },
+            case model.errType of
+                "GetListData" ->
+                    if model.dateModel == "all" then
+                    faqEncoder send session "" ""
+                    else
+                    faqEncoder send session old.start_date old.end_date
+            
+                "GetMyInfo" ->
+                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                "SuccessUse" ->
+                    Api.post (Endpoint.faqUse model.useId) (Session.cred model.session) SuccessUse body (Decoder.result)
+                _ ->
+                    Cmd.none
+                    )
+            
         PageBtn (idx, str) ->
             let
                 result = {old | page = idx}
@@ -394,16 +430,23 @@ update msg model =
         GetListData (Ok ok)->
             ({model | faqList = ok}, Cmd.none)
         GetListData (Err err)->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetListData"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         NoOp ->
             ( model, Cmd.none )
-        GetMyInfo (Err error) ->
+        GetMyInfo (Err err) ->
             let
-                serverErrors = 
-                    Api.decodeErrors error
-            in 
-            ( model, Session.changeInterCeptor (Just serverErrors) )
-
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            else 
+            (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let
                 menuf = List.head (List.filter (\x -> x.menu_id == 10) item.data.menus)
