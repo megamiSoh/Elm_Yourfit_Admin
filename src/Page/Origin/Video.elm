@@ -712,7 +712,8 @@ itemText item check category list=
 
 videoFilter exermodel levelmodel exerItemmodel toolmodel show open check list filterResult filterTitle title =
     if show then
-        div [ class "widePop"] [
+        div [class "widePop_container"][
+            div [ class "widePop"] [
             popTitle "필터 설정" ,
             
             div [ class "closeBtn"][
@@ -774,6 +775,6 @@ videoFilter exermodel levelmodel exerItemmodel toolmodel show open check list fi
                     [ text "취소" ]
                 ]
             ]
-        ]
+        ]]
         else
         div [] []
