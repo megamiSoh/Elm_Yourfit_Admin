@@ -125,6 +125,12 @@ detailEventBtn  title msg route=
             a  [ class "button is-warning", Route.href (Just route) ] [text "취소"]
         ]
 
+disabledBtn  title msg route=
+        div [ class "buttons" ] [
+            div [ class "button is-primary", onClick msg] [text title],
+            a  [ class "button is-warning", Route.href (Just route) ] [text "취소"]
+        ]
+
 backPageBtn route =
         div [ class "buttons" ] [
             a [ class "button is-warning", Route.href (Just route) ] [text "취소"]

@@ -142,20 +142,12 @@ update msg model =
                     Cmd.batch
                     [ Api.get  GetData (Endpoint.userDetail model.getId) (Session.cred session) (D.userdataDecoder Data User UserData)
                     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
                 _ ->
                     Api.get  GetData (Endpoint.userDetail model.getId) (Session.cred session) (D.userdataDecoder Data User UserData)
             )
         NoOp ->
             ( model, Cmd.none)
         GetMyInfo (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
-            else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let

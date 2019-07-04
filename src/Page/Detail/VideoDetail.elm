@@ -400,19 +400,9 @@ init session =
             }
             , Cmd.batch
             [ Api.getParams ()
-            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.exerPartCode (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.instrument (Session.cred session) GetTool
-            Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            , Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap CheckPoint)
-            -- , Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem)
             ]
             )
-
 
 toSession : Model -> Session
 toSession model =
@@ -530,12 +520,12 @@ update msg model =
             , Api.heightControll (not model.videoShow)]
             )
         GetMyInfo (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let
@@ -555,30 +545,20 @@ update msg model =
         GotSession session ->
             ({model | session = session}
             , case model.errType of
-                "GetPointData" ->
-                    Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap CheckPoint)
+                -- "GetPointData" ->
+                    -- Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap CheckPoint)
             
                 "PreviewComplete" ->
-                    Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(model.previewId))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview)
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                    Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(model.previewId))) (Session.cred session) (D.videoData PreviewWrap DataPreview)
+                   
                 "GoEditApi" ->
                     editVideo model.detaildata model.editItem session model.getId model.description model
-                "GetPartDetail" ->
-                    Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                "ExerCode" ->
-                    Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                "GetTool" ->
-                    Api.post Endpoint.instrument (Session.cred session) GetTool
-                    Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
                 "SucceesEdit" ->
-                    videoFilterResult model.filter model.session (model.page + 1) model.per_page model.filtertitle
-                "GetPart" ->
-                    Api.post Endpoint.exerPartCode (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                "GetLevel" ->
-                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    videoFilterResult model.filter session 1 model.per_page model.filtertitle
                 "GetData" ->
-                     Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint)
+                    Cmd.batch
+                    [ Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint)
+                     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
                 _ ->
                      Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint)
                 )
@@ -817,7 +797,9 @@ update msg model =
                     _ ->
                         (model, Cmd.none)
         GetPartDetail (Ok ok) -> 
-            ({model|partDetail = ok.data}, Cmd.none)
+            ({model|partDetail = ok.data}, 
+            Cmd.none
+            )
         GetPartDetail (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -989,7 +971,19 @@ update msg model =
                         "true"
                     else
                         "false"
-                }, videoFilterResult model.filter model.session model.page model.per_page model.filtertitle)
+                }, 
+                Cmd.batch 
+                    [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    , Api.post Endpoint.exerPartCode (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    , Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    , Api.post Endpoint.instrument (Session.cred model.session) GetTool
+                    Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    , Api.post Endpoint.part (Session.cred model.session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    , Api.post Endpoint.pointCode (Session.cred model.session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap CheckPoint)
+                    , videoFilterResult model.filter model.session model.page model.per_page model.filtertitle]
+                
+                )
         GetData(Err err) ->
             let
                 error = Api.decodeErrors err

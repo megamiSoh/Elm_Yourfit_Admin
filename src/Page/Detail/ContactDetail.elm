@@ -83,8 +83,7 @@ init session = ({
         , goEdit = False
         , errType = ""
     }, Cmd.batch [
-        Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-        , Api.getParams ()
+         Api.getParams ()
     ])
 
 type Msg 
@@ -116,9 +115,9 @@ update msg model =
                     answerEncode model.question session model.id
             
                 "GetDetail" ->
-                    Api.get GetDetail (Endpoint.contactDetail model.id) (Session.cred session) (Decoder.faqDetail DetailData Detail)
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                    Cmd.batch
+                    [ Api.get GetDetail (Endpoint.contactDetail model.id) (Session.cred session) (Decoder.faqDetail DetailData Detail)
+                    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
                 _ ->
                     Api.get GetDetail (Endpoint.contactDetail model.id) (Session.cred session) (Decoder.faqDetail DetailData Detail)
                 )
@@ -151,7 +150,8 @@ update msg model =
                             |> String.replace "%25" "%"
                     option2 ->
                         ""
-            }, Cmd.none)
+            },
+            Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
         GetDetail (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -178,12 +178,12 @@ update msg model =
             
              ({model | detail = new}, Cmd.none)
         GetMyInfo (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 

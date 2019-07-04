@@ -198,14 +198,12 @@ init session =
         , errType = ""
     }, 
     Cmd.batch
-    [ videoEncoder listInit session Getbody
-    , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-    , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-    , Cmd.map DatePickerMsg datePickerCmd
+    [ Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
         ])
-
+-- videoEncoder listInit session Getbody
+--     , 
 toSession : Model -> Session
 toSession model = 
     model.session
@@ -335,7 +333,7 @@ update msg model =
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            ({model | errType = "Getbody"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
 
@@ -522,19 +520,15 @@ update msg model =
         GotSession session ->
             ({model | session = session}
             ,  case model.errType of
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            
                 "VideoShowResult" ->
                     Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred session) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
                 "GoActive" ->
                     activeEncode session model.isActive model.activeId
-                "GetPart" ->
-                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                "GetLevel" ->
-                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
                 "Getbody" ->
-                    videoEncoder model.sendBody session Getbody
+                    Cmd.batch
+                    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                    -- , videoEncoder model.sendBody session Getbody
+                    ]
                 "GetbodySecond" ->
                     videoEncoder model.sendBody session GetbodySecond
                 _ ->
@@ -579,7 +573,7 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | pageNum = 1}, videoEncoder new model.session Getbody)
+            ({model | pageNum = 1, sendBody = new}, videoEncoder new model.session Getbody)
             else
             ({model | sendBody = date , pageNum = 1}, videoEncoder date model.session Getbody)
         Reset ->
@@ -648,7 +642,10 @@ update msg model =
                 activeEncode model.session (not active) id
             ])
         Getbody (Ok ok) ->
-            ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Cmd.none)
+            ({model | videoData = ok.data ,  paginate = ok.paginate} ,  
+            Cmd.batch
+            [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)])
         Getbody (Err err) ->
             let
                 error = Api.decodeErrors err

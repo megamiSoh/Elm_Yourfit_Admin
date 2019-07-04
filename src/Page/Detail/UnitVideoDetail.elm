@@ -135,12 +135,7 @@ init session =
     }, 
     Cmd.batch 
     [ Api.getParams ()
-    , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-     , Api.post Endpoint.instrument (Session.cred session) GetTool
-      Http.emptyBody (D.unitLevelsDecoder ListData Level)
-    , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-    , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
-    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+    
     ]
     )
 
@@ -234,20 +229,11 @@ update msg model =
                     Api.get PreviewComplete (Endpoint.unitVideoShow model.contentsId) (Session.cred session) (D.videoData PreviewWrap DataPreview)
                 "SucceesEdit" ->
                     editEncoder model.editData session model.contentsId
-                "ExerCode" ->
-                    Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                "GetPart" ->
-                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                "GetTool" ->
-                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                "GetLevel" ->
-                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
                 "GetData" ->
-                    Api.get GetData (Endpoint.unitDetail model.contentsId)(Session.cred session) (D.unitDetailDecoder Data DetailList PartDetail)
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                     Api.get GetData (Endpoint.unitDetail model.contentsId)(Session.cred session) (D.unitDetailDecoder Data DetailList PartDetail)
+                    -- , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
                 _ ->
-                    Api.get GetData (Endpoint.unitDetail model.contentsId)(Session.cred session) (D.unitDetailDecoder Data DetailList PartDetail)
+                    Cmd.none
             )
         AreaMsg str ->
             let
@@ -267,14 +253,14 @@ update msg model =
             else if List.isEmpty model.editData.part_details then
                 ({model | validationErr = "운동 부위를 선택 해 주세요.", validErrShow = True}, Cmd.none)
             else
-            ({model | edit = not model.edit, validErrShow = False, loading = True}
+            ({model | validErrShow = False, loading = True}
             , editEncoder model.editData model.session model.contentsId)
         SucceesEdit (Ok ok )->
             let
                 textEncoder = Encode.string "수정이 완료 되었습니다."
             in
             
-            (model, Cmd.batch[Route.pushUrl (Session.navKey model.session)Route.VideoUnit, Api.showToast textEncoder])
+            ({model | edit = not model.edit, loading = False}, Cmd.none)
         SucceesEdit (Err err)->
             let
                 error = Api.decodeErrors err
@@ -284,6 +270,9 @@ update msg model =
             else 
             (model, Cmd.none)
         DetailOrEdit ->
+            if model.edit then
+            update GoEdit model
+            else
             ({model | edit = not model.edit}, Cmd.none)
         VideoId str ->
             let
@@ -414,7 +403,13 @@ update msg model =
                     }
             in
             
-            ({model | detailList = ok.data, editData = new, loading = False}, Cmd.none)
+            ({model | detailList = ok.data, editData = new, loading = False}, 
+            Cmd.batch 
+            [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.instrument (Session.cred model.session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
         GetData (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -435,12 +430,12 @@ update msg model =
                 Err _ ->
                     (model, Cmd.none)
         GetMyInfo (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
@@ -529,7 +524,7 @@ view model =
                             AreaMsg
                             GetPreview
                         ,
-                        Page.detailEventBtn "저장" GoEdit Route.VideoUnit
+                        Page.detailEventBtn "저장" DetailOrEdit Route.VideoUnit
                         , Page.validationErr model.validationErr model.validErrShow
                         , Page.videoShow "영상 미리보기" model.videoShow VideoClose
                     ]

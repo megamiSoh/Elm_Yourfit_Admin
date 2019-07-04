@@ -112,8 +112,8 @@ unitRegist title disabled msg model selectLevel exerCode tool urlmsg partMsg  ar
             model.editData.instrument
         ],
          Page.columnsHtml [
-              Page.formInputEvent "Video Id" "Video Id 아이디를 입력 해 주세요." disabled urlmsg model.editData.video,
-              (Page.normalBtn "미리보기" "is-normal")
+              Page.formInputEvent "Video Id" "Video Id 아이디를 입력 해 주세요." disabled urlmsg model.editData.video
+            --   , (Page.normalBtn "미리보기" "is-normal")
             
         ],
         Page.columnsHtml [

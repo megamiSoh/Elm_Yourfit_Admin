@@ -157,7 +157,7 @@ init session =
     }, Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
-        , managelist listInit session
+        -- , managelist listInit session
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) 
         ]
      )
@@ -230,7 +230,7 @@ update msg model =
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
@@ -440,14 +440,9 @@ update msg model =
                 , Cmd.map EndDatePickerMsg enddatePickerCmd])
         GotSession session ->
             ({model | session = session}
-            , case model.errType of
-                "GetList" ->
-                    managelist listInit session
-            
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-                _ ->
-                    managelist listInit session
+            , Cmd.batch
+            [ managelist listInit session
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) ]
             )
         
         GetUserId id ->

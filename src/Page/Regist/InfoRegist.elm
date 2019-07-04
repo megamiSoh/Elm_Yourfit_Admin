@@ -73,7 +73,7 @@ init session=
     , errType = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
-infoRegist model =
+infoRegist model session=
     let
         list = 
             Encode.object
@@ -84,7 +84,7 @@ infoRegist model =
             list 
                 |> Http.jsonBody     
     in
-        Api.post Endpoint.infoRegist (Session.cred model.session) GetList body resultFormDecoder
+        Api.post Endpoint.infoRegist (Session.cred session) GetList body resultFormDecoder
     
 
 resultFormDecoder = 
@@ -132,9 +132,9 @@ update msg model =
                     Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             
                 "GetList" ->
-                    infoRegist model
+                    infoRegist model session
                 _ ->
-                    infoRegist model
+                    infoRegist model session
             )
         
         Title str ->    
@@ -157,7 +157,7 @@ update msg model =
             else if String.isEmpty model.textarea then
                 ({model | validErrShow = True, validationErr = "내용을 입력 해 주세요."}, Cmd.none)
             else
-                ({model | validErrShow = False}, infoRegist model)
+                ({model | validErrShow = False}, infoRegist model model.session)
 
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}

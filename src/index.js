@@ -27,51 +27,6 @@ var app = Elm.Main.init({
 });
 
 
-// setInterval(async function() {
-//   if (localStorage.getItem ("refresh") ==  undefined && localStorage.getItem ("token") !== null && localStorage.getItem("token") !== "undefined")
-//     {
-//       var fetchSuccess = function () {
-//         var parse = JSON.parse(localStorage.getItem("token"))
-//         var myHeaders =  new Headers({
-//           "Content-Type": "application/json",
-//           "authorization": ("bearer " + parse.token)
-//         });
-//         var myInit = 
-//           { method: 'GET',
-//           headers: myHeaders,
-//           mode: 'cors',
-//           cache: 'default' };
-//           fetch(url + 'auth/admin/refresh',myInit)
-//           .then(response => {
-//             if(response.status == 401) {
-//               localStorage.removeItem("token")
-//               localStorage.removeItem("refresh")
-//               return location.reload()
-//             } else  {
-//             return  response.json()}
-//           })
-//           .then(data => {
-//             parse = data.token
-//             var refresh = JSON.stringify(data)
-//             localStorage.setItem ("refresh", refresh)
-//           })
-//           .catch(error => 
-//           console.log(error)
-          
-//             )
-//         }
-//         if(localStorage.getItem("refresh") == null) {
-//           console.log(3)
-//           return await fetchSuccess();
-//         } else {
-//         }
-      
-        
-//     } else {
-//       return;
-//     }
-// }, 10000)
-
 
 app.ports.getInfo.subscribe (function() {
   var sd = localStorage.getItem ("info")
@@ -171,7 +126,6 @@ app.ports.refreshFetchData.subscribe(function() {
           let token = JSON.stringify(data)
           localStorage.setItem ("token", token)
           app.ports.onStoreChange.send(data); 
-          app.ports.onSucceesSession.send("complete")
           refreshFetch ();
         
         })
@@ -242,8 +196,12 @@ app.ports.pageNum.subscribe(function(num) {
   if (num == 0) {
     var pathcheck = document.cookie.match('(^|;) ?' + "pathCheck" + '=([^;]*)(;|$)');
     if(pathcheck == null ) {
-      return ;
+      app.ports.sendPageNum.send(1)
+      document.cookie = "pageNum" + '=' + 1 + ';expires=' + ';path=/';
+    document.cookie = "pathCheck" + '=' + window.location.hash + ';expires=' + ';path=/';
+
     } else {
+      
       if (pathcheck[2] == window.location.hash) {
         var val = document.cookie.match('(^|;) ?' + "pageNum" + '=([^;]*)(;|$)');
         app.ports.sendPageNum.send(parseInt(val[2]))

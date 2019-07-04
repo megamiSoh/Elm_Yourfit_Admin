@@ -73,7 +73,7 @@ init session=
     , errType = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
-faqRegist model =
+faqRegist model session =
     let
         list = 
             Encode.object
@@ -84,7 +84,7 @@ faqRegist model =
             list 
                 |> Http.jsonBody     
     in
-        Api.post Endpoint.faqRegist (Session.cred model.session) GetList body resultFormDecoder
+        Api.post Endpoint.faqRegist (Session.cred session) GetList body resultFormDecoder
     
 
 resultFormDecoder = 
@@ -108,7 +108,7 @@ type Msg
     | GetList (Result Http.Error ResultForm)
     | SubmitInfo
     | Title String
-    | SessionCheck Encode.Value
+    -- | SessionCheck Encode.Value
     | GotSession Session
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
@@ -132,21 +132,21 @@ update msg model =
                      Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             
                 "GetList" ->
-                    faqRegist model
+                    faqRegist model session
                 _ ->
-                    faqRegist model
+                    Cmd.none
             )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.batch [
-                            faqRegist model
-                        ])
-                    Err _ ->
-                        (model, Cmd.none)
+        -- SessionCheck check ->
+        --     let
+        --         decodeCheck = Decode.decodeValue Decode.string check
+        --     in
+        --         case decodeCheck of
+        --             Ok continue ->
+        --                 (model, Cmd.batch [
+        --                     faqRegist model model.session
+        --                 ])
+        --             Err _ ->
+        --                 (model, Cmd.none)
         Title str ->    
             ({model | title = str}, Cmd.none)
         TextAreaInput str ->
@@ -167,7 +167,7 @@ update msg model =
             else if String.isEmpty model.textarea then
                 ({model | validErrShow = True, validationErr = "내용을 입력 해 주세요."}, Cmd.none)
             else
-                ({model | validErrShow = False}, faqRegist model)
+                ({model | validErrShow = False}, faqRegist model model.session)
 
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
@@ -199,7 +199,5 @@ view model =
    
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch 
-    [ Api.onSucceesSession SessionCheck
-    , Session.changes GotSession (Session.navKey model.session)
-    ]
+    Session.changes GotSession (Session.navKey model.session)
+    

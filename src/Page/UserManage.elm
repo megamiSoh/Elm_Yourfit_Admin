@@ -136,7 +136,7 @@ init session=
     , Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
-        , managelist listInit session 
+        -- , managelist listInit session 
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
         ]
     )
@@ -246,7 +246,7 @@ update msg model =
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
 
@@ -335,15 +335,10 @@ update msg model =
             ( {model | show = not model.show, endShow = False }, Cmd.none )
         GotSession session ->
             ({model | session = session}
-            , 
-            case model.errType of
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            
-                "GetList" ->
-                    managelist listInit session
-                _ ->
-                    managelist listInit session
+            , Cmd.batch 
+            [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            , managelist listInit session
+            ]
             )
         EndDatePickerMsg datePickerMsg ->
             DatePicker.update datePickerMsg model.endDatePickerData
@@ -425,15 +420,6 @@ update msg model =
                             (model,Cmd.none)
                 else
                     (model, Cmd.none)
-        -- SessionCheck check ->
-        --     let
-        --         decodeCheck = Decode.decodeValue Decode.string check
-        --     in
-        --         case decodeCheck of
-        --             Ok continue ->
-        --                 (model, managelist listInit model.session)
-        --             Err _ ->
-        --                 (model, Cmd.none)
             
         Nickname str ->
             let 

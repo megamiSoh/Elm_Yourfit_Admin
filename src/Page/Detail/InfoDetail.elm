@@ -95,7 +95,7 @@ init session =
     , errType = ""
     }, Cmd.batch[
         Api.getInfo()
-        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+        -- , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
         ])
 
 toSession : Model -> Session
@@ -105,8 +105,7 @@ toSession model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
-    [ Api.onSucceesSession SessionCheck
-    , Session.changes GotSession (Session.navKey model.session)
+    [ Session.changes GotSession (Session.navKey model.session)
     , Api.getInfoParams GetId
     ]
     
@@ -126,7 +125,6 @@ type Msg
     | TitleText String
     | IsEdit 
     | HttpResult(Result Http.Error Code)
-    | SessionCheck Encode.Value
     | GotSession Session
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
     
@@ -135,12 +133,12 @@ update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
         GetMyInfo (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "GetData"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
@@ -161,26 +159,13 @@ update msg model =
         GotSession session ->
             ({model | session = session}
             , case model.errType of
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
                 "GetData" ->
                     Api.get GetData (Endpoint.infoDetail model.noticeId)(Session.cred session) dataWrapDecoder
                 "HttpResult" ->
-                    encodeList model
+                    encodeList model session
                 _ ->
                     Api.get GetData (Endpoint.infoDetail model.noticeId)(Session.cred session) dataWrapDecoder
             )
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, Cmd.batch [
-                             Api.get GetData (Endpoint.infoDetail model.noticeId)(Session.cred model.session) dataWrapDecoder
-                        ])
-                    Err _ ->
-                        (model, Cmd.none)
         TextAreaInput str ->
              ({ model | textarea = str }, Cmd.none)
         
@@ -197,7 +182,8 @@ update msg model =
                         (model , Cmd.none)
 
         GetData (Ok item ) ->
-            ({model | data = item, textarea = item.data.content , title = item.data.title}, Cmd.none)
+            ({model | data = item, textarea = item.data.content , title = item.data.title}, 
+            Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
         GetData (Err err) ->
             let
@@ -213,7 +199,7 @@ update msg model =
             ({model | isEdit = not model.isEdit}, 
             if model.isEdit then
             Cmd.batch [
-                encodeList model
+                encodeList model model.session
             ]
             else
             Cmd.none
@@ -230,7 +216,7 @@ update msg model =
             else 
             (model, Cmd.none)
 
-encodeList model  = 
+encodeList model session = 
     let
         body = 
             Encode.object
@@ -238,7 +224,7 @@ encodeList model  =
                 , ("content", Encode.string model.textarea)]
                     |> Http.jsonBody
     in
-        Api.post (Endpoint.infoEdit model.noticeId) (Session.cred model.session) HttpResult body resultDecoder
+        Api.post (Endpoint.infoEdit model.noticeId) (Session.cred session) HttpResult body resultDecoder
 
 resultDecoder = 
     Decode.succeed Code

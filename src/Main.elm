@@ -205,7 +205,7 @@ subscriptions model =
         InfoEmodel infoe ->
             Sub.map InfoEmsg (InfoE.subscriptions infoe)
         FaqRmodel faqr ->
-            Sub.none
+            Sub.map FaqRmsg (FaqR.subscriptions faqr)
         FaqEmodel faqe ->
             Sub.none
         FaqDmodel faqd ->

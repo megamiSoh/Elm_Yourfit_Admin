@@ -162,7 +162,8 @@ init session =
         Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    , faqEncoder send session "" ""])
+    -- , faqEncoder send session "" ""
+    ])
 
 type Msg 
     = NoOp 
@@ -188,7 +189,8 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch[Api.saveCheck SaveId
     , Session.changes GotSession(Session.navKey model.session)
-    , Api.sendPageNum ReceivePnum]
+    , Api.sendPageNum ReceivePnum
+    ]
 
 toSession : Model -> Session
 toSession model =
@@ -234,17 +236,13 @@ update msg model =
                     (model, Cmd.none)
         GotSession session ->
             ( {model | session = session} , 
-            case model.errType of
-                "GetListData" ->
-                    if model.dateModel == "all" then
-                    faqEncoder send session "" ""
+                    Cmd.batch
+                    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                    , if model.dateModel == "all" then
+                        faqEncoder send session "" ""
                     else
-                    faqEncoder send session old.start_date old.end_date
+                        faqEncoder send session old.start_date old.end_date]
             
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-                _ ->
-                    Cmd.none
             )
             
         PageBtn (idx, str) ->
@@ -406,12 +404,12 @@ update msg model =
         GetListData (Ok ok)->
             ({model | faqList = ok}, Cmd.none)
         GetListData (Err err)->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetListData"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "GetListData"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
         NoOp ->
             ( model, Cmd.none )

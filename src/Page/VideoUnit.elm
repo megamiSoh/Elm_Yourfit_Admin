@@ -169,14 +169,12 @@ init  session =
         , pageNum = 1
         , errType = ""
      }
-    , Cmd.batch[Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
-    , Api.post Endpoint.instrument (Session.cred session) GetTool
-    Http.emptyBody (D.unitLevelsDecoder Data Level)
-    , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder Data Level)
-    , Cmd.map DatePickerMsg datePickerCmd
+    , 
+    
+    Cmd.batch[ Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-    , listEncode listInit session
+    -- , listEncode listInit session
     -- , Api.pageNum (Encode.int 0)
      ]
     )
@@ -345,7 +343,7 @@ update msg model =
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
@@ -471,20 +469,15 @@ update msg model =
         GotSession session ->
             ({model | session = session}
             , case model.errType of
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            
                 "GetList" ->
                     if model.dateModel == "all" then
-                        listEncode (allDataList (originModel model)) session
+                        Cmd.batch
+                        [ listEncode (allDataList (originModel model)) session
+                        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
                     else
-                        listEncode model.listmodel session
-                "GetPart" ->
-                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder Data Level)
-                "GetTool" ->
-                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder Data Level)
-                "GetLevel" ->
-                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
+                        Cmd.batch
+                        [ listEncode model.listmodel session
+                        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)] 
                 "SendDataToJS" ->
                     Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred session) (D.videoData VideoData VideoDetailData)
                 _ ->
@@ -574,7 +567,13 @@ update msg model =
         --     in
         --     (model, Api.newdecodeErrors err)
         GetList (Ok ok) ->  
-            ({model | getList = ok.data, paginate = ok.paginate}, Cmd.none)
+            ({model | getList = ok.data, paginate = ok.paginate},
+            Cmd.batch
+            [ Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder Data Level)
+            , Api.post Endpoint.instrument (Session.cred model.session) GetTool Http.emptyBody (D.unitLevelsDecoder Data Level)
+            , Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder Data Level)
+            ]
+            )
         GetList (Err err) ->
             let
                 error = Api.decodeErrors err

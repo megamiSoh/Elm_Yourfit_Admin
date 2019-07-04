@@ -160,7 +160,8 @@ init session =
         Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    , faqEncoder send session "" ""])
+    -- , faqEncoder send session "" ""
+    ])
 
 type Msg 
     = NoOp 
@@ -272,16 +273,15 @@ update msg model =
             
             ( {model | session = session },
             case model.errType of
-                "GetListData" ->
-                    if model.dateModel == "all" then
-                    faqEncoder send session "" ""
-                    else
-                    faqEncoder send session old.start_date old.end_date
-            
                 "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                    Cmd.batch
+                    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                    , if model.dateModel == "all" then
+                        faqEncoder send session "" ""
+                        else
+                        faqEncoder send session old.start_date old.end_date]
                 "SuccessUse" ->
-                    Api.post (Endpoint.faqUse model.useId) (Session.cred model.session) SuccessUse body (Decoder.result)
+                    Api.post (Endpoint.faqUse model.useId) (Session.cred session) SuccessUse body (Decoder.result)
                 _ ->
                     Cmd.none
                     )

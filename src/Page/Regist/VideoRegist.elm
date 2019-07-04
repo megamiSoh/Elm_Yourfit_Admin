@@ -345,16 +345,7 @@ init session =
             }
             , Cmd.batch
             [ Api.getParams ()
-            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.exerPartCode (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.instrument (Session.cred session) GetTool
-            Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-            , videoFilterResult f session 1 20 ""
             , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            , Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap Pointcode)
             ]
             )
 
@@ -477,33 +468,29 @@ update msg model =
             (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, 
+            Cmd.batch
+            [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.exerPartCode (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.instrument (Session.cred model.session) GetTool  Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.part (Session.cred model.session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+            , videoFilterResult model.filter model.session model.page model.per_page model.filtertitle
+            , Api.post Endpoint.pointCode (Session.cred model.session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap Pointcode)] )
         GotSession session ->
             ({model | session = session}
             , case model.errType of
-                "GetPointData" ->
-                    Api.post Endpoint.pointCode (Session.cred session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap Pointcode)
-            
                 "PreviewComplete" ->
                     Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(model.previewId))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview)
                 "GetMyInfo" ->
                     Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
                 "GoEditApi" ->
                     registVideo model model.editItem session
-                "GetPartDetail" ->
-                    Api.post Endpoint.part (Session.cred session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                "ExerCode" ->
-                    Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                "GetTool" ->
-                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
                 "SucceesEdit" ->
-                    videoFilterResult model.filter session model.page model.per_page model.filtertitle
-                "GetPart" ->
-                    Api.post Endpoint.exerPartCode (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
-                "GetLevel" ->
-                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
+                    videoFilterResult model.filter session 1 model.per_page model.filtertitle
                 _ ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                    Cmd.none
             )
         GoEditApi (Ok ok) ->
             (model, Cmd.batch[Route.pushUrl (Session.navKey model.session) Route.Video, Api.showToast (Encode.string "등록되었습니다.")])
@@ -691,7 +678,7 @@ update msg model =
             else
             (model, Cmd.none)
         FilterResultData ->
-            ({model | openFilter = False,gofilter = model.filtertitle::model.filterName, filterData = [], page = 1}, videoFilterResult model.filter model.session 1 model.per_page model.filtertitle)
+            ({model | openFilter = False,gofilter = model.filtertitle::model.filterName, filterData = [], page = 1 }, videoFilterResult model.filter model.session 1 model.per_page model.filtertitle)
         GetFilterItem (str, category, n) ->
             let
                 old = model.filter

@@ -95,11 +95,6 @@ init session =
     }, 
     Cmd.batch 
     [ Api.getParams ()
-    , Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
-     , Api.post Endpoint.instrument (Session.cred session) GetTool
-      Http.emptyBody (D.unitLevelsDecoder ListData Level)
-    , Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-    , Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
     ]
     )
@@ -173,7 +168,13 @@ update msg model =
             else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, 
+            Cmd.batch
+            [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.instrument (Session.cred model.session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
+            ] )
         GotSession session ->
             ({model | session = session}
             , case model.errType of
@@ -182,16 +183,8 @@ update msg model =
             
                 "SucceesEdit" ->
                     editEncoder model.editData session
-                "ExerCode" ->
-                     Api.post Endpoint.exerCode (Session.cred session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                "GetPart" ->
-                    Api.post Endpoint.part (Session.cred session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                "GetTool" ->
-                    Api.post Endpoint.instrument (Session.cred session) GetTool Http.emptyBody (D.unitLevelsDecoder ListData Level)
-                "GetLevel" ->
-                    Api.post Endpoint.unitLevel (Session.cred session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
                 _ ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                    Cmd.none
             )
         AreaMsg str ->
             let

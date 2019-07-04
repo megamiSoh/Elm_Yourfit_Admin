@@ -158,13 +158,13 @@ init session =
         , activeId = ""
     }, 
     Cmd.batch
-    [ managelist listInitial session
-    , Cmd.map DatePickerMsg datePickerCmd
+    [  Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
     ])
 
-
+-- managelist listInitial session
+--     ,
 managelist form session =
     let
         list =
@@ -196,9 +196,9 @@ type Msg
     | GotSession Session
     | GetId String
     | Check Encode.Value
-    | IsActive String
+    | IsActive String Bool
     | HttpResult (Result Http.Error ActiveModel)
-    | SessionCheck  Encode.Value
+    -- | SessionCheck  Encode.Value
     | EndDatePickerMsg DatePicker.Msg
     | DatePickerMsg DatePicker.Msg
     | Show
@@ -254,7 +254,7 @@ update msg model =
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            ({model | errType = "GetMyInfo"}, Api.changeInterCeptor (Just error))
+            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
@@ -456,13 +456,12 @@ update msg model =
         GotSession session ->
             ({model | session = session}
             ,  case model.errType of
-                "GetMyInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            
                 "GetList" ->
-                    managelist listInitial session
+                    Cmd.batch
+                    [ managelist listInitial session
+                    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
                 "HttpResult" ->
-                    encodeList model model.activeId
+                    encodeList model.isActive model.activeId session
                 _ ->
                     managelist listInitial session
             )
@@ -486,8 +485,8 @@ update msg model =
                         (model,Cmd.none)
                 else
                 (model, Cmd.none)
-        IsActive id->
-            ({model | isActive = not model.isActive, activeId = id}, Cmd.batch[encodeList model id])
+        IsActive id use->
+            ({model | isActive = not use, activeId = id}, Cmd.batch[encodeList (not use) id model.session])
         HttpResult (Ok item)->
             let
                 old = model.listInit
@@ -512,15 +511,15 @@ update msg model =
             ({model | errType = "HttpResult"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
-        SessionCheck check ->
-            let
-                decodeCheck = Decode.decodeValue Decode.string check
-            in
-                case decodeCheck of
-                    Ok continue ->
-                        (model, managelist model.listInit model.session)
-                    Err _ ->
-                        (model, Cmd.none)
+        -- SessionCheck check ->
+        --     let
+        --         decodeCheck = Decode.decodeValue Decode.string check
+        --     in
+        --         case decodeCheck of
+        --             Ok continue ->
+        --                 (model, managelist model.listInit model.session)
+        --             Err _ ->
+        --                 (model, Cmd.none)
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
@@ -587,14 +586,14 @@ view model =
     
     }
 
-encodeList model idstr=  
+encodeList use idstr session=  
     let
         body = 
             Encode.object
-                [("is_use", Encode.bool (not model.isActive))]   
+                [("is_use", Encode.bool use)]   
                     |> Http.jsonBody 
     in
-        Api.post (Endpoint.infoActive idstr) (Session.cred model.session) HttpResult body resultDecoder
+        Api.post (Endpoint.infoActive idstr) (Session.cred session) HttpResult body resultDecoder
     
 resultDecoder = 
     Decode.succeed ActiveModel
@@ -623,9 +622,9 @@ tableLayout idx item model =
                 div [ class "tableCell" ] [
                     if List.member "30" model.auth then
                         if item.is_use then
-                        button [class "button is-small is-success", onClick (IsActive (String.fromInt(item.id)))] [text "게시 중"]
+                        button [class "button is-small is-success", onClick (IsActive (String.fromInt item.id) item.is_use)] [text "게시 중"]
                         else 
-                            button [class "button is-small",  onClick (IsActive (String.fromInt(item.id)))] [text "게시 하기"]
+                            button [class "button is-small",  onClick (IsActive (String.fromInt item.id) item.is_use)] [text "게시 하기"]
                     else
                         if item.is_use then
                             button [class "button is-small is-success"] [text "게시 중"]
@@ -638,6 +637,6 @@ subscriptions model =
     Sub.batch[
     Session.changes GotSession (Session.navKey model.session)
     , Api.infoCheck Check
-    , Api.onSucceesSession SessionCheck
+    -- , Api.onSucceesSession SessionCheck
     , Api.sendPageNum ReceivePnum
     ]

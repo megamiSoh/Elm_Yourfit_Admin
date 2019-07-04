@@ -150,16 +150,16 @@ init session =
                     , menu_id = 0
                 }
             ]
-        , menuAuthEdit = 
-            []
+        , menuAuthEdit = []
         , errType = ""
         }, 
-        Cmd.batch [
-            Api.getParams (),
-            Api.post Endpoint.authCode (Session.cred session)
-            GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-        ]
+        -- Cmd.batch [
+            Api.getParams ()
+            -- ,
+            -- Api.post Endpoint.authCode (Session.cred session)
+            -- GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
+            -- , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+        -- ]
         )
 
 menuAuthEncoder model =
@@ -178,7 +178,7 @@ menuAuthEncode form model session=
                 |>Http.jsonBody
 
     in
-        Api.post (Endpoint.adminEdit model.userId) (Session.cred model.session) EditAdmin body (D.resultDecoder ResultDecoder)
+        Api.post (Endpoint.adminEdit model.userId) (Session.cred session) EditAdmin body (D.resultDecoder ResultDecoder)
 
 deleteEncode model session =
     let
@@ -211,23 +211,11 @@ type Msg = PopEvent
         | DeleteAdmin
         | CloseOpen 
         | GetMyInfo (Result Http.Error D.DataWrap)
-        -- | RetryRequest Session
-        -- | VideoRetry Session
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        -- RetryRequest session ->
-        --     ({model | session = session}, menuAuthEncode model.sendAuth model session)
-        -- VideoRetry session ->
-        --     ({model | session = session}, deleteEncode model session)
         GetMyInfo (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "myInfo"}, Api.changeInterCeptor (Just error))
-            else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
             let
@@ -294,7 +282,7 @@ update msg model =
                     ({model | menus = List.sortBy .menu_id model.menus ++ [secResult], sendAuth = secSendResult},Cmd.none)
         DetailOrEdit str ->
             if str == "edit" then
-            ({model | isEdit = not model.isEdit}, menuAuthEncode model.sendAuth model model.session)
+            (model, menuAuthEncode model.sendAuth model model.session)
             else
             ({model | isEdit = not model.isEdit}, Cmd.none)
         PopEvent ->
@@ -326,7 +314,11 @@ update msg model =
         GetData (Ok item) ->
             ({model | admin = item.data.admin
             , menus = item.data.menus}
-            , Api.post Endpoint.authMenu (Session.cred model.session) GetMenus Http.emptyBody (D.authMenusDecoder Authmenus Authmenu))
+           , Cmd.batch
+            [ Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)
+            , Api.post Endpoint.authMenu (Session.cred model.session) GetMenus Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
+            , Api.post Endpoint.authCode (Session.cred model.session) GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode) ]
+            )
         GetData (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -339,45 +331,25 @@ update msg model =
            
             ({model| authMenus = menu.data }, Cmd.none)
         GetMenus (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "getmenus"}, Api.changeInterCeptor (Just error))
-            else 
             (model, Cmd.none)
         GetCode (Ok menu) ->
             ({model| authCode =[{code = "메뉴", name = "메뉴"}] ++ menu.data}, Cmd.none)
         GetCode (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "getcode"}, Api.changeInterCeptor (Just error))
-            else 
             (model, Cmd.none)
         GotSession session ->
             ({model | session = session}
             ,  case model.errType of
-                "myInfo" ->
-                    Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-            
                 "getdata" ->
                     Api.get GetData (Endpoint.adminDetail model.userId) (Session.cred session) (D.decoder DataWrap Data  Menus Admin)
-                "getmenus" ->
-                    Api.post Endpoint.authMenu (Session.cred session) GetMenus Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
-                "getcode" ->
-                    Api.post Endpoint.authCode (Session.cred session)
-                    GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
                 "editadmin" ->
                     menuAuthEncode model.sendAuth model session
                 "delete" ->
                     deleteEncode model session
                 _ ->
-                     Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
+                     Cmd.none
            )
         EditAdmin (Ok item) ->
-            (model, Cmd.none)
+            ({model | isEdit = not model.isEdit}, Cmd.none)
         EditAdmin (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -465,8 +437,6 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
    Sub.batch[ Api.params GetId
     , Session.changes GotSession (Session.navKey model.session)
-    -- , Session.retryChange RetryRequest (Session.navKey model.session)
-    -- , Session.secRetryChange VideoRetry (Session.navKey model.session)
    ]
 
 adminLayout popEvent userData title disabled menu code menuId model=
