@@ -312,12 +312,16 @@ update msg model =
             ({model | sendData = date , pageNum = 1}, 
             Cmd.batch
             [ faqEncoder date model.session "" ""
-            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            , Api.pageNum (Encode.int 1)
+            ])
             else
             ({model | sendData = date, pageNum = 1 }, 
             Cmd.batch
             [ faqEncoder date model.session old.start_date old.end_date
-            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            , Api.pageNum (Encode.int 1)
+            ])
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =

@@ -574,12 +574,16 @@ update msg model =
             ({model | pageNum = 1, sendBody = new}, 
             Cmd.batch
              [ videoEncoder new model.session Getbody
-             , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
+             , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)
+             , Api.pageNum (Encode.int 1)
+             ])
             else
             ({model | sendBody = date , pageNum = 1}, 
             Cmd.batch
              [ videoEncoder date model.session Getbody
-             , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
+             , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)
+             , Api.pageNum (Encode.int 1)
+             ])
         Reset ->
             let
                 list = 

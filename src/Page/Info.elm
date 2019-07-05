@@ -421,12 +421,16 @@ update msg model =
             ({model | pageNum = 1}, 
             Cmd.batch
             [ managelist list model.session
-            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            , Api.pageNum (Encode.int 1)
+            ])
             else
             ({model | listInit = date , pageNum = 1}, 
             Cmd.batch
             [ managelist date model.session
-            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            , Api.pageNum (Encode.int 1)
+            ])
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =

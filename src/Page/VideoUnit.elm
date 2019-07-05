@@ -518,12 +518,14 @@ update msg model =
             ({model | listmodel = new, pageNum = 1}, 
             Cmd.batch
             [ listEncode new model.session
-            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)
+            , Api.pageNum (Encode.int 1)])
             else
             ({model | listmodel = date, pageNum = 1}, 
             Cmd.batch
             [ listEncode date model.session
-            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)
+            , Api.pageNum (Encode.int 1)])
         Reset ->
             let
                 list = 
