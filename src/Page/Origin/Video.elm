@@ -20,7 +20,7 @@ onChange tagger =
 targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
-registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput filterTitle pointCheck payMsg sexMsg=
+registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput filterTitle pointCheck payMsg sexMsg checkAge allAge=
     div[] [
         columnsHtml [pageTitle "유어핏영상 등록"],
         columnsHtml [
@@ -40,9 +40,12 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
             ]
             , columnsHtml [
             checkBoxCustom model.pointCode (if model.is_pay == "false" then True else False) model.checkPoint pointCheck model.checkPoint
-           , textAreaRegist "운동 설명" False "250자까지 입력 가능" textAreaInput
-        ]
-        
+           , checkBoxCustomAge model.age (if model.is_pay == "false" then True else False) model.checkAge checkAge model.checkAge allAge
+            ]
+            , columnsHtml [
+                textAreaRegist "운동 설명" False "250자까지 입력 가능" textAreaInput
+            ]
+
 
         ]
         ,
@@ -118,34 +121,48 @@ checkBoxCustom list disabled checkV partMsg checkModel=
                             List.map (
                                 \title ->
                                 checkBoxReadOnly checkModel title partMsg disabled 
-                                -- checkBoxReadOnly checkModel title partMsg disabled(
-                                --     let 
-                                --         match = 
-                                --             List.head(List.filter(\f ->
-                                --             f.code == title.code
-                                --             )checkV  )
-                                --     in
-                                --     case match of
-                                --         Just m ->
-                                --             m
-                                --         Nothing ->
-                                --             { code= ""
-                                --             , name= ""}
-                                --     )
                                 ) list
                             )
                     ]
                 ]
             ]
-
+checkBoxCustomAge list readOnly checkV partMsg checkModel allAge=
+        div [ class "field is-horizontal" ]
+            [ 
+            labelWrap "연령대",
+            div [ class "field-body customCheck" ]
+                [ div [ class "field  is-fullwidth" ]
+                    [ 
+                        label [ class "checkbox" ]
+                        [ input 
+                        [ type_ "checkbox"
+                        , disabled readOnly
+                        , style "display" "inline-block"
+                        , onClick allAge
+                        , checked (List.isEmpty checkModel)
+                        
+                        ]
+                            [], text "전연령대" 
+                        ]
+                        , 
+                        p [ class "control" ]
+                        (
+                            List.map (
+                                \title ->
+                                checkBoxReadOnly checkModel title partMsg readOnly 
+                                ) list
+                            )
+                        , span [class "noCheckInfo"][text "※ 항목을 선택하지 않으면, 전연령대로 자동선택 됩니다."]
+                    ]
+                ]
+            ]
 
 checkBoxReadOnly checkModel title partMsg readOnly = 
     label [ class "checkbox" ]
         [ input 
         [ type_ "checkbox"
         , disabled readOnly
-        -- , value checkModel
-        -- , checked (val.code == title.code)
+        , checked (List.member title.code checkModel)
         , onClick (partMsg (title.code , title.name))
         ]
             [], text title.name 
@@ -162,6 +179,36 @@ checkBoxReadOnlyDetail checkModel title partMsg readOnly checkVal =
         ]
             [], text title.name 
         ]
+checkBoxCustomDetailAge list readOnly checkV partMsg checkModel checkVal allAge =
+        div [ class "field is-horizontal" ]
+            [ 
+            labelWrap "운동 방향",
+            div [ class "field-body customCheck" ]
+                [ div [ class "field  is-fullwidth" ]
+                    [ 
+                        label [ class "checkbox" ]
+                        [ input 
+                        [ type_ "checkbox"
+                        , disabled readOnly
+                        , style "display" "inline-block"
+                        , checked (List.isEmpty checkVal)
+                        , onClick allAge
+                        ]
+                            [], text "전연령대" 
+                        ]
+                        , 
+                        p [ class "control" ]
+                        (
+                            List.map (
+                                \title ->
+                                checkBoxReadOnlyDetail checkModel title partMsg readOnly checkVal
+                                ) list
+                            )
+                        , span [class "noCheckInfo"][text "※ 항목을 선택하지 않으면, 전연령대로 자동선택 됩니다."]
+                    ]
+                ]
+            ]
+
 
 
 checkBoxCustomDetail list disabled checkV partMsg checkModel checkVal =
@@ -175,27 +222,13 @@ checkBoxCustomDetail list disabled checkV partMsg checkModel checkVal =
                             List.map (
                                 \title ->
                                 checkBoxReadOnlyDetail checkModel title partMsg disabled checkVal
-                                -- checkBoxReadOnly checkModel title partMsg disabled(
-                                --     let 
-                                --         match = 
-                                --             List.head(List.filter(\f ->
-                                --             f.code == title.code
-                                --             )checkV  )
-                                --     in
-                                --     case match of
-                                --         Just m ->
-                                --             m
-                                --         Nothing ->
-                                --             { code= ""
-                                --             , name= ""}
-                                --     )
                                 ) list
                             )
                     ]
                 ]
             ]
 
-formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit description textareaInput filterTitle payMsg sexMsg pointCheck =
+formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg titlemsg disabledMask url  changePage model openbtn check filterResult addItem btntitle toptitle goedit description textareaInput filterTitle payMsg sexMsg pointCheck ageCheck allAge=
     let
         textInput text =
             text
@@ -222,7 +255,10 @@ formView dis exercise empty levelmodel seletmsg seletmodel partmodel partmsg tit
             ]
             , columnsHtml [
             checkBoxCustomDetail model.pointCode (if model.disabled || model.is_pay =="false" then True else False) model.checkPoint pointCheck model.checkPoint model.checkVal
-            , textAreaEvent "운동설명" dis description textareaInput
+            , checkBoxCustomDetailAge model.age (if model.disabled || model.is_pay =="false" then True else False) model.checkAge ageCheck model.checkAge model.checkAge allAge
+            ]
+            , columnsHtml [
+                textAreaEvent "운동설명" dis description textareaInput
             ]
             
         ]

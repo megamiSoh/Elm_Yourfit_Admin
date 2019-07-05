@@ -235,15 +235,17 @@ update msg model =
                 Err err ->
                     (model, Cmd.none)
         GotSession session ->
-            ( {model | session = session} , 
-                    Cmd.batch
-                    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-                    , if model.dateModel == "all" then
-                        faqEncoder send session "" ""
-                    else
-                        faqEncoder send session old.start_date old.end_date]
+            update Search {model | session = session}
+            -- ( {model | session = session} , 
+
+            --         Cmd.batch
+            --         [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            --         , if model.dateModel == "all" then
+            --             faqEncoder send session "" ""
+            --         else
+            --             faqEncoder send session old.start_date old.end_date]
             
-            )
+            -- )
             
         PageBtn (idx, str) ->
             let
@@ -307,9 +309,15 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | sendData = date , pageNum = 1}, faqEncoder date model.session "" "")
+            ({model | sendData = date , pageNum = 1}, 
+            Cmd.batch
+            [ faqEncoder date model.session "" ""
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
             else
-            ({model | sendData = date, pageNum = 1 }, faqEncoder date model.session old.start_date old.end_date)
+            ({model | sendData = date, pageNum = 1 }, 
+            Cmd.batch
+            [ faqEncoder date model.session old.start_date old.end_date
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =

@@ -260,6 +260,7 @@ type Msg
     | PageBtn (Int, String)
     | GetMyInfo (Result Http.Error D.DataWrap)
     | ReceivePnum Encode.Value
+    | PreviewVideo
 
 originModel model = 
     model.listmodel
@@ -302,6 +303,8 @@ allDataList old =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        PreviewVideo ->
+            (model, Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred model.session) (D.videoData VideoData VideoDetailData))
         ReceivePnum num ->
             let
                 val = Decode.decodeValue Decode.int num
@@ -467,22 +470,24 @@ update msg model =
                                 ( newModel, cmd )
                    )
         GotSession session ->
-            ({model | session = session}
-            , case model.errType of
+            -- ({model | session = session}
+            case model.errType of
                 "GetList" ->
-                    if model.dateModel == "all" then
-                        Cmd.batch
-                        [ listEncode (allDataList (originModel model)) session
-                        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
-                    else
-                        Cmd.batch
-                        [ listEncode model.listmodel session
-                        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)] 
+                    update Search {model | session = session}
+                    -- if model.dateModel == "all" then
+                    --     Cmd.batch
+                    --     [ listEncode (allDataList (originModel model)) session
+                    --     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
+                    -- else
+                    --     Cmd.batch
+                    --     [ listEncode model.listmodel session
+                    --     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)] 
                 "SendDataToJS" ->
-                    Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred session) (D.videoData VideoData VideoDetailData)
+                    update PreviewVideo {model | session = session}
+                    -- Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred session) (D.videoData VideoData VideoDetailData)
                 _ ->
-                    Cmd.none
-            )
+                    (model, Cmd.none)
+            
         ReceiveId data ->
             let
                 dId = Decode.decodeValue Decode.string data
@@ -510,9 +515,15 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | listmodel = new, pageNum = 1}, listEncode new model.session)
+            ({model | listmodel = new, pageNum = 1}, 
+            Cmd.batch
+            [ listEncode new model.session
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
             else
-            ({model | listmodel = date, pageNum = 1}, listEncode date model.session)
+            ({model | listmodel = date, pageNum = 1}, 
+            Cmd.batch
+            [ listEncode date model.session
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
         Reset ->
             let
                 list = 
@@ -575,12 +586,6 @@ update msg model =
             ]
             )
         GetList (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
-            else 
             (model, Cmd.none)
         GetPart (Ok ok) -> 
             ({model | part = ok.data} ,Cmd.none)

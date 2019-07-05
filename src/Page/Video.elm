@@ -244,7 +244,6 @@ type Msg
     | DetailGo String
     | Complete Encode.Value
     | GoActive (Result Http.Error Success)
-    -- | RetryRequest Session
     | GotSession Session
     | EndDatePickerMsg DatePicker.Msg
     | DatePickerMsg DatePicker.Msg
@@ -256,10 +255,11 @@ type Msg
     | VideoShowResult (Result Http.Error YfVideo)
     | VideoShowClose
     | Sort Int
-    -- | VideoRetry Session
     | GetMyInfo (Result Http.Error D.DataWrap)
     | ReceivePnum Encode.Value
     | GetbodySecond (Result Http.Error GetBody)
+    | VideoShow
+    | Active
 
 oldModel model =
     model.sendBody
@@ -295,6 +295,10 @@ allListDataSetComplete old =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Active ->
+            (model, activeEncode model.session model.isActive model.activeId)
+        VideoShow ->
+            (model, Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred model.session) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing ))
         ReceivePnum num ->
             let 
                 val = Decode.decodeValue Decode.int num
@@ -318,14 +322,14 @@ update msg model =
                             new = {old | page = ok, end_date = "", start_date = ""}
                         in
                         
-                        ({model | sendBody = new , pageNum = pageNum} , videoEncoder new model.session GetbodySecond)
+                        ({model | sendBody = new , pageNum = pageNum} , videoEncoder new model.session Getbody)
                     else
                         let
                             old = model.sendBody
                             new = {old | page = ok}
                         in
                         
-                        ({model | sendBody = new , pageNum = pageNum} , videoEncoder new model.session GetbodySecond)
+                        ({model | sendBody = new , pageNum = pageNum} , videoEncoder new model.session Getbody)
                 Err err ->
                     (model, Cmd.none)
         GetMyInfo (Err err) ->
@@ -518,22 +522,16 @@ update msg model =
                                 ( newModel, cmd )
                    )
         GotSession session ->
-            ({model | session = session}
-            ,  case model.errType of
+             case model.errType of
                 "VideoShowResult" ->
-                    Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred session) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
+                    update VideoShow {model | session = session}
                 "GoActive" ->
-                    activeEncode session model.isActive model.activeId
+                    update Active {model | session = session}
                 "Getbody" ->
-                    Cmd.batch
-                    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-                    -- , videoEncoder model.sendBody session Getbody
-                    ]
-                "GetbodySecond" ->
-                    videoEncoder model.sendBody session GetbodySecond
+                    update Search {model | session = session}
                 _ ->
-                    Cmd.none
-            )
+                    (model, Cmd.none)
+            
         GoActive (Ok ok) ->
             if model.dateModel == "all" then
                 (model, videoEncoder (allListDataSetComplete (oldModel model)) model.session Getbody)
@@ -573,9 +571,15 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | pageNum = 1, sendBody = new}, videoEncoder new model.session Getbody)
+            ({model | pageNum = 1, sendBody = new}, 
+            Cmd.batch
+             [ videoEncoder new model.session Getbody
+             , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
             else
-            ({model | sendBody = date , pageNum = 1}, videoEncoder date model.session Getbody)
+            ({model | sendBody = date , pageNum = 1}, 
+            Cmd.batch
+             [ videoEncoder date model.session Getbody
+             , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (D.muserInfo)])
         Reset ->
             let
                 list = 
@@ -647,12 +651,12 @@ update msg model =
             [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
             , Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)])
         Getbody (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "Getbody"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "Getbody"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
         GetbodySecond (Ok ok)->
             ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Cmd.none)

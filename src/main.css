@@ -1341,7 +1341,7 @@ textarea.editorStyle {
 .disabledWrap {
   width: 100%;
   position: absolute;
-  height: 409px;
+  height: 451px;
   background-color: #80808038;
   text-align: center;
   font-weight: bold;
@@ -1601,4 +1601,11 @@ textarea.editorStyle {
     text-align: left;
     font-size: 12px;
     text-indent: 1rem;
+}
+
+.noCheckInfo {
+  padding: 0 1rem 1rem;
+  display: inline-block;
+  font-size: .9rem;
+  color: #de0430;
 }

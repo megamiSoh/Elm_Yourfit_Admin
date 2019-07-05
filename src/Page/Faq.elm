@@ -185,6 +185,7 @@ type Msg
     | UseGo Bool String
     | SuccessUse (Result Http.Error Decoder.Success)
     | ReceivePnum Encode.Value
+    | Use
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -202,6 +203,13 @@ update msg model =
         old = model.sendData
     in
     case msg of
+        Use ->
+            let
+                body = Encode.object
+                    [("is_use", Encode.bool (not model.use))]
+                    |> Http.jsonBody
+            in
+            (model, Api.post (Endpoint.faqUse model.useId) (Session.cred model.session) SuccessUse body (Decoder.result))
         ReceivePnum num ->
             let 
                 val = Decode.decodeValue Decode.int num
@@ -235,9 +243,9 @@ update msg model =
                     (model, Cmd.none)
         SuccessUse (Ok ok) ->
             if model.dateModel == "all" then
-            (model, faqEncoder send model.session "" "")
+            (model, faqEncoder model.sendData model.session "" "")
             else
-            (model, faqEncoder send model.session old.start_date old.end_date)
+            (model, faqEncoder model.sendData model.session old.start_date old.end_date)
         SuccessUse (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -265,26 +273,14 @@ update msg model =
         --     else 
         --     (model, Cmd.none)
         GotSession session ->
-            let
-                body = Encode.object
-                    [("is_use", Encode.bool (not model.use))]
-                    |> Http.jsonBody
-            in
-            
-            ( {model | session = session },
             case model.errType of
                 "GetMyInfo" ->
-                    Cmd.batch
-                    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-                    , if model.dateModel == "all" then
-                        faqEncoder send session "" ""
-                        else
-                        faqEncoder send session old.start_date old.end_date]
+                    update Search {model | session = session }
                 "SuccessUse" ->
-                    Api.post (Endpoint.faqUse model.useId) (Session.cred session) SuccessUse body (Decoder.result)
+                    update Use {model | session = session }
                 _ ->
-                    Cmd.none
-                    )
+                    (model, Cmd.none)
+                    
             
         PageBtn (idx, str) ->
             let
@@ -333,9 +329,15 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | pageNum = 1}, faqEncoder date model.session "" "")
+            ({model | pageNum = 1}, 
+            Cmd.batch
+            [ faqEncoder date model.session "" ""
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
             else
-            ({model | sendData = date , pageNum = 1}, faqEncoder date model.session old.start_date old.end_date)
+            ({model | sendData = date , pageNum = 1}, 
+            Cmd.batch 
+            [ faqEncoder date model.session old.start_date old.end_date
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =
@@ -430,12 +432,6 @@ update msg model =
         GetListData (Ok ok)->
             ({model | faqList = ok}, Cmd.none)
         GetListData (Err err)->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetListData"}, Api.changeInterCeptor (Just error))
-            else 
             (model, Cmd.none)
         NoOp ->
             ( model, Cmd.none )

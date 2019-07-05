@@ -212,9 +212,9 @@ videoPage page=
         |> required "title" string
         |> required "total_count" int
     
-videoDetailDecoder detaildata data item point =
+videoDetailDecoder detaildata data item point age =
     Decode.succeed detaildata
-        |> required "data" (videodetail data item point )
+        |> required "data" (videodetail data item point age)
 videoFilterDecoder detaildata item page=
     Decode.succeed detaildata
         |> required "data" (Decode.list (videoFilterItem item) )
@@ -240,7 +240,7 @@ videoPaginate page =
 --         |> required "id" int
 --         |> required "title" string
 
-videoFilterItem item=
+videoFilterItem item =
     Decode.succeed item
         |> optional "difficulty_name" (Decode.map Just string) Nothing
         |> optional "exercise_name"  (Decode.map Just string) Nothing
@@ -254,7 +254,7 @@ videoFilterItem item=
         |> required "duration" string
 
 
-videodetail data item point =
+videodetail data item point age =
     Decode.succeed data
         |> required "difficulty_code" string
         |> required "difficulty_name" string
@@ -267,6 +267,7 @@ videodetail data item point =
         |> optional "is_male" (Decode.map Just bool) Nothing
         |> required "is_pay" bool
         |> optional "exercise_points" (Decode.map Just ((Decode.list (exercise_points point)))) Nothing
+        |> optional "age_ranges" (Decode.map Just ((Decode.list (exercise_points age)))) Nothing
 exercise_points point = 
     Decode.succeed point
         |> required "code" string
@@ -484,3 +485,12 @@ pointCodeData item =
     Decode.succeed item
         |> required "code" string
         |> required "name" string
+
+-- yfAgeData = 
+--     Decode.succeed data
+--         |> required "data" (Decode.list (yfAge item))
+
+-- yfAge item = 
+--     Decode.succeed item
+--         |> required "code" string
+--         |> required "name" string

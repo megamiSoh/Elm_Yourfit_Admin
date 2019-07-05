@@ -138,9 +138,7 @@ init session =
         , choidId = ""
         }
         , Cmd.batch[ 
-        Api.post Endpoint.authCode (Session.cred session) GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
-        , Api.post Endpoint.authMenu (Session.cred session) GetMenu Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
-        , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
+       Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
         )
 
 encoderSendBody model session= 
@@ -208,7 +206,11 @@ update msg model =
             else 
             (model, Cmd.none)
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, 
+            Cmd.batch 
+            [  Api.post Endpoint.authMenu (Session.cred model.session) GetMenu Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
+            , Api.post Endpoint.authCode (Session.cred model.session) GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
+            ] )
         GotSession session ->
             let
                 sort =  List.sortBy .menu_id model.registData
@@ -220,14 +222,10 @@ update msg model =
             
                 "RegistSuccess" ->
                     registEncoder sort model session
-                "GetMenu" ->
-                    Api.post Endpoint.authMenu (Session.cred session) GetMenu Http.emptyBody (D.authMenusDecoder Authmenus Authmenu)
-                "GetCode" ->
-                    Api.post Endpoint.authCode (Session.cred session) GetCode Http.emptyBody (D.authCodeDecoder AuthCodes AuthCode)
-                "GetUser" ->
-                    Api.get  GetUser (Endpoint.userDetail model.choidId) (Session.cred session) (D.userdataDecoder Data User GetBody)
                 "GetData" ->
                     encoderSendBody model.sendBody session
+                "GetUser" ->
+                    Api.get  GetUser (Endpoint.userDetail model.choidId) (Session.cred model.session) (D.userdataDecoder Data User GetBody)
                 _ ->
                     Cmd.none
             

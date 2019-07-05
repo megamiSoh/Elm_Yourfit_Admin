@@ -376,12 +376,12 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
         GetList (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
         GetList (Ok item) ->
             ( {model | resultForm = item}, Cmd.none )
@@ -416,9 +416,15 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | pageNum = 1}, managelist list model.session)
+            ({model | pageNum = 1}, 
+            Cmd.batch
+            [ managelist list model.session
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)] )
             else
-            ({model | listForm = date, pageNum = 1 }, managelist date model.session)
+            ({model | listForm = date, pageNum = 1 }, 
+            Cmd.batch
+            [ managelist date model.session
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo) ])
         Reset ->
             let
                 old =  model.listForm
@@ -439,11 +445,8 @@ update msg model =
                 [ Cmd.map DatePickerMsg datePickerCmd
                 , Cmd.map EndDatePickerMsg enddatePickerCmd])
         GotSession session ->
-            ({model | session = session}
-            , Cmd.batch
-            [ managelist listInit session
-            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) ]
-            )
+            update Search {model | session = session}
+            
         
         GetUserId id ->
             let

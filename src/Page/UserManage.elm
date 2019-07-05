@@ -319,27 +319,23 @@ update msg model =
         DateValue str->
             ({model | dateModel = str},Cmd.none)
         GetList (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
-            else 
+            -- let
+            --     error = Api.decodeErrors err
+            -- in
+            -- if error == "401"then
+            -- ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
+            -- else 
             (model, Cmd.none)
 
         GetList (Ok item) ->
-            ( {model | resultForm = item, dataForm = item.data}, Cmd.none )
+            ( {model | resultForm = item, dataForm = item.data}
+            , Cmd.none )
         EndShow ->
             ( {model | endShow = not model.endShow, show = False}, Cmd.none )
         Show ->
             ( {model | show = not model.show, endShow = False }, Cmd.none )
         GotSession session ->
-            ({model | session = session}
-            , Cmd.batch 
-            [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            , managelist listInit session
-            ]
-            )
+            update Search {model | session = session}
         EndDatePickerMsg datePickerMsg ->
             DatePicker.update datePickerMsg model.endDatePickerData
                 |> (\( data, cmd ) ->
@@ -453,9 +449,15 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | pageNum = 1}, managelist list model.session)
+            ({model | pageNum = 1},
+            Cmd.batch
+             [ managelist list model.session
+             , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
             else
-            ({model | listForm = date, pageNum = 1}, managelist date model.session)
+            ({model | listForm = date, pageNum = 1}, 
+            Cmd.batch
+            [ managelist date model.session
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
         Reset ->
             let
                 old = model.listForm

@@ -49,6 +49,7 @@ module Api.Endpoint exposing
     , faqDetail
     , faqEdit
     , pointCode
+    , yfAge
     )
 
 import Http
@@ -254,3 +255,6 @@ faqEdit id =
 
 pointCode = 
     url ["admin", "exercises", "exercise_point_code"][]
+
+yfAge = 
+    url ["admin", "exercises" , "age_range_codes"][]

@@ -70,7 +70,17 @@ type alias Model =
     , checkVal : List String
     , errType : String
     , previewId : Int
+    , checkAge : List String
+    , age : List Age
+    , ageData : List Age
     }
+
+type alias AgeData = 
+    { data : List Age }
+
+type alias Age =
+    { code : String
+    , name : String }
 
 type alias ScreenInfo = 
     { scrollHeight : Int
@@ -167,7 +177,8 @@ type alias DetailData =
     , description : Maybe String
     , is_male : Maybe Bool
     , is_pay : Bool
-    , exercise_points : Maybe (List CheckPoint)}
+    , exercise_points : Maybe (List CheckPoint)
+    , age_ranges : Maybe (List Age)}
 
 type alias CheckPoint = 
     { code : String
@@ -263,7 +274,7 @@ pointEncoded item =
     item
         |> List.map
             (\x ->
-                x
+                "\"" ++ x ++ "\""
             )
         |> String.join ","    
 
@@ -283,6 +294,7 @@ editVideo detaildata edit session id description model =
             , ("is_male", model.is_sex)
             , ("is_pay", model.is_pay)
             , ("exercise_points", "[" ++ pointEncoded model.checkVal ++"]")
+            , ("age_ranges",  "[" ++ pointEncoded model.checkAge ++"]")
             ]
 
             |> Http.stringBody "application/x-www-form-urlencoded"
@@ -330,7 +342,8 @@ init session =
                 , description = Nothing
                 , is_male = Nothing
                 , is_pay = False
-                , exercise_points = Nothing}
+                , exercise_points = Nothing
+                , age_ranges = Nothing}
         in
             ({ 
              filter = f
@@ -397,6 +410,9 @@ init session =
             , checkVal = []
             , errType = ""
             , previewId = 0
+            , checkAge = []
+            , age = []
+            , ageData = []
             }
             , Cmd.batch
             [ Api.getParams ()
@@ -433,10 +449,9 @@ type Msg
     | PlusMinusDeleteSet Int String Int
     | GoEdit 
     | GoEditApi(Result Http.Error Success)
-    -- | RetryRequest Session
-    -- | SessionCheck Encode.Value
+    | AgeCheck (String, String)
     | GotSession Session
-    -- | VideoRetry Session
+    | GetAgeData (Result Http.Error AgeData)
     | GetPreview (Int, String)
     | PreviewComplete (Result Http.Error PreviewWrap)
     | VideoClose
@@ -447,7 +462,7 @@ type Msg
     | Sex String
     | PointCheck (String, String)
     | GetPointData (Result Http.Error PointCodeWrap)
-
+    | AllAge
 
 takeLists idx model = 
     List.take idx model
@@ -458,6 +473,20 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        AllAge ->
+            ({model | checkAge = []}, Cmd.none)
+        GetAgeData (Ok ok) ->
+            ({model | age = ok.data}, Cmd.none)
+        GetAgeData (Err err) ->
+            (model, Cmd.none)
+        AgeCheck (code, name) ->
+            let
+                f = List.filter(\x -> x /= code) model.checkAge
+            in
+            if List.member code model.checkAge then
+            ({model | checkAge = f }, Cmd.none)
+            else
+            ({model | checkAge = code :: model.checkAge}, Cmd.none)
         GetPointData (Ok ok) ->
             ({model | pointCode = ok.data}, Cmd.none)
         GetPointData (Err err) ->
@@ -557,10 +586,10 @@ update msg model =
                     videoFilterResult model.filter session 1 model.per_page model.filtertitle
                 "GetData" ->
                     Cmd.batch
-                    [ Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint)
+                    [ Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint Age)
                      , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
                 _ ->
-                     Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint)
+                     Api.get GetData ( Endpoint.videoDetail model.getId) (Session.cred session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint Age)
                 )
         GoEditApi (Ok ok) ->
             update DetailOrEdit {model | loading = False}
@@ -911,26 +940,35 @@ update msg model =
             case idDecode of
                 Ok i ->
                     ({model | getId = i},
-                    Api.get GetData ( Endpoint.videoDetail i) (Session.cred model.session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint))
+                    Api.get GetData ( Endpoint.videoDetail i) (Session.cred model.session)  (D.videoDetailDecoder Detail DetailData ExerItem CheckPoint Age))
             
                 Err _ ->
                     (model , Cmd.none)    
 
         GetData (Ok ok) ->
             let
+                rangeAge = 
+                    case ok.data.age_ranges of
+                        Just list ->
+                            List.map (\x ->
+                            x.code
+                            ) list
+                    
+                        Nothing ->
+                            []
                 newInput text = 
                     text
                         |> String.replace "%26" "&"
                         |> String.replace "%25" "%"
-                justList = 
-                    case ok.data.exercise_points of
+                justList item = 
+                    case item of
                         Just list ->
                             list
                     
                         Nothing ->
                             []
                 checkStringCode = 
-                    List.map (\x -> x.code) justList
+                    List.map (\x -> x.code) (justList ok.data.exercise_points)
                 exerItem = 
                     List.map (\x -> 
                         { difficulty_name = x.difficulty_name
@@ -955,7 +993,7 @@ update msg model =
                     "") ,
               loading = False,
                resultFilterItem = exerItem
-               , checkPoint = justList
+               , checkPoint = justList ok.data.exercise_points 
                , checkVal = checkStringCode
                , is_sex = 
                 case ok.data.is_male of
@@ -971,6 +1009,8 @@ update msg model =
                         "true"
                     else
                         "false"
+                , checkAge = rangeAge
+                , ageData = justList ok.data.age_ranges
                 }, 
                 Cmd.batch 
                     [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
@@ -981,7 +1021,9 @@ update msg model =
                     , Api.post Endpoint.part (Session.cred model.session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
                     , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
                     , Api.post Endpoint.pointCode (Session.cred model.session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap CheckPoint)
-                    , videoFilterResult model.filter model.session model.page model.per_page model.filtertitle]
+                    , videoFilterResult model.filter model.session model.page model.per_page model.filtertitle
+                    , Api.post Endpoint.yfAge (Session.cred model.session) GetAgeData Http.emptyBody (D.pointCode AgeData Age)
+                    ]
                 
                 )
         GetData(Err err) ->
@@ -1074,6 +1116,8 @@ view model=
                 Pay
                 Sex
                 PointCheck
+                AgeCheck
+                AllAge
                 , videoShow "영상 미리보기" model.videoShow VideoClose
                 , validationErr model.validationErr model.validErrShow
             ]
@@ -1116,6 +1160,8 @@ view model=
                     Pay 
                     Sex
                     PointCheck
+                    AgeCheck
+                    AllAge
                 ]
                 , div [] [
                     videoShow "영상 미리보기" model.videoShow VideoClose

@@ -207,10 +207,13 @@ type Msg
     | PageBtn (Int, String)
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
     | ReceivePnum Encode.Value
+    | ShowList
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ShowList ->
+            (model, encodeList model.isActive model.activeId model.session)
         ReceivePnum num ->
             let
                 val = Decode.decodeValue Decode.int num
@@ -396,12 +399,6 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
         GetList (Err err) ->
-            let
-                error = Api.decodeErrors err
-            in
-            if error == "401"then
-            ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
-            else 
             (model, Cmd.none)
         GetList (Ok item) ->
             ( {model | resultForm = item}, Cmd.none )
@@ -421,9 +418,15 @@ update msg model =
             in
             
             if model.dateModel == "all" then
-            ({model | pageNum = 1}, managelist list model.session)
+            ({model | pageNum = 1}, 
+            Cmd.batch
+            [ managelist list model.session
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
             else
-            ({model | listInit = date , pageNum = 1}, managelist date model.session)
+            ({model | listInit = date , pageNum = 1}, 
+            Cmd.batch
+            [ managelist date model.session
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
         Reset ->
             let
                 ( datePickerData, datePickerCmd ) =
@@ -454,17 +457,20 @@ update msg model =
             ({model | listInit = new} , Cmd.none)
 
         GotSession session ->
-            ({model | session = session}
-            ,  case model.errType of
+            -- ({model | session = session}
+            case model.errType of
                 "GetList" ->
-                    Cmd.batch
-                    [ managelist listInitial session
-                    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
+                    update Search {model | session = session}
+                    -- Cmd.batch
+                    -- [ managelist listInitial session
+                    -- , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
                 "HttpResult" ->
-                    encodeList model.isActive model.activeId session
+                    update ShowList {model | session = session}
+                    -- encodeList model.isActive model.activeId session
                 _ ->
-                    managelist listInitial session
-            )
+                    (model, Cmd.none)
+                    -- managelist listInitial session
+            -- )
         GetId id ->
             let
                 encode = Encode.string id

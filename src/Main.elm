@@ -175,7 +175,7 @@ subscriptions model =
         UsermDmodel usermd->
             Sub.map UsermDmsg (UserMDetail.subscriptions usermd)
         AdminRmodel adminr ->
-            Sub.none
+            Sub.map AdminRmsg (AdminRegist.subscriptions adminr)
         AdminmDmodel adminmd ->
             Sub.map AdminmDmsg (AdminDetail.subscriptions adminmd)
         AdminEmodel admine ->

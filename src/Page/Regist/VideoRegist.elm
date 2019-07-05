@@ -65,7 +65,16 @@ type alias Model =
     , is_pay : String
     , errType : String
     , previewId : Int
+    , age : List Age
+    , checkAge : List String
     }
+
+type alias AgeData = 
+    { data : List Age }
+
+type alias Age =
+    { code : String
+    , name : String }
 
 type alias PointCodeWrap = 
     { data : List Pointcode}
@@ -236,7 +245,7 @@ directionEncoded object =
     object
         |> List.map
             (\x ->
-                x
+               "\"" ++ x ++ "\""
             )
         |> String.join ","
 
@@ -256,6 +265,7 @@ registVideo model edit session=
             , ("exercise_points", "[" ++ directionEncoded model.checkPoint ++ "]")
             , ("is_male" , model.is_sex)
             , ("is_pay", model.is_pay)
+            , ("age_ranges", "[" ++ directionEncoded model.checkAge ++ "]")
             ]
 
             |> Http.stringBody "application/x-www-form-urlencoded"
@@ -342,6 +352,8 @@ init session =
             , is_pay = "false"
             , errType = ""
             , previewId = 0
+            , age = []
+            , checkAge = []
             }
             , Cmd.batch
             [ Api.getParams ()
@@ -389,6 +401,9 @@ type Msg
     | PointCheck (String, String)
     | Pay String
     | Sex String
+    | GetAgeData (Result Http.Error AgeData)
+    | AgeCheck (String, String)
+    | AllAge
 
 takeLists idx model = 
     List.take idx model
@@ -399,6 +414,20 @@ dropLists idx model =
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
+        AllAge ->
+            ({model | checkAge = []}, Cmd.none)
+        GetAgeData (Ok ok) ->
+            ({model | age = ok.data}, Cmd.none)
+        GetAgeData (Err err) ->
+            (model, Cmd.none)
+        AgeCheck (code, name) ->
+            let
+                f = List.filter(\x -> x /= code) model.checkAge
+            in
+            if List.member code model.checkAge then
+            ({model | checkAge = f }, Cmd.none)
+            else
+            ({model | checkAge = code :: model.checkAge}, Cmd.none)
         Sex value ->
             ({model | is_sex = value }, Cmd.none)
         Pay value ->
@@ -477,7 +506,8 @@ update msg model =
             , Api.post Endpoint.part (Session.cred model.session) GetPartDetail Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , Api.post Endpoint.exerCode (Session.cred model.session) ExerCode Http.emptyBody (D.unitLevelsDecoder ListData SelectItem)
             , videoFilterResult model.filter model.session model.page model.per_page model.filtertitle
-            , Api.post Endpoint.pointCode (Session.cred model.session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap Pointcode)] )
+            , Api.post Endpoint.pointCode (Session.cred model.session) GetPointData Http.emptyBody (D.pointCode PointCodeWrap Pointcode)
+            , Api.post Endpoint.yfAge (Session.cred model.session) GetAgeData Http.emptyBody (D.pointCode AgeData Age)] )
         GotSession session ->
             ({model | session = session}
             , case model.errType of
@@ -494,7 +524,7 @@ update msg model =
             )
         GoEditApi (Ok ok) ->
             (model, Cmd.batch[Route.pushUrl (Session.navKey model.session) Route.Video, Api.showToast (Encode.string "등록되었습니다.")])
-        GoEditApi (Err err) ->
+        GoEditApi (Err err) -> 
             let
                 error = Api.decodeErrors err
             in
@@ -858,6 +888,8 @@ view model=
             PointCheck
             Pay
             Sex
+            AgeCheck
+            AllAge
             , videoShow "영상 미리보기" model.videoShow VideoClose
             , validationErr model.validationErr model.validErrShow
             ]
@@ -892,6 +924,8 @@ view model=
             PointCheck
             Pay
             Sex
+            AgeCheck
+            AllAge
             , div [] [
                 videoShow "영상 미리보기" model.videoShow VideoClose
             ]
