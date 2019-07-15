@@ -486,6 +486,62 @@ pointCodeData item =
         |> required "code" string
         |> required "name" string
 
+videoCodeData data item = 
+    Decode.succeed data
+        |> required "data" (Decode.list (videoCode item))
+
+videoCode item =
+    Decode.succeed item
+        |> required "code" string
+        |> required "name" string
+
+youtubeVideoData data info id snippet page thumb thumbItem = 
+    Decode.succeed data 
+        |> required "data" (Decode.list (videoDataInfo info id snippet thumb thumbItem))
+        |> required "paginate" (videoDataPage  page )
+
+videoDataInfo info id snippet thumb thumbItem= 
+    Decode.succeed info
+        |> required "etag" string
+        |> required "id" (videoId id)
+        |> required "kind" string
+        |> required "snippet" (videoSnippet snippet thumb thumbItem)
+
+
+videoId id = 
+    Decode.succeed id
+        |> required "kind" string
+        |> required "videoId" string
+
+videoSnippet snippet thumb thumbItem = 
+    Decode.succeed snippet 
+        |> required "channelId" string
+        |> required "channelTitle" string
+        |> required "description" string
+        |> required "liveBroadcastContent" string
+        |> required "publishedAt" string
+        |> required "thumbnails" (thumbnail thumb thumbItem)
+        |> required "title" string
+
+thumbnail thumb thumbItem = 
+    Decode.succeed thumb
+        |> required "default" (thumbnailItem thumbItem)
+        |> required "high" (thumbnailItem thumbItem)
+        |> required "medium" (thumbnailItem thumbItem)
+thumbnailItem thumbItem = 
+    Decode.succeed thumbItem
+        |> required "height" int
+        |> required "url"  string
+        |> required "width" int
+
+videoDataPage page = 
+    Decode.succeed page
+        |> required "next_token" string
+        |> required "page_token" string
+        |> required "per_page" int
+        |> required "prev_token" string
+        |> required "search_word" string
+        |> required "total_count" int
 -- yfAgeData = 
 --     Decode.succeed data
 --         |> required "data" (Decode.list (yfAge item))
@@ -494,3 +550,87 @@ pointCodeData item =
 --     Decode.succeed item
 --         |> required "code" string
 --         |> required "name" string
+
+apivideolist data api page=
+    Decode.succeed data
+        |> required "data" (Decode.list (apivideo api))
+        |> required "paginate" (apipaginate page)
+
+apivideo api = 
+    Decode.succeed api
+        |> required "category" string
+        |> required "id" int
+        |> required "inserted_at" string
+        |> required "is_use" bool
+        |> required "title" string
+
+apipaginate page =
+    Decode.succeed page
+        |> required "end_date" string
+        |> optional "is_use" (Decode.map Just bool) Nothing
+        |> required "page" int
+        |> required "per_page" int
+        |> required "start_date" string
+        |> required "title" string
+        |> required "total_count" int
+        |> required "video_code" string
+
+
+apiDetailData data snippet items pageinfo itemsnippet thumb thumbItem local= 
+    Decode.succeed data 
+        |> required "content" string
+        |> required "id" int
+        |> required "media_id" string
+        |> required "snippet" (apidetailSnippet snippet items pageinfo itemsnippet thumb thumbItem local)
+        |> required "title" string
+        |> required "video_code" int 
+
+apidetailSnippet snippet items pageinfo itemsnippet thumb thumbItem local= 
+    Decode.succeed snippet
+        |> required "etag" string
+        |> required "items" (Decode.list (apiDetailItems items itemsnippet local thumb thumbItem))
+        |> required "kind" string
+        |> required "pageInfo" (apidetailPageInfo pageinfo)
+
+apiDetailItems items itemSnippet local thumb thumbItem= 
+    Decode.succeed items 
+        |> required "etag" string
+        |> required "id" string
+        |> required "kind" string
+        |> required "snippet" (apidetailItemSnippet itemSnippet local thumb thumbItem)
+        |> required "title" string
+        
+
+apidetailPageInfo pageInfo = 
+    Decode.succeed pageInfo 
+        |> required "resultsPerPage" int
+        |> required "totalResults" int
+
+
+apidetailItemSnippet itemSnippet local thumb thumbItem= 
+    Decode.succeed itemSnippet 
+        |> required "categoryId" string
+        |> required "channelId" string
+        |> required "channelTitle" string
+        |> required "defaultAudoiLanguage" string
+        |> required "description" string
+        |> required "liveBroadCastContent" string
+        |> required "localized" (apidetailLocal local)
+        |> required "publishedAt" string
+        |> required "tags" (Decode.list string)
+        |> required "thumbnails" (apidetailThumb thumb thumbItem)
+    
+apidetailThumb thumb thumbItem=
+    Decode.succeed thumb 
+        |> required "default"  (apidetailThumbItem thumbItem)
+
+apidetailThumbItem thumbItem = 
+    Decode.succeed thumbItem 
+        |> required "height"  int
+        |> required "url"  string
+        |> required "width" int
+    
+apidetailLocal local = 
+    Decode.succeed local 
+        |> required "description" string
+        |> required "title" string

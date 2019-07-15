@@ -160,6 +160,7 @@ app.ports.storeCache.subscribe(function(token) {
 var t = JSON.stringify(token)
 if (token === null) {
   localStorage.removeItem("token")
+  localStorage.removeItem("refresh")
   alert ("로그아웃 되었습니다.")
   location.reload();
 } else {
@@ -217,6 +218,72 @@ app.ports.pageNum.subscribe(function(num) {
 
 }
 })
+
+app.ports.youtubeControl.subscribe(function () {
+  var iframes = document.querySelectorAll('iframe');
+    for (var i = 0; i < iframes.length; i++) {
+        iframes[i].parentNode.removeChild(iframes[i]);
+    }
+  var innerDiv = document.createElement('div');
+  innerDiv.id = 'player';
+  document.getElementById("playerHere").appendChild(innerDiv)
+})
+
+app.ports.youtubeVideo.subscribe(function (videoId) {
+  console.log(videoId)
+  var iframes = document.querySelectorAll('iframe');
+    for (var i = 0; i < iframes.length; i++) {
+        iframes[i].parentNode.removeChild(iframes[i]);
+    }
+  var innerDiv = document.createElement('div');
+  innerDiv.id = 'player';
+  document.getElementById("playerHere").appendChild(innerDiv)
+  var player;
+    player = new YT.Player('player', {
+      height: '270',
+      width: '640',
+      videoId: videoId,
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange
+      }
+    });
+  function onPlayerReady(event) {
+    event.target.playVideo();
+  }
+  var done = false;
+  function onPlayerStateChange(event) {
+    if (event.data == YT.PlayerState.PLAYING && !done) {
+      setTimeout(stopVideo, 6000);
+      done = true;
+    }
+  }
+  function stopVideo() {
+    player.stopVideo();
+  }
+})
+document.addEventListener('scroll', function(e) {
+  if (document.getElementById("searchHeight"))  {
+    
+   var scrTop = document.getElementById("searchHeight").scrollTop
+   var scrH = document.getElementById("searchHeight").scrollHeight
+   var scrofh = document.getElementById("searchHeight").offsetHeight
+   var total = scrTop + scrofh >= scrH
+   if (total) {
+     console.log(111)
+       app.ports.next.send(scrH)
+       
+   }
+  
+ }
+ else {
+   // console.log ("get outout")
+   return;
+ }
+}, 
+{ capture: true });
+
+
 
 registerServiceWorker();
 

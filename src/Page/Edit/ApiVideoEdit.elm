@@ -24,30 +24,30 @@ type alias Model =
     {
         popup : Bool,
         videoSelected : List VideoItem,
-        originVideo : List VideoItem,
+        -- originVideo : List VideoItem,
         videoShow : List VideoItem,
         session : Session
     }
 
 init : Session -> (Model, Cmd Msg)
 init session = 
-    let
-        initMapVideo =
-            List.map (
-                \item -> 
-                 {
-                     check = item.check,
-                     thumb = item.thumb,
-                     title = item.title,
-                     article = item.article
-                 }
-                ) videoList
-    in
+    -- let
+        -- initMapVideo =
+        --     List.map (
+        --         \item -> 
+        --          {
+        --              check = item.check,
+        --              thumb = item.thumb,
+        --              title = item.title,
+        --              article = item.article
+        --          }
+        --         ) videoList
+    -- in
     
     ({
         popup = False,
         videoSelected = [],
-        originVideo = initMapVideo,
+        -- originVideo = initMapVideo,
         videoShow = [],
         session = session
     }, Cmd.none)
@@ -67,13 +67,14 @@ update msg model =
         PopUpClose ->
             ({model | popup = False}, Cmd.none)
         SelectVideo idx ->
-            let
-                after =
-                    List.take (idx + 1) model.originVideo 
-                before =
-                    List.drop ( List.length after - 1 ) after
-            in
-                ({model | videoSelected = before ++ model.videoSelected}, Cmd.none)
+            -- let
+            --     after =
+            --         List.take (idx + 1) model.originVideo 
+            --     before =
+            --         List.drop ( List.length after - 1 ) after
+            -- in
+            --     ({model | videoSelected = before ++ model.videoSelected}, Cmd.none)
+            (model, Cmd.none)
         VideoResult ->
             ({model | videoShow = model.videoSelected, popup = False}, Cmd.none)
 
@@ -93,80 +94,80 @@ view model =
     , content = 
         div [ class "apiVideoRegistStyle"] [
             div [] [
-                ApiVideo.apiVideoLayout
-                "외부 API 영상 수정"
-                False
-                (routeEdit Route.ApiVideo Route.ApiVideo)
-                PopUpOpen
-                (selectedVideoList model)
-                (List.length model.videoShow)
-            ],
-            div [] [
-                layerPop model
+                -- ApiVideo.apiVideoLayout
+                -- "외부 API 영상 수정"
+                -- False
+                -- (routeEdit Route.ApiVideo Route.ApiVideo)
+                -- PopUpOpen
+                -- (selectedVideoList model)
+                -- (List.length model.videoShow)
+            -- ],
+            -- div [] [
+            --     layerPop model
             ]
         ]
         , menu = div [] []
     }
     
 
-selectedVideoList model=
-    if List.length model.videoShow > 0 then
-        videoResultLayout model
-    else
-        ApiVideo.noSelected
+-- selectedVideoList model=
+--     if List.length model.videoShow > 0 then
+--         videoResultLayout model
+--     else
+--         ApiVideo.noSelected
 
-videoListLayout =
-    div [class "apiVideoItem"] (
-        List.indexedMap (
-        \idx item -> ApiVideo.videoListLayout idx item SelectVideo
-    ) videoList
-    )
+-- videoListLayout =
+--     div [class "apiVideoItem"] (
+--         List.indexedMap (
+--         \idx item -> ApiVideo.videoListLayout idx item SelectVideo
+--     ) videoList
+--     )
 
-videoResultLayout model=
-    div [class "apiVideoItem"] (
-        List.indexedMap (
-        \idx item ->ApiVideo.videoResultLayout idx item DeleteItem
-    ) model.videoShow 
-    )
-
-
-layerPop model=
-    if model.popup then
-        ApiVideo.apiVideoList False (videoListLayout ) PopUpClose VideoResult
-    else
-        text ""
+-- videoResultLayout model=
+--     div [class "apiVideoItem"] (
+--         List.indexedMap (
+--         \idx item ->ApiVideo.videoResultLayout idx item DeleteItem
+--     ) model.videoShow 
+--     )
 
 
-videoList =
-    [
-        {   check = False,
-            thumb = "https://bulma.io/images/placeholders/128x128.png" ,
-            title = "운동 영상1",
-            article = "운동은 몸에 좋습니다."
-        },
-        {   check = False,
-            thumb = "https://bulma.io/images/placeholders/128x128.png" ,
-            title = "운동 영상2",
-            article = "운동은 몸에 좋습니다."
-        },
-         {   check = False,
-            thumb = "https://bulma.io/images/placeholders/128x128.png" ,
-            title = "운동 영상3",
-            article = "운동은 몸에 좋습니다."
-        },
-        {   check = False,
-            thumb = "https://bulma.io/images/placeholders/128x128.png" ,
-            title = "운동 영상4",
-            article = "운동은 몸에 좋습니다."
-        },
-        {   check = False,
-            thumb = "https://bulma.io/images/placeholders/128x128.png" ,
-            title = "운동 영상5",
-            article = "운동은 몸에 좋습니다."
-        },
-        {   check = False,
-            thumb = "https://bulma.io/images/placeholders/128x128.png" ,
-            title = "운동 영상6",
-            article = "운동은 몸에 좋습니다."
-        }
-    ]
+-- layerPop model=
+--     if model.popup then
+--         ApiVideo.apiVideoList False (videoListLayout ) PopUpClose VideoResult
+--     else
+--         text ""
+
+
+-- videoList =
+--     [
+--         {   check = False,
+--             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
+--             title = "운동 영상1",
+--             article = "운동은 몸에 좋습니다."
+--         },
+--         {   check = False,
+--             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
+--             title = "운동 영상2",
+--             article = "운동은 몸에 좋습니다."
+--         },
+--          {   check = False,
+--             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
+--             title = "운동 영상3",
+--             article = "운동은 몸에 좋습니다."
+--         },
+--         {   check = False,
+--             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
+--             title = "운동 영상4",
+--             article = "운동은 몸에 좋습니다."
+--         },
+--         {   check = False,
+--             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
+--             title = "운동 영상5",
+--             article = "운동은 몸에 좋습니다."
+--         },
+--         {   check = False,
+--             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
+--             title = "운동 영상6",
+--             article = "운동은 몸에 좋습니다."
+--         }
+--     ]

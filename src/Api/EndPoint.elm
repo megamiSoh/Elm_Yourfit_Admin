@@ -50,6 +50,12 @@ module Api.Endpoint exposing
     , faqEdit
     , pointCode
     , yfAge
+    , videoCode
+    , youtubeVideoApi
+    , youtubeRegist
+    , apilist
+    , apiIsactive
+    , apiDetail
     )
 
 import Http
@@ -258,3 +264,22 @@ pointCode =
 
 yfAge = 
     url ["admin", "exercises" , "age_range_codes"][]
+
+videoCode = 
+    url ["admin", "videos", "video_code"][]
+
+youtubeVideoApi =   
+    url ["admin", "videos", "search"][]
+
+youtubeRegist =
+    url ["admin", "videos", "new"][]
+
+apilist = 
+    url ["admin", "videos"][]
+
+apiIsactive id = 
+    url ["admin", "videos", id , "use"][]
+
+
+apiDetail id = 
+    url ["admin", "videos", id][]

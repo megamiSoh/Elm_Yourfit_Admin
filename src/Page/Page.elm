@@ -615,7 +615,7 @@ inputBtn ph read btn=
 
 
 -- textAreaEvent : String -> Bool -> String -> Html msg
-textAreaEvent  title read article msg=
+textAreaEvent  title read article msg =
        div[ class "field is-horizontal" ] [
            labelWrap title,
             div [ class "field-body inputWidth" ]
