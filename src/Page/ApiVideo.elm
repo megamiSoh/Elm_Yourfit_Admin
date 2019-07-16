@@ -168,6 +168,9 @@ type Msg
     | Reset
     | IsActive
     | GoDetail String
+    | GoDetailComplete Encode.Value
+    -- | Search
+    -- | Reset
 
 toSession : Model -> Session
 toSession model =
@@ -176,12 +179,38 @@ toSession model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Search ->
+            let
+                old = model.data.paginate
+                date = {old | page = 1}
+            in
+            
+            if model.dateModel == "all" then
+            ({model | pageNum = 1}, 
+            Cmd.batch
+            [ dataApi model.session 1 model.per_page model.title model.video_code "" ""
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.myProfileInfo)
+            , Api.pageNum (Encode.int 1)])
+            else
+            ({model | page = 1, pageNum = 1}, 
+            Cmd.batch 
+            [ dataApi model.session 1 model.per_page model.title model.video_code model.start_date model.end_date
+            , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.myProfileInfo)
+            , Api.pageNum (Encode.int 1)])
+        Reset ->
+            let
+                ( datePickerData, datePickerCmd ) =
+                    DatePicker.init "my-datepicker"
+                ( endDatePickerData, enddatePickerCmd) = 
+                    DatePicker.init "my-datepicker"
+            in
+            
+            ({model | page = 1, title = "", video_code = "",  datePickerData = datePickerData, endDatePickerData = endDatePickerData, dateModel ="all"}, 
+            Cmd.batch
+                [ Cmd.map DatePickerMsg datePickerCmd
+                , Cmd.map EndDatePickerMsg enddatePickerCmd])
         IsActive ->
             ({model | shareShow = not model.shareShow}, Cmd.none)
-        Search ->
-            (model, Cmd.none)
-        Reset ->
-            (model, Cmd.none)
         TitleSearch title ->
             ({model | title = title}, Cmd.none)
         CategoryEvent code ->
@@ -317,11 +346,15 @@ update msg model =
             , videoCodeApi model.session] )
         GoDetail id ->
             (model, Cmd.batch[Api.saveData (Encode.string id)
-            , Route.pushUrl (Session.navKey model.session) Route.ApiDetail])
+            ])
+        GoDetailComplete go ->
+            (model,Route.pushUrl (Session.navKey model.session) Route.ApiDetail)
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
+    Sub.batch
+    [ Session.changes GotSession (Session.navKey model.session)
+    , Api.saveCheck GoDetailComplete]
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
@@ -349,7 +382,7 @@ view model =
                 columnsHtml [
                     selectForm "카테고리" False model.videoCode CategoryEvent "" model.video_code
                     , formInputEvent "제목" "제목을 입력 해 주세요." False TitleSearch model.title,
-                    searchBtn
+                    searchB Search Reset
                 ]
                 
             ],

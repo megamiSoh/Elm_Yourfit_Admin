@@ -526,8 +526,6 @@ videoSnippet snippet thumb thumbItem =
 thumbnail thumb thumbItem = 
     Decode.succeed thumb
         |> required "default" (thumbnailItem thumbItem)
-        |> required "high" (thumbnailItem thumbItem)
-        |> required "medium" (thumbnailItem thumbItem)
 thumbnailItem thumbItem = 
     Decode.succeed thumbItem
         |> required "height" int
@@ -575,6 +573,9 @@ apipaginate page =
         |> required "total_count" int
         |> required "video_code" string
 
+apiDetailDataWrap dataWrap data snippet items pageinfo itemsnippet thumb thumbItem local = 
+    Decode.succeed dataWrap 
+        |> required "data" (apiDetailData data snippet items pageinfo itemsnippet thumb thumbItem local) 
 
 apiDetailData data snippet items pageinfo itemsnippet thumb thumbItem local= 
     Decode.succeed data 
@@ -583,7 +584,7 @@ apiDetailData data snippet items pageinfo itemsnippet thumb thumbItem local=
         |> required "media_id" string
         |> required "snippet" (apidetailSnippet snippet items pageinfo itemsnippet thumb thumbItem local)
         |> required "title" string
-        |> required "video_code" int 
+        |> required "video_code" string
 
 apidetailSnippet snippet items pageinfo itemsnippet thumb thumbItem local= 
     Decode.succeed snippet
@@ -598,7 +599,7 @@ apiDetailItems items itemSnippet local thumb thumbItem=
         |> required "id" string
         |> required "kind" string
         |> required "snippet" (apidetailItemSnippet itemSnippet local thumb thumbItem)
-        |> required "title" string
+        -- |> required "title" string
         
 
 apidetailPageInfo pageInfo = 
@@ -612,13 +613,14 @@ apidetailItemSnippet itemSnippet local thumb thumbItem=
         |> required "categoryId" string
         |> required "channelId" string
         |> required "channelTitle" string
-        |> required "defaultAudoiLanguage" string
+        -- |> required "defaultAudoiLanguage" string
         |> required "description" string
-        |> required "liveBroadCastContent" string
+        |> required "liveBroadcastContent" string
         |> required "localized" (apidetailLocal local)
         |> required "publishedAt" string
-        |> required "tags" (Decode.list string)
+        -- |> required "tags" (Decode.list string)
         |> required "thumbnails" (apidetailThumb thumb thumbItem)
+        |> required "title" string
     
 apidetailThumb thumb thumbItem=
     Decode.succeed thumb 

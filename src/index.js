@@ -268,13 +268,11 @@ document.addEventListener('scroll', function(e) {
    var scrTop = document.getElementById("searchHeight").scrollTop
    var scrH = document.getElementById("searchHeight").scrollHeight
    var scrofh = document.getElementById("searchHeight").offsetHeight
-   var total = scrTop + scrofh >= scrH
+   var total = scrTop + scrofh + 1 >= scrH
    if (total) {
-     console.log(111)
        app.ports.next.send(scrH)
        
    }
-  
  }
  else {
    // console.log ("get outout")

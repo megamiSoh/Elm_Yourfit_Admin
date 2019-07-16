@@ -672,7 +672,7 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
 }
 .apiVideoItem {
   /* border: 1px solid gray; */
-  border-radius: 5px;
+  /* border-radius: 5px; */
   /* max-height: 300px; */
   /* min-height: 200px; */
   /* overflow-y: scroll; */
@@ -690,7 +690,10 @@ label {vertical-align: -webkit-baseline-middle; display: inline-block;padding-ri
   font-weight: bold;
 }
 .apiVideoItem .media{ 
-  padding: 1rem;
+  /* padding: 1rem; */
+  height: 155px;
+  overflow: hidden;
+  padding-top: 0;
 }
 .btnWrap {
   margin: .6rem;
@@ -1665,6 +1668,9 @@ textarea.editorStyle {
   align-items: center;
   justify-content: center;
 
+}
+.youtubeApi_container:last-child {
+  /* height: 152px; */
 }
 .youtubeApi_content {
   padding: 1rem;

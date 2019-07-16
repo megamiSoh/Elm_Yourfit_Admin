@@ -56,6 +56,7 @@ module Api.Endpoint exposing
     , apilist
     , apiIsactive
     , apiDetail
+    , apiedit
     )
 
 import Http
@@ -283,3 +284,6 @@ apiIsactive id =
 
 apiDetail id = 
     url ["admin", "videos", id][]
+
+apiedit id = 
+    url ["admin", "videos", id, "edit"][]

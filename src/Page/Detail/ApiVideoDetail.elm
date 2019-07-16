@@ -24,16 +24,92 @@ type alias VideoItem = {
     article : String
     }
 
+
+
 type alias Model = 
-    {
-        popup : Bool,
-        videoSelected : List VideoItem,
-        -- originVideo : List VideoItem,
-        videoShow : List VideoItem,
-        session : Session
-        , menus : List Menus
-        , detailId : String
+    { popup : Bool
+    , videoSelected : List VideoItem
+    -- , originVideo : List VideoItem
+    , videoShow : List VideoItem
+    , session: Session
+    , menus : List Menus
+    , videoCode : List VideoCode
+    , selectVideoCode: String
+    , page_token : String
+    , per_page : Int
+    , keyword : String
+    , videoData : VideoData
+    , preview : Bool
+    , previewtitle : String
+    , selectedVideo : VideoDataInfo
+    , selectVideo : String
+    , description : String
+    , title : String
+    , detailData : Data
+    , detailId : String
+    , isShow : Bool
+    , is_edit : Bool
+    , videoId : String
     }
+    
+
+type alias VideoData = 
+    { data : List VideoDataInfo 
+    , paginate : Paginate}
+
+type alias VideoDataInfo = 
+    { etag : String
+    , id : VideoId 
+    , kind : String
+    , snippet : VideoSnippet
+    }
+
+type alias VideoId = 
+    { kind : String
+    , videoId : String}
+
+type alias VideoSnippet = 
+    { channelId : String
+    , channelTitle : String
+    , description: String
+    , liveBroadcastContent : String
+    , publishedAt : String
+    , thumbnails : Thumbnail
+    , title : String
+    }
+type alias Paginate = 
+    { next_token : String
+    , page_token : String
+    , per_page : Int
+    , prev_token: String
+    , search_word: String
+    , total_count : Int }
+
+type alias Thumbnail = 
+    { default : ThumbnailItem
+    }
+type alias ThumbnailItem =
+    { height: Int
+    , url: String
+    , width : Int }
+
+
+type alias VideoCodeData = 
+    { data : List VideoCode}
+
+type alias VideoCode = 
+    { code : String
+    , name : String }
+
+type alias Menus =
+    {
+        menu_auth_code: List String,
+        menu_id : Int,
+        menu_name : String
+    }
+
+type alias DataWrap = 
+    { data : Data }
 
 type alias Data = 
     { content : String
@@ -41,7 +117,9 @@ type alias Data =
     , media_id : String
     , snippet : Snippet
     , title : String
-    , video_code : Int }
+    , video_code : String
+     }
+
 
 type alias Snippet = 
     { etag : String
@@ -54,7 +132,6 @@ type alias Items =
     , id : String
     , kind : String
     , snippet : ItemSnippet
-    , title : String
      }
 
 type alias PageInfo = 
@@ -65,13 +142,14 @@ type alias ItemSnippet =
     { categoryId : String
     , channelId : String
     , channelTitle : String
-    , defaultAudoiLanguage : String
+    -- , defaultAudoiLanguage : String
     , description : String
-    , liveBroadCastContent : String
+    , liveBroadcastContent : String
     , localized : Local
     , publishedAt : String
-    , tags : List String
+    -- , tags : List String
     , thumbnails : Thumb
+    , title : String
     }
 
 type alias Thumb = 
@@ -87,40 +165,114 @@ type alias Local =
     , title : String}
 
 
-type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
-    }
+formUrlencoded object =
+    object
+        |> List.map
+            (\( name, value ) ->
+                name
+                    ++ "="
+                    ++ value
+            )
+        |> String.join "&"
+--  "\"" ++++ "\""
+editForm model session =
+    let
+        list=
+            formUrlencoded
+            [ ("video_code", model.selectVideoCode )
+            , ("title", model.title)
+            , ("media_id", model.selectedVideo.id.videoId)
+            , ("content", model.description)]
+            |> Http.stringBody "application/x-www-form-urlencoded"
+    in
+    Api.post (Endpoint.apiedit model.detailId) (Session.cred session) EditComplete list (Decoder.resultDecoder Decoder.Success)
 
 detailApi session id = 
-    Api.post (Endpoint.apiDetail id) (Session.cred session) DetailComplete Http.emptyBody  (Decoder.apiDetailData Data Snippet Items PageInfo ItemSnippet Thumb ThumbItem Local)
-    
+    Api.get DetailComplete (Endpoint.apiDetail id) (Session.cred session)  (Decoder.apiDetailDataWrap DataWrap Data Snippet Items PageInfo ItemSnippet Thumb ThumbItem Local)   
+
+videoDataApi session page_token per_page keyword = 
+    let
+        body = 
+            Encode.object
+                [ ("page_token", Encode.string page_token)
+                , ("per_page", Encode.int per_page)
+                , ("keyword", Encode.string keyword)]
+                |> Http.jsonBody
+    in
+    Api.post Endpoint.youtubeVideoApi (Session.cred session) VideoDataComplete body (Decoder.youtubeVideoData VideoData VideoDataInfo VideoId VideoSnippet Paginate Thumbnail ThumbnailItem )
+
+videoCodeApi session = 
+    Api.post Endpoint.videoCode (Session.cred session) VideoCodeComplete Http.emptyBody (Decoder.videoCodeData VideoCodeData VideoCode)
 
 init : Session -> (Model, Cmd Msg)
 init session = 
-    -- let
-        -- initMapVideo =
-        --     List.map (
-        --         \item -> 
-        --          {
-        --              check = item.check,
-        --              thumb = item.thumb,
-        --              title = item.title,
-        --              article = item.article
-        --          }
-        --         ) videoList
-    -- in
-    
     ({
         popup = False,
         videoSelected = [],
         -- originVideo = initMapVideo,
-        videoShow = [],
-        session = session 
+        videoShow = []
         , menus = []
+        , videoCode = []
+        , session = session
+        , selectVideoCode = "10"
+        , page_token = ""
+        , per_page = 10
+        , keyword = ""
+        , videoData = 
+            { data = []
+            , paginate = 
+                { next_token = ""
+                , page_token = ""
+                , per_page = 0
+                , prev_token = ""
+                , search_word = ""
+                , total_count = 0}
+            }
+        , preview = False
+        , previewtitle = ""
+        , selectedVideo = 
+            { etag = ""
+            , id = 
+                { kind = ""
+                , videoId = ""
+                }
+            , kind = ""
+            , snippet = 
+                { channelId = ""
+                , channelTitle = ""
+                , description= ""
+                , liveBroadcastContent = ""
+                , publishedAt = ""
+                , thumbnails = 
+                    { default  = 
+                        { height= 0
+                        , url= ""
+                        , width = 0 }
+                    }
+                , title = ""}
+            }
+        , selectVideo = "Search"
+        , description = ""
+        , title = ""
+        , detailData = 
+            { content = ""
+            , id = 0
+            , media_id = ""
+            , snippet = 
+                { etag = ""
+                , items = []
+                , kind = ""
+                , pageInfo = 
+                    { resultsPerPage = 0
+                    , totalResults = 0}
+                    }
+            , title = ""
+            , video_code = ""
+            }
         , detailId = ""
+        , isShow = True
+        , is_edit = False
+        , videoId = ""
     }, Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
     , Api.getParams ()])
@@ -131,19 +283,32 @@ toSession model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
+    Sub.batch 
     [ Session.changes GotSession (Session.navKey model.session)
+    , Api.next GoNextPage
     , Api.params ReceiveId]
 
 type Msg 
     = PopUpOpen 
     | PopUpClose 
-    | SelectVideo Int 
+    | SelectVideo String Int
     | VideoResult 
     | DeleteItem Int 
+    | GetMyInfo (Result Http.Error Decoder.DataWrap) 
     | GotSession Session
-    | GetMyInfo (Result Http.Error Decoder.DataWrap)
-    | DetailComplete (Result Http.Error Data)
+    | VideoCodeComplete (Result Http.Error VideoCodeData)
+    | CategoryEvent String
+    | VideoDataComplete (Result Http.Error VideoData)
+    | VideoSearchInput String
+    | VideoSearch
+    | VideoPreview Int String
+    | EndofVideo
+    | GoNextPage Encode.Value
+    | TextAreaMsg String
+    | TitleInput String
+    | EditGo 
+    | EditComplete (Result Http.Error Decoder.Success)
+    | DetailComplete (Result Http.Error DataWrap)
     | ReceiveId Encode.Value
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -158,12 +323,105 @@ update msg model =
                     (model, Cmd.none)
            
         DetailComplete (Ok ok) ->
-            (model, Cmd.none)
+            case List.head ok.data.snippet.items of
+                Just get ->
+                    let
+                        name = model.selectedVideo
+                    in
+                    
+                    ({model | detailData = ok.data, selectVideoCode = ok.data.video_code, title = ok.data.title, description = ok.data.content
+                    , keyword = ok.data.media_id
+                    , selectVideo = "selectNSearch"
+                    }, videoDataApi model.session "" 1 ok.data.media_id)
+                Nothing ->
+                    (model, Cmd.none)
+            
         DetailComplete (Err err) ->
+            (model, Cmd.none)
+        EditComplete (Ok ok) ->
+            ({model | selectVideo = "Search"},  videoDataApi model.session "" model.per_page model.videoId)
+        EditComplete (Err err) ->
+            (model, Cmd.none)
+        EditGo ->
+            if model.is_edit then
+            ({model | is_edit = not model.is_edit, isShow = not model.isShow}, editForm model model.session)
+            else
+            ({model | is_edit = not model.is_edit, isShow = not model.isShow}, Cmd.none)
+        TitleInput title ->
+            ({model| title = title }, Cmd.none)
+        TextAreaMsg article ->
+            ({model | description = article}, Cmd.none)
+        GoNextPage next ->
+            if List.length model.videoData.data >= model.videoData.paginate.total_count || model.selectVideo == "next" then
+            (model, Cmd.none)
+            else
+            ({model | selectVideo = "next"}, videoDataApi model.session model.page_token model.per_page model.keyword)
+        EndofVideo ->
+            ({model | preview = False, previewtitle = ""}, Api.youtubeControl ())
+        VideoPreview idx videoId ->
+            ({model | preview = True, previewtitle = String.fromInt idx}, Api.youtubeVideo (Encode.string videoId))
+        VideoSearchInput keyword ->
+            ({model | keyword = keyword}, Cmd.none)
+        VideoSearch ->
+            ({model | selectVideo = "Search"},  videoDataApi model.session "" model.per_page model.keyword)
+        VideoDataComplete (Ok ok) ->
+            case model.selectVideo of
+                "next" ->  
+                    let
+                        old = model.videoData
+                        new = 
+                            { old | data = old.data ++ ok.data
+                            , paginate = ok.paginate}
+                    in
+                    
+                    ({model | videoData = new, page_token = ok.paginate.next_token, selectVideo = ""},Cmd.none) 
+                "Search" ->
+                    ({model | videoData = ok, page_token = ok.paginate.next_token},Cmd.none)        
+            
+                "select" ->
+                    let
+                        data = 
+                            List.head ok.data
+                    in
+                    
+                    ({model | selectedVideo = 
+                        case data of
+                            Just a ->
+                                a
+                        
+                            Nothing ->
+                                model.selectedVideo
+                    },Cmd.none)
+                "selectNSearch" ->
+                    let
+                        data = 
+                            List.head ok.data
+                    in
+                    
+                    ({model | selectedVideo = 
+                        case data of
+                            Just a ->
+                                a
+                        
+                            Nothing ->
+                                model.selectedVideo
+                    , videoData = ok, page_token = ok.paginate.next_token
+                    },Cmd.none)
+                _ ->
+                    ({model | videoData = ok},Cmd.none)
+            
+        VideoDataComplete (Err err) ->
+            (model, Cmd.none)
+        CategoryEvent category ->
+            ({model | selectVideoCode = category}, Cmd.none)
+        VideoCodeComplete (Ok ok) ->
+            ({model | videoCode = ok.data}, Cmd.none)
+        VideoCodeComplete (Err err) ->
             (model, Cmd.none)
         GotSession session ->
             ({model | session = session},
-                 Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                 Cmd.batch[Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+                 , videoCodeApi session]
             )
         GetMyInfo (Err err) ->
             let
@@ -173,104 +431,98 @@ update msg model =
             (model, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
+
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, Cmd.none )
+            ( {model |  menus = item.data.menus}, 
+            Cmd.batch [videoCodeApi model.session
+            ] )
         PopUpOpen ->
-            (model, Cmd.none)
+            ({model | popup = True}, 
+            videoDataApi model.session model.page_token model.per_page model.keyword
+            )
         PopUpClose ->
-            (model, Cmd.none)
-        SelectVideo idx ->
-            (model, Cmd.none)
+            ({model | popup = False}, Cmd.none)
+        SelectVideo id idx->
+            -- let
+            --     after =
+            --         List.take (idx + 1) model.originVideo 
+            --     before =
+            --         List.drop ( List.length after - 1 ) after
+            -- in
+            --     ({model | videoSelected = before ++ model.videoSelected}, Cmd.none)
+            ({model | selectVideo = "select", previewtitle = String.fromInt idx, videoId = id}, videoDataApi model.session "" model.per_page id)
         VideoResult ->
-            (model, Cmd.none)
+            ({model | videoShow = model.videoSelected, popup = False}, Cmd.none)
+
         DeleteItem idx ->
-            (model, Cmd.none)
+            let
+                after =
+                    List.take idx model.videoSelected 
+                before =
+                    List.drop ( idx + 1 ) model.videoSelected
+            in
+                ({model | videoShow = after ++ before, videoSelected = after++before}, Cmd.none)
 
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
-    { title = "외부 API 영상 상세"
+    { title = "외부 API 영상 정보"
     , content = 
         div [ class "apiVideoRegistStyle"] [
-        div [] [
-            -- ApiVideo.apiVideoLayout
-            -- "외부 API 영상 상세"
-            -- True
-            -- (routeDetail Route.ApiEdit Route.ApiVideo)
-            -- PopUpOpen
-            -- (selectedVideoList model)
-            -- (List.length model.videoShow)
-        -- ],
-        -- div [] [
-        --     layerPop model
-        ]
+        div [] 
+            [ columnsHtml [
+            -- pageTitle "외부 API 영상 등록" 
+            ]
+            , layerPop model
+            , ApiVideo.apiVideoLayout
+            "외부 Api 영상 정보"
+            model.isShow
+            CategoryEvent
+            model.videoCode
+            model.selectVideoCode
+            model.selectedVideo
+            model.description
+            TextAreaMsg
+            model.title
+            TitleInput
+            ]
+            , div [ class "buttons" ] [
+                    div [ class "button is-primary cursur", onClick EditGo] [text (if model.is_edit then "등록" else "수정")],
+                    a [ class "button is-warning", Route.href (Just Route.ApiVideo) ] [text "취소"]
+                ]
         ]
         , menu =  
-        aside [ class "menu"] [
-            ul [ class "menu-list yf-list"] 
-                (List.map Page.viewMenu model.menus)
-        ]
+    aside [ class "menu"] [
+        ul [ class "menu-list yf-list"] 
+            (List.map Page.viewMenu model.menus)
+    ]
     }
     
 
--- selectedVideoList model=
---     if List.length model.videoShow > 0 then
---         videoResultLayout model
---     else
---         ApiVideo.noSelected
+selectedVideoList model=
+    if List.length model.videoShow > 0 then
+        videoResultLayout model
+    else
+        ApiVideo.noSelected
 
--- videoListLayout =
---     div [class "apiVideoItem"] (
---         List.indexedMap (
---         \idx item -> ApiVideo.videoListLayout idx item SelectVideo
---     ) videoList
---     )
+videoListLayout model =
+    div [class "apiVideoItem" ] [
+        if List.isEmpty model.videoData.data then
+        div [][text "키워드 검색을 통해, 영상을 선택 해 주세요."]
+        else 
+        div [style "overflow-y""scroll", style "height" "95%", style "width" "100%", id "searchHeight"](
+        List.indexedMap (
+        \idx item -> ApiVideo.videoListLayout idx item SelectVideo VideoPreview model.previewtitle model.preview EndofVideo  model.isShow
+    ) model.videoData.data 
+    )]
 
--- videoResultLayout model=
---     div [class "apiVideoItem"] (
---         List.indexedMap (
---         \idx item ->ApiVideo.videoResultLayout idx item DeleteItem
---     ) model.videoShow 
---     )
-
-
--- layerPop model=
---     if model.popup then
---         ApiVideo.apiVideoList False (videoListLayout ) PopUpClose VideoResult
---     else
---         text ""
+videoResultLayout model=
+    div [class "apiVideoItem"] (
+        List.indexedMap (
+        \idx item ->ApiVideo.videoResultLayout idx item DeleteItem
+    ) model.videoShow 
+    )
 
 
--- videoList =
---     [
---         {   check = False,
---             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
---             title = "운동 영상1",
---             article = "운동은 몸에 좋습니다."
---         },
---         {   check = False,
---             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
---             title = "운동 영상2",
---             article = "운동은 몸에 좋습니다."
---         },
---          {   check = False,
---             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
---             title = "운동 영상3",
---             article = "운동은 몸에 좋습니다."
---         },
---         {   check = False,
---             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
---             title = "운동 영상4",
---             article = "운동은 몸에 좋습니다."
---         },
---         {   check = False,
---             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
---             title = "운동 영상5",
---             article = "운동은 몸에 좋습니다."
---         },
---         {   check = False,
---             thumb = "https://bulma.io/images/placeholders/128x128.png" ,
---             title = "운동 영상6",
---             article = "운동은 몸에 좋습니다."
---         }
---     ]
+layerPop model=
+        ApiVideo.apiVideoList False (videoListLayout model ) PopUpClose VideoResult VideoSearchInput VideoSearch model.preview model.isShow (if model.isShow then "선택 영상 미리보기" else "외부 영상 선택")

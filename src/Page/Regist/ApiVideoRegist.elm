@@ -45,6 +45,7 @@ type alias Model =
     , selectVideo : String
     , description : String
     , title : String
+    , isShow : Bool
     }
     
 
@@ -82,8 +83,6 @@ type alias Paginate =
 
 type alias Thumbnail = 
     { default : ThumbnailItem
-    , high: ThumbnailItem
-    , medium: ThumbnailItem
     }
 type alias ThumbnailItem =
     { height: Int
@@ -154,7 +153,7 @@ init session =
         , session = session
         , selectVideoCode = "10"
         , page_token = ""
-        , per_page = 5
+        , per_page = 10
         , keyword = ""
         , videoData = 
             { data = []
@@ -186,20 +185,13 @@ init session =
                         { height= 0
                         , url= ""
                         , width = 0 }
-                    , high = 
-                        { height= 0
-                        , url= ""
-                        , width = 0 }
-                    , medium = 
-                        { height= 0
-                        , url= ""
-                        , width = 0 }
                     }
                 , title = ""}
             }
         , selectVideo = "Search"
         , description = ""
         , title = ""
+        , isShow = False
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 toSession : Model -> Session
@@ -215,7 +207,7 @@ subscriptions model =
 type Msg 
     = PopUpOpen 
     | PopUpClose 
-    | SelectVideo String
+    | SelectVideo String Int
     | VideoResult 
     | DeleteItem Int 
     | GetMyInfo (Result Http.Error Decoder.DataWrap) 
@@ -247,6 +239,9 @@ update msg model =
         TextAreaMsg article ->
             ({model | description = article}, Cmd.none)
         GoNextPage next ->
+            if List.length model.videoData.data >= model.videoData.paginate.total_count || model.selectVideo == "next" then
+            (model, Cmd.none)
+            else
             ({model | selectVideo = "next"}, videoDataApi model.session model.page_token model.per_page model.keyword)
         EndofVideo ->
             ({model | preview = False, previewtitle = ""}, Api.youtubeControl ())
@@ -255,7 +250,7 @@ update msg model =
         VideoSearchInput keyword ->
             ({model | keyword = keyword}, Cmd.none)
         VideoSearch ->
-            ({model | selectVideo = "Search"},  videoDataApi model.session model.page_token model.per_page model.keyword)
+            ({model | selectVideo = "Search"},  videoDataApi model.session "" model.per_page model.keyword)
         VideoDataComplete (Ok ok) ->
             case model.selectVideo of
                 "next" ->  
@@ -265,8 +260,7 @@ update msg model =
                             { old | data = old.data ++ ok.data
                             , paginate = ok.paginate}
                     in
-                    
-                    ({model | videoData = new, page_token = ok.paginate.next_token},Cmd.none) 
+                    ({model | videoData = new, page_token = ok.paginate.next_token, selectVideo = ""},Cmd.none) 
                 "Search" ->
                     ({model | videoData = ok, page_token = ok.paginate.next_token},Cmd.none)        
             
@@ -288,10 +282,6 @@ update msg model =
                     ({model | videoData = ok},Cmd.none)
             
         VideoDataComplete (Err err) ->
-            let _ = Debug.log "video" err
-                
-            in
-            
             (model, Cmd.none)
         CategoryEvent category ->
             ({model | selectVideoCode = category}, Cmd.none)
@@ -321,15 +311,8 @@ update msg model =
             )
         PopUpClose ->
             ({model | popup = False}, Cmd.none)
-        SelectVideo id ->
-            -- let
-            --     after =
-            --         List.take (idx + 1) model.originVideo 
-            --     before =
-            --         List.drop ( List.length after - 1 ) after
-            -- in
-            --     ({model | videoSelected = before ++ model.videoSelected}, Cmd.none)
-            ({model | selectVideo = "select"}, videoDataApi model.session "" model.per_page id)
+        SelectVideo id idx->
+            ({model | selectVideo = "select", previewtitle = String.fromInt idx}, videoDataApi model.session "" model.per_page id)
         VideoResult ->
             ({model | videoShow = model.videoSelected, popup = False}, Cmd.none)
 
@@ -356,10 +339,6 @@ view model =
             , ApiVideo.apiVideoLayout
             "외부 Api 영상 등록"
             False
-            (routeRegist Route.ApiVideo)
-            PopUpOpen
-            (selectedVideoList model)
-            (List.length model.videoShow)
             CategoryEvent
             model.videoCode
             model.selectVideoCode
@@ -393,9 +372,9 @@ videoListLayout model =
         if List.isEmpty model.videoData.data then
         div [][text "키워드 검색을 통해, 영상을 선택 해 주세요."]
         else 
-        div [style "overflow-y""scroll", style "height" "99%", id "searchHeight"](
+        div [style "overflow-y""scroll", style "height" "100%", id "searchHeight"](
         List.indexedMap (
-        \idx item -> ApiVideo.videoListLayout idx item SelectVideo VideoPreview model.previewtitle model.preview EndofVideo 
+        \idx item -> ApiVideo.videoListLayout idx item SelectVideo VideoPreview model.previewtitle model.preview EndofVideo model.isShow
     ) model.videoData.data 
     )]
 
@@ -408,4 +387,4 @@ videoResultLayout model=
 
 
 layerPop model=
-        ApiVideo.apiVideoList False (videoListLayout model ) PopUpClose VideoResult VideoSearchInput VideoSearch model.preview
+        ApiVideo.apiVideoList False (videoListLayout model ) PopUpClose VideoResult VideoSearchInput VideoSearch model.preview model.isShow "외부 영상 선택"

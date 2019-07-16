@@ -9,12 +9,8 @@ import Json.Decode
 import String
 
 -- apiVideoLayout : String  -> Bool -> (String.String -> msg) -> Html msg
-apiVideoLayout bigTitle  onlyRead link popup selectedVideoList count selectEvent selectData selectModel thisone description textareaMsg title titleMsg=
+apiVideoLayout bigTitle  onlyRead selectEvent selectData selectModel thisone description textareaMsg title titleMsg=
     div [] [
-        
-        -- , Page.columnsHtml [
-        --     Page.labelWrap "기본 설정"
-        -- ],
         div [class "youtubeTitle"][text bigTitle],
         div [class "searchWrap"] [
             Page.columnsHtml [
@@ -22,9 +18,7 @@ apiVideoLayout bigTitle  onlyRead link popup selectedVideoList count selectEvent
                 Page.formInputEvent "제목" "제목을 입력 해 주세요." onlyRead titleMsg title 
             ]
             ,Page.columnsHtml [
-                -- label [][text "설명"]
-                -- , textarea [][]
-                Page.textAreaEvent "영상 설명" False description textareaMsg
+                Page.textAreaEvent "영상 설명" onlyRead description textareaMsg
             ]
         , label [ class "media youtubeApi_container" ]
         [ 
@@ -109,24 +103,24 @@ goBtn onlyRead popup=
 
 
 
-apiVideoList onlyRead videoList popUp videoResult searchInput search preview=
+apiVideoList onlyRead videoList popUp videoResult searchInput search preview is_show title =
     div[class "apiVideoWrap"][
             -- Page.columnsHtml [
             --      p [class "poptitle"][text "외부 영상 리스트"]
-            div [class "youtubeTitle"][text "외부 영상 선택"]
+            div [class "youtubeTitle"][text title]
                 
             -- ],
-            , div [class "borderWrap"] [
+            , div [class "borderWrap", style "display" (if is_show then "none" else "flex")] [
             -- Page.columnsHtml [
                  p [class "youtubekeywordStyle"][text "키워드"]
                 , div [ class "field-body" ]
                     [ div [ class "inputWidth" ]
                         [  
-                            input [ class "input" , placeholder "입력 예) 다이어트, 운동, 허벅지 (쉼표로 단어 구분)", maxlength 50 , onInput searchInput]
+                            input [ class "input" , placeholder "입력 예) 다이어트, 운동, 허벅지 (쉼표로 단어 구분)", maxlength 50 , onInput searchInput, disabled is_show]
                             []
                         ]
                     ]
-                , div [ class "button is-primary"  , onClick search]
+                , button [ class "button is-primary"  , onClick search, disabled is_show]
                     [i [ class "fas fa-search"]
                         [], text "영상 검색" 
                     ]
@@ -146,8 +140,8 @@ apiVideoList onlyRead videoList popUp videoResult searchInput search preview=
         
     ]
 
-videoListLayout idx item selectVideo videopreview previewidx preview endvideo  =
-    label [ class "media youtubeApi_container" ]
+videoListLayout idx item selectVideo videopreview previewidx preview endvideo is_show =
+    label [ class "media youtubeApi_container" , style "background-color" (if previewidx == String.fromInt idx then "#efefef" else "")]
         [ 
             figure [ class "media-left" ]
             [ p [ class "image is-64x64" ]
@@ -171,7 +165,7 @@ videoListLayout idx item selectVideo videopreview previewidx preview endvideo  =
                 ]
             
             ]
-        , div [class "button ", onClick (selectVideo item.id.videoId)][text "선택"]
+        , button [class "button ", onClick (selectVideo item.id.videoId idx), disabled is_show][text "선택"]
         ]
 
 videoResultLayout idx item delete=
