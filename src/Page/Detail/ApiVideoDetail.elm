@@ -50,6 +50,8 @@ type alias Model =
     , isShow : Bool
     , is_edit : Bool
     , videoId : String
+    , username : String
+    , goEdit : Bool
     }
     
 
@@ -273,6 +275,8 @@ init session =
         , isShow = True
         , is_edit = False
         , videoId = ""
+        , username = ""
+        , goEdit = False
     }, Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
     , Api.getParams ()])
@@ -433,9 +437,23 @@ update msg model =
             (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, 
-            Cmd.batch [videoCodeApi model.session
-            ] )
+            let
+                menuf = List.head (List.filter (\x -> x.menu_id == 5) item.data.menus)
+            in
+            case menuf of
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    if auth "30" then
+                        ( {model |  menus = item.data.menus, goEdit = True, username = item.data.admin.username}, videoCodeApi model.session )
+                    else
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username}, videoCodeApi model.session )
+                Nothing ->
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username}, videoCodeApi model.session )
+            -- ( {model |  menus = item.data.menus}, 
+            -- Cmd.batch [
+            -- ] )
         PopUpOpen ->
             ({model | popup = True}, 
             videoDataApi model.session model.page_token model.per_page model.keyword
@@ -492,10 +510,11 @@ view model =
                 ]
         ]
         , menu =  
-    aside [ class "menu"] [
-        ul [ class "menu-list yf-list"] 
-            (List.map Page.viewMenu model.menus)
-    ]
+            aside [ class "menu"] [
+                Page.header model.username
+                ,ul [ class "menu-list yf-list"] 
+                    (List.map Page.viewMenu model.menus)
+                ]
     }
     
 

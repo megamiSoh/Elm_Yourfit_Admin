@@ -46,6 +46,7 @@ type alias Model =
     , description : String
     , title : String
     , isShow : Bool
+    , username : String
     }
     
 
@@ -192,6 +193,7 @@ init session =
         , description = ""
         , title = ""
         , isShow = False
+        , username = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 toSession : Model -> Session
@@ -304,7 +306,7 @@ update msg model =
             (model, Cmd.none)
 
         GetMyInfo (Ok item) -> 
-            ( {model |  menus = item.data.menus}, videoCodeApi model.session )
+            ( {model |  menus = item.data.menus, username = item.data.admin.username}, videoCodeApi model.session )
         PopUpOpen ->
             ({model | popup = True}, 
             videoDataApi model.session model.page_token model.per_page model.keyword
@@ -355,7 +357,8 @@ view model =
         ]
         , menu =  
     aside [ class "menu"] [
-        ul [ class "menu-list yf-list"] 
+        Page.header model.username
+        , ul [ class "menu-list yf-list"] 
             (List.map Page.viewMenu model.menus)
     ]
     }
