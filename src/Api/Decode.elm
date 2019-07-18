@@ -664,3 +664,17 @@ productListPaginate page =
         |> required "product_code" string
         |> required "start_date" string
         |> required "total_count" int
+
+
+productDetailData data detail = 
+    Decode.succeed data
+        |> required "data" (productDetail detail)
+
+productDetail detail = 
+    Decode.succeed detail
+        |> required "day_num" int
+        |> required "description" string
+        |> required "id" int
+        |> required "is_pay" bool
+        |> required "name" string
+        |> required "price" int

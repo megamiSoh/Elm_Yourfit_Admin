@@ -8,6 +8,7 @@ import Http exposing (..)
 import Api.Endpoint as Endpoint
 import Api.Decode as Decoder
 import Json.Encode as Encode
+import Json.Decode as Decode
 import Api as Api
 import Session exposing(Session)
 import Route as Route
@@ -29,6 +30,9 @@ type alias Model =
     , rage_date : String
     , validationErr : String
     , validErrShow : Bool
+    , detailId : String
+    , is_detail : Bool
+    , pageTitle : String
     }
 
 type alias Menus =
@@ -38,6 +42,21 @@ type alias Menus =
         menu_name : String
     }
 
+type alias DetailData = 
+    { data : Data }
+
+type alias Data = 
+    { day_num : Int
+    , description : String
+    , id : Int
+    , is_pay : Bool
+    , name : String
+    , price : Int 
+    }
+
+
+detailApi session id = 
+    Api.get DetailComplte (Endpoint.productDetail id) (Session.cred session) (Decoder.productDetailData DetailData Data)
 init : Session -> (Model , Cmd Msg)
 init session = 
     (
@@ -58,9 +77,13 @@ init session =
     , rage_date = ""
     , validationErr = ""
     , validErrShow = False
+    , detailId = ""
+    , is_detail = True
+    , pageTitle = "상품관리 상세"
     }
     , Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+    , Api.getParams ()
     ]
     )
 formUrlencoded object =
@@ -73,7 +96,7 @@ formUrlencoded object =
             )
         |> String.join "&"
 
-registApi model = 
+editApi model = 
     let
         body =
             formUrlencoded
@@ -84,7 +107,7 @@ registApi model =
             , ("is_pay", model.is_pay) ]
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
-    Api.post Endpoint.productRegist (Session.cred model.session) RegistComplete body (Decoder.result)
+    Api.post (Endpoint.productEdit model.detailId) (Session.cred model.session) EditComplete body (Decoder.result)
 
 toSession : Model -> Session
 toSession model = 
@@ -92,7 +115,10 @@ toSession model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+    [ Session.changes GotSession (Session.navKey model.session)
+    , Api.params GetId
+    ]
 
 type Msg  
     = NoOp
@@ -103,14 +129,39 @@ type Msg
     | PriceInput String
     | DateInput String
     | SubmitProduct
-    | RegistComplete (Result Http.Error Decoder.Success)
+    | EditComplete (Result Http.Error Decoder.Success)
+    | DetailComplte (Result Http.Error DetailData)
+    | GotSession Session
+    | GetId Encode.Value
+    | GoEdit 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        RegistComplete (Ok ok) ->
-            (model, Route.pushUrl(Session.navKey model.session) Route.PM)
-        RegistComplete (Err err) ->
+        GoEdit ->
+            ({model | is_detail = False, pageTitle = "상품관리 수정"}, Cmd.none)
+        GetId id ->
+            let _ = Debug.log "id" id
+                decode = 
+                    Decode.decodeValue Decode.string id
+            in
+                case decode of
+                    Ok str ->
+                        ({model | detailId = str}, 
+                        detailApi model.session str)
+                
+                    Err _->
+                        (model , Cmd.none)
+        GotSession session ->
+            ({ model | session = session}, 
+            Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody Decoder.muserInfo )
+        DetailComplte (Ok ok) ->
+            ({model | rage_date = String.fromInt ok.data.day_num, description = ok.data.description , is_pay = if ok.data.is_pay then "true" else "false", product_name = ok.data.name, price = String.fromInt ok.data.price}, Cmd.none)
+        DetailComplte (Err err)->
+            (model, Cmd.none)
+        EditComplete (Ok ok) ->
+            ({model | is_detail = True, pageTitle = "상품관리 상세"}, Cmd.none)
+        EditComplete (Err err) ->
             (model, Cmd.none)
         SubmitProduct ->
             if String.isEmpty model.product_name then
@@ -123,7 +174,7 @@ update msg model =
             else if String.isEmpty model.description then
                 ({model | validationErr = "상품설명을 입력 해 주세요.", validErrShow = True}, Cmd.none)
             else     
-            ({model | validationErr = "", validErrShow = False}, registApi model)
+            ({model | validationErr = "", validErrShow = False}, editApi model)
         DateInput date ->
             case String.toInt date of
                 Just ok ->
@@ -184,25 +235,29 @@ view model =
     { title = "상품 관리"
     , content =
         div []
-            [ columnsHtml [pageTitle "상품 상세"]
+            [ columnsHtml [pageTitle model.pageTitle]
            
        , div [] 
         [ div [class "searchWrap"] [
             columnsHtml 
-            [ formInputEvent "상품명" "상품명을 입력 해 주세요." False NameInput model.product_name
-            , formInputEvent "가격" "가격을 입력 해 주세요. (단위 / 원)" False PriceInput model.price
+            [ formInputEvent "상품명" "상품명을 입력 해 주세요." model.is_detail NameInput model.product_name
+            , formInputEvent "가격" "가격을 입력 해 주세요. (단위 / 원)" model.is_detail PriceInput model.price
             ]
             ,  columnsHtml 
-            [ formInputEvent "기간" "기간을 입력 해 주세요. (단위 / 일)" False DateInput model.rage_date
-            , noEmptyselectForm "유 / 무료" False model.selectModel SelectEvent model.is_pay
+            [ formInputEvent "기간" "기간을 입력 해 주세요. (단위 / 일)" model.is_detail DateInput model.rage_date
+            , noEmptyselectForm "유 / 무료" model.is_detail model.selectModel SelectEvent model.is_pay
             ]
             , columnsHtml [
-                textAreaEvent "상품 설명" False model.description TextAreaInput
+                textAreaEvent "상품 설명" model.is_detail model.description TextAreaInput
             ]
         ]
         ]
         , div [ class "buttons" ] [
-            div [ class "button is-primary cursur", onClick SubmitProduct ] [text "등록"],
+            if model.is_detail then
+            div [ class "button is-primary cursur", onClick GoEdit ] [text "수정"]
+            else
+            div [ class "button is-primary cursur", onClick SubmitProduct ] [text "저장"]
+            ,
             a [ class "button is-warning", Route.href (Just Route.PM) ] [text "취소"]
         ]
         , validationErr model.validationErr model.validErrShow

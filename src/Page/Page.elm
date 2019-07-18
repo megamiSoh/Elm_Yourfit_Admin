@@ -913,7 +913,7 @@ validationErr err validErrShow =
         if validErrShow then
             "validStyle "
         else
-            "validStyle validOn"
+            "validOn"
         )] [
         i [ class "fas fa-exclamation-circle" ]
         [] ,

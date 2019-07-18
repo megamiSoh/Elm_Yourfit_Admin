@@ -60,6 +60,8 @@ module Api.Endpoint exposing
     , productRegist
     , productList
     , productActive
+    , productDetail
+    , productEdit
     )
 
 import Http
@@ -299,3 +301,9 @@ productList =
 
 productActive id =
     url ["admin", "products", id, "use"][]
+
+productDetail id = 
+    url ["admin", "products", id][]
+
+productEdit id = 
+    url ["admin", "products", id , "edit"][]
