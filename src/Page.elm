@@ -46,6 +46,9 @@ type Page
     | Menus
     | C
     | CD
+    | PM
+    | PR
+    | PD
 
 
 
@@ -170,6 +173,8 @@ viewMenu item  =
             li [] [ a [ class "nav-link", Route.href(Just Route.C) ][text item.menu_name]]
         10 ->  
             li [] [ a [ class "nav-link", Route.href(Just Route.Faq) ][text item.menu_name]]
+        11 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.PM) ][text item.menu_name]]
         _ ->
             li [] [ a [ class "nav-link", Route.href(Just Route.UserInfo) ][text item.menu_name]]
 
@@ -257,7 +262,7 @@ isActive page route =
             True
         (FaqEdit,(Just Route.FaqEdit))->
             True
-
+        
         _ ->
             False
 

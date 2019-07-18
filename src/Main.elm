@@ -51,9 +51,9 @@ import Json.Decode as Decode exposing (Value)
 import Viewer exposing (Viewer)
 import Page.Contact as C
 import Page.Detail.ContactDetail as CD
-type alias Flags =
-    {}
-
+import Page.ProductManage as PM
+import Page.Regist.ProductRegist as PR
+import Page.Detail.ProductDetail as PD
 
 
 type Model 
@@ -92,6 +92,9 @@ type Model
      | NotFound Session
      | CModel C.Model
      | CDModel CD.Model
+     | PMModel PM.Model
+     | PRModel PR.Model
+     | PDModel PD.Model
 
 
 main : Program Value Model Msg
@@ -143,6 +146,9 @@ type Msg
     | GotSession Session
     | CMsg C.Msg
     | CDMsg CD.Msg
+    | PMMsg PM.Msg
+    | PRMsg PR.Msg
+    | PDMsg PD.Msg
 
 subscriptions model = 
     case model of
@@ -216,6 +222,12 @@ subscriptions model =
             Sub.map CMsg(C.subscriptions c)
         CDModel c ->
             Sub.map CDMsg (CD.subscriptions c)
+        PMModel pm ->
+            Sub.map PMMsg (PM.subscriptions pm)
+        PRModel pr ->   
+            Sub.map PRMsg (PR.subscriptions pr)
+        PDModel pd ->
+            Sub.map PDMsg (PD.subscriptions pd)
 
 
 init : Maybe Cred -> Url -> Key -> ( Model, Cmd Msg )
@@ -341,9 +353,15 @@ changeRouteTo maybeRoute model =
         Just Route.CD ->
             CD.init session
                 |> updateWith CDModel CDMsg model
-        -- Just Route.Login ->
-        --     Login.init session  
-        --         |> updateWith LoginModel LoginMsg model
+        Just Route.PM ->
+            PM.init session
+                |> updateWith PMModel PMMsg model
+        Just Route.PR ->
+            PR.init session
+                |> updateWith PRModel PRMsg model
+        Just Route.PD ->
+            PD.init session
+                |> updateWith PDModel PDMsg model
             
 
 toSession : Model -> Session
@@ -419,6 +437,12 @@ toSession page =
             C.toSession c
         CDModel c ->
             CD.toSession c
+        PMModel pm ->
+            PM.toSession pm
+        PRModel pr ->
+            PR.toSession pr
+        PDModel pd ->
+            PD.toSession pd
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -585,6 +609,15 @@ update msg model =
         (CDMsg subMsg, CDModel itemModel) ->
             CD.update subMsg itemModel
                 |> updateWith CDModel CDMsg model
+        (PMMsg subMsg, PMModel itemModel) ->
+            PM.update subMsg itemModel
+                |> updateWith PMModel PMMsg model
+        (PRMsg subMsg, PRModel itemModel) ->
+            PR.update subMsg itemModel
+                |> updateWith PRModel PRMsg model
+        (PDMsg subMsg, PDModel itemModel) ->
+            PD.update subMsg itemModel
+                |> updateWith PDModel PDMsg model
         ( _, _ ) ->
             ( model, Cmd.none )  
         
@@ -622,68 +655,7 @@ view model =
                         viewPage Page.Home UserImsg (UserI.view home)
                     AdminMmodel _ ->
                         viewPage Page.Other (\_ -> Ignored) Blank.view
-
-                    UserMmodel usermanage ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-
-                    VideoUnitmodel videounit ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    
-                    VideoModel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    ApiModel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    UserPmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    InfoModel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    FaqModel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    FoodCmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    UserImodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    UsermDmodel itemModel -> 
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    AdminRmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    AdminmDmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    AdminEmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    UvideoEmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    UvideoDmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    UvideoRmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    VideoDmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    VideoRmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    VideoEmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    ApiRmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    ApiDmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    ApiEmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    InfoRmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    InfoDmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    InfoEmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    FaqRmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    FaqEmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    FaqDmodel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    CModel itemModel ->
-                        viewPage Page.Other (\_ -> Ignored) Blank.view
-                    CDModel itemModel ->
+                    _ ->
                         viewPage Page.Other (\_ -> Ignored) Blank.view
             Just _ ->
                 case model of
@@ -763,4 +735,9 @@ view model =
                         viewPage Page.C CMsg (C.view itemModel)
                     CDModel itemModel ->
                         viewPage Page.CD CDMsg (CD.view itemModel)
-                    
+                    PMModel itemModel ->
+                        viewPage Page.PM PMMsg (PM.view itemModel)
+                    PRModel itemModel ->
+                        viewPage Page.PR PRMsg (PR.view itemModel)
+                    PDModel itemModel ->
+                        viewPage Page.PD PDMsg (PD.view itemModel)

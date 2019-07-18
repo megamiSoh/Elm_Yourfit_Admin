@@ -50,6 +50,9 @@ type Route
     | Login
     | C
     | CD
+    | PM
+    | PR
+    | PD
 
 -- decoder : Decoder (Cred -> Page)
 -- decoder =
@@ -95,6 +98,9 @@ parser =
         , Parser.map Login (s "login")
         , Parser.map C (s "contact")
         , Parser.map CD (s "contactDetail")
+        , Parser.map PM (s "productManage")
+        , Parser.map PR (s "productRegist")
+        , Parser.map PD (s "productDetail")
         ]
 
 
@@ -210,5 +216,11 @@ routeToString page =
                     ["contact"]
                 CD ->
                     ["contactDetail"]
+                PM ->
+                    ["productManage"]
+                PR ->
+                    ["productRegist"]
+                PD ->
+                    ["productDetail"]
     in
     "#/" ++ String.join "/" pages

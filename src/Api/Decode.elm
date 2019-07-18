@@ -636,3 +636,31 @@ apidetailLocal local =
     Decode.succeed local 
         |> required "description" string
         |> required "title" string
+
+
+productList list data page = 
+    Decode.succeed list
+        |> required "data" (Decode.list (productListData data))
+        |> required "paginate" (productListPaginate page)
+
+productListData data = 
+    Decode.succeed data
+        |> required "day_name" int
+        |> required "id" int
+        |> required "inserted_at" string
+        |> required "is_pay" bool
+        |> required "is_use" bool
+        |> required "name" string
+        |> required "price" int
+        |> required "product_code_name" string 
+
+productListPaginate page = 
+    Decode.succeed page
+        |> required "end_date" string
+        |> required "is_use" (Decode.nullable bool)
+        |> required "name" string
+        |> required "page" int
+        |> required "per_page" int
+        |> required "product_code" string
+        |> required "start_date" string
+        |> required "total_count" int
