@@ -49,6 +49,7 @@ type Page
     | PM
     | PR
     | PD
+    | BM
 
 
 
@@ -175,6 +176,8 @@ viewMenu item  =
             li [] [ a [ class "nav-link", Route.href(Just Route.Faq) ][text item.menu_name]]
         11 ->
             li [] [ a [ class "nav-link", Route.href(Just Route.PM) ][text item.menu_name]]
+        12 ->
+            li [] [ a [ class "nav-link", Route.href(Just Route.BM) ][text item.menu_name]]
         _ ->
             li [] [ a [ class "nav-link", Route.href(Just Route.UserInfo) ][text item.menu_name]]
 

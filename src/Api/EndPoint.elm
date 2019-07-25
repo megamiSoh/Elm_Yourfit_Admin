@@ -62,6 +62,8 @@ module Api.Endpoint exposing
     , productActive
     , productDetail
     , productEdit
+    , bannerImagelist
+    , bannerimgregist
     )
 
 import Http
@@ -307,3 +309,9 @@ productDetail id =
 
 productEdit id = 
     url ["admin", "products", id , "edit"][]
+
+bannerImagelist = 
+    url ["admin", "banners", "images"][]
+
+bannerimgregist = 
+    url ["admin", "banners", "images", "upload"][]

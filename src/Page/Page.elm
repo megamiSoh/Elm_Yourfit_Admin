@@ -160,6 +160,16 @@ registRoute title link =
                 ]
         ]
 
+registClick title msg =
+    div [ class "registWrap"] 
+            [
+                div [ class "button is-primary",onClick msg]
+                [ 
+                    i [ class "far fa-registered" ]
+                    []
+                    , text title 
+                    ]
+        ]
 
 searchLabel : String -> Html msg
 searchLabel title =  

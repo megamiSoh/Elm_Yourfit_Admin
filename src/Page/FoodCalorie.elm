@@ -37,7 +37,10 @@ init session =
         popShow = False
         , menus = []
         , username = ""
-    }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
+    }, Cmd.batch[Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+    -- , Api.pgGo ()
+    ]
+    )
 
 toSession : Model -> Session
 toSession model =

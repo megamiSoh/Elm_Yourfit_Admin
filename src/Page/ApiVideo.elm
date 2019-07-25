@@ -386,8 +386,9 @@ view model =
                 ]
                 
             ],
-            (registRoute "영상 등록" Route.ApiVideoRegist),
-            div [class "table"] 
+            (registRoute "영상 등록" Route.ApiVideoRegist)
+            , dataCount (String.fromInt(model.data.paginate.total_count))
+            , div [class "table"] 
             ([headerTable] ++ List.indexedMap(\idx i -> tableLayout idx i model) model.data.data)
             , pagination 
                     PageBtn

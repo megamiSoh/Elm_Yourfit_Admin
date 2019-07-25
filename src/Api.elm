@@ -103,6 +103,7 @@ port showToast : Value -> Cmd msg
 port pageNum : Value -> Cmd msg
 port youtubeVideo : Value -> Cmd msg
 port youtubeControl : () -> Cmd msg
+port pgGo : () -> Cmd msg
 -- application :
     -- Decoder (Cred -> viewer)
     -- ->

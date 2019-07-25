@@ -702,10 +702,9 @@ view model =
                     registRoute "영상 등록" Route.UvideoRegist
                     else
                     div [] []
+                    , dataCount (String.fromInt(model.paginate.total_count))
                  ]
-                 , dataCount (String.fromInt(model.paginate.total_count))
-                 , 
-                  if model.getList == [] then
+                 , if model.getList == [] then
                     table [class "table"] [
                         headerTable,
                         tr [] [

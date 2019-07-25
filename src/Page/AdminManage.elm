@@ -503,7 +503,7 @@ view model =
                 ]
                 
             ],
-        dataCount (String.fromInt(model.resultForm.pagenate.total_count)),
+        
         div [ class "registWrap"] 
         [
             if model.goRegist then
@@ -515,8 +515,10 @@ view model =
                 ]
             else
             div [] []
-        ],
-        if List.length (model.resultForm.data) > 0 then
+       
+        ]
+        , dataCount (String.fromInt(model.resultForm.pagenate.total_count))
+        , if List.length (model.resultForm.data) > 0 then
         div [ class "table" ] ([headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.resultForm.data) )
         else
         table [class "table"] [

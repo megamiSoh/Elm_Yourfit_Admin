@@ -493,13 +493,13 @@ view model =
                     searchB Search Reset
                 ]
                 
-            ],
-            dataCount (String.fromInt model.faqList.pagination.total_count)
+            ]
             , div [] [
                 if memberAuth "50" model then
                 registRoute "등록" Route.FaqRegist
                 else
                 div [] []
+            , dataCount (String.fromInt model.faqList.pagination.total_count)
             ]
             ,  div [class "table"] (
                 [headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model) model.faqList.data))

@@ -678,3 +678,32 @@ productDetail detail =
         |> required "is_pay" bool
         |> required "name" string
         |> required "price" int
+
+bannerimageList list data page = 
+    Decode.succeed list 
+        |> required "data" (Decode.list (bannerimageData data))
+        |> required "paginate" (bannerimagePage page)
+
+bannerimageData data = 
+    Decode.succeed data
+        |> required "file_id" int
+        |> required "inserted_at" string
+        |> required "path" string
+        |> required "title" string
+
+bannerimagePage page = 
+    Decode.succeed page
+        |> required "end_date" string
+        |> required "page" int
+        |> required "per_page" int
+        |> required "start_date" string
+        |> required "title" string
+        |> required "total_count" int
+
+imgRegist data list =
+    Decode.succeed data 
+        |> required "data" (imageregistdata list)
+
+imageregistdata list = 
+    Decode.succeed list 
+        |> required "path" string

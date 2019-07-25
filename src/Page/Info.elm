@@ -558,15 +558,15 @@ view model =
                     searchB Search Reset 
                 ]
             ],
-            dataCount (String.fromInt(model.resultForm.paginate.total_count)),
+            
             div [] [
                 if model.goRegist then
                 registRoute "등록" Route.InfoRegist
                 else
                 div [] []
-            ]
-            , 
-           div [] [
+                , dataCount (String.fromInt(model.resultForm.paginate.total_count))
+            ] 
+            , div [] [
                 if List.length model.resultForm.data > 0 then
                     div [class "table"](
                             [headerTable] ++ (List.indexedMap (\idx x -> tableLayout idx x model
