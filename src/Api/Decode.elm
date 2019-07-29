@@ -707,3 +707,27 @@ imgRegist data list =
 imageregistdata list = 
     Decode.succeed list 
         |> required "path" string
+
+bannerList data list page = 
+    Decode.succeed data
+        |> required "data" (Decode.list (bannerListData list))
+        |> required "paginate" (bannerListPage page)
+
+bannerListData list = 
+    Decode.succeed list
+        |> required "id" int
+        |> required "inserted_at" string
+        |> required "is_use" bool
+        |> required "link" (Decode.nullable string)
+        |> required "src" string 
+        |> required "title" string
+
+bannerListPage page = 
+    Decode.succeed page
+        |> required "end_date" string
+        |> required "is_use" (Decode.nullable string)
+        |> required "page" int
+        |> required "per_page" int
+        |> required "start_date" string
+        |> required "title" string
+        |> required "total_count" int

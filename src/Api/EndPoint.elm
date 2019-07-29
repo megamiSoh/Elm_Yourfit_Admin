@@ -64,6 +64,8 @@ module Api.Endpoint exposing
     , productEdit
     , bannerImagelist
     , bannerimgregist
+    , bannerList
+    , bannerIsUse
     )
 
 import Http
@@ -315,3 +317,9 @@ bannerImagelist =
 
 bannerimgregist = 
     url ["admin", "banners", "images", "upload"][]
+
+bannerList = 
+    url ["admin", "banners"][]
+
+bannerIsUse id = 
+    url ["admin", "banners" , id, "use"][]

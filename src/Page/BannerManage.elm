@@ -38,12 +38,9 @@ type alias Model =
     , endShow : Bool
     , todaySave : String
     , dateModel : String
-    , listData : ProductList
+    , listData : BannerList
     , page : Int
     , per_page : Int
-    , name : String
-    , is_pay : String
-    , selectModel : List { code : String , name : String}
     , pageNum : Int
     , is_use : Bool
     , selected_item : String
@@ -56,28 +53,25 @@ type alias Model =
     , previewUrl : String
     , getFile : List File.File
     }
-type alias ProductList = 
+type alias BannerList = 
     { data : List Data
     , paginate : Paginate}
 
 type alias Data = 
-    { day_name : Int
-    , id : Int
+    { id : Int
     , inserted_at : String
-    , is_pay : Bool
-    , is_use: Bool
-    , name : String
-    , price : Int
-    , product_code_name : String }
+    , is_use : Bool
+    , link : Maybe String
+    , src : String
+    , title : String }
 
 type alias Paginate = 
     { end_date : String
-    , is_use : Maybe Bool
-    , name : String
+    , is_use : Maybe String
     , page : Int
     , per_page : Int
-    , product_code : String
     , start_date : String
+    , title : String
     , total_count : Int}
 
 type alias ImageDataList = 
@@ -112,23 +106,19 @@ type alias Menus =
         menu_name : String
     }
 
-listApi page per_page name is_pay start_date end_date session = 
+listApi page per_page title start_date end_date session = 
     let
         body =
             Encode.object
                 [ ("page", Encode.int page)
                 , ("per_page", Encode.int per_page)
-                , ("name", Encode.string name)
-                , ("is_pay", 
-                    if is_pay == "true" then Encode.bool True
-                    else if is_pay == "false" then Encode.bool False
-                    else Encode.string is_pay)
+                , ("title", Encode.string title)
                 , ("start_date", Encode.string start_date)
                 , ("end_date", Encode.string end_date) ]
                 |> Http.jsonBody
     in
-    Api.post Endpoint.productList (Session.cred session) ListComplete body 
-    (Decoder.productList ProductList Data Paginate)
+    Api.post Endpoint.bannerList (Session.cred session) ListComplete body 
+    (Decoder.bannerList BannerList Data Paginate)
 
 imagelistApi page per_page title start_date end_date session = 
     let
@@ -142,18 +132,18 @@ imagelistApi page per_page title start_date end_date session =
                 |> Http.jsonBody 
     in
     Api.post Endpoint.bannerImagelist (Session.cred session) ImageListComplete body (Decoder.bannerimageList ImageDataList ImageData ImagePaginate)
+
 imageregistApi title session getFile = 
     let
     
         body = 
             (List.map (Http.filePart "image") getFile) ++
-                -- Http.filePart "file" filename
             (List.map (Http.stringPart "title") [title])
-            
-            -- (List.map (Http.filePart "file") getFile)
              |> Http.multipartBody  
     in
     Api.post Endpoint.bannerimgregist (Session.cred session) ImageRegistComplete body (Decoder.imgRegist ImgRegist ImgRegistData)
+
+
 
 init : Session -> (Model , Cmd Msg)
 init session = 
@@ -184,28 +174,15 @@ init session =
         { data = []
         , paginate = 
             { end_date = ""
-            -- , is_pay = Nothing
             , is_use = Nothing
-            , name = ""
+            , title = ""
             , page = 1
             , per_page = 10
-            , product_code = ""
             , start_date = ""
             , total_count = 0}
         }
     , page = 1
     , per_page = 10
-    , name = ""
-    , is_pay = "null"
-    , selectModel = 
-        [
-            { code = "null"
-            , name = "전체"} ,
-            { code = "true"
-            , name = "유료"} ,
-            { code = "false"
-            , name = "무료"}
-        ]
     , pageNum = 1
     , is_use = False
     , selected_item = "banner"
@@ -252,13 +229,11 @@ type Msg
     | Show
     | EndShow
     | DateValue String
-    | ListComplete (Result Http.Error ProductList)
+    | ListComplete (Result Http.Error BannerList)
     | NameInput String
     | Search
     | Reset
-    | IsPaySelect String
     | IsUse Bool Int
-    | IsActiveComplete (Result Http.Error Decoder.Success)
     | GoDetail Int
     | GoDetailComplete Encode.Value
     | GotSession Session
@@ -271,14 +246,21 @@ type Msg
     | RegistTitle String
     | GoRegist
     | ImageRegistComplete (Result Http.Error ImgRegist)
-    | ImageSearch
     | ImageReset
     | PageBtn (Int, String)
     | PageChange
+    | Is_useComplete (Result Http.Error Decoder.Success)
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Is_useComplete (Ok ok) ->
+            if model.dateModel == "all" then
+            (model , listApi model.page model.per_page model.title "" "" model.session)
+            else
+            (model, listApi model.page model.per_page model.title model.start_date model.end_date model.session)
+        Is_useComplete (Err err) ->
+            (model, Cmd.none)
         PageChange ->   
             (model, 
             Cmd.batch 
@@ -321,21 +303,7 @@ update msg model =
                         update PageChange (list model.pageNum)
                     _ ->
                         (model, Cmd.none)
-        ImageSearch ->
-            let
-                old = model.listData.paginate
-                date = {old | page = 1}
-            in
-            if model.dateModel == "all" then
-            ({model | pageNum = 1, page = 1, start_date = "", end_date = ""}, 
-            Cmd.batch
-            [ Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            , Api.pageNum (Encode.int 1)])
-            else
-            ({model | page = 1, pageNum = 1}, 
-            Cmd.batch 
-            [ Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            , Api.pageNum (Encode.int 1)])
+
         ImageReset ->
             let
                 ( datePickerData, datePickerCmd ) =
@@ -394,7 +362,13 @@ update msg model =
         ImageListComplete (Err err) ->
             (model, Cmd.none)
         TabSelected tab ->
-            ({model | selected_item = tab}, Cmd.none)
+            case tab of
+                "banner" ->
+                    ({model | selected_item = tab, start_date = "", end_date = "" , title = "", pageNum = 1}, listApi model.page model.per_page "" "" "" model.session)
+                "image" ->
+                    ({model | selected_item = tab, start_date = "", end_date = "" , title = "" , pageNum = 1}, imagelistApi 1 model.per_page "" "" "" model.session)
+                _ ->
+                    ({model | selected_item = tab}, listApi 1 model.per_page "" "" "" model.session)
         GotSession session ->
             ({ model | session = session}, 
             Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -404,39 +378,23 @@ update msg model =
             ])
         GoDetailComplete go ->
             (model,Route.pushUrl (Session.navKey model.session) Route.PD)
-        IsActiveComplete (Ok ok) ->
-            if model.dateModel == "all" then
-                (model,  listApi model.page model.per_page model.name model.is_pay "" "" model.session)
-            else
-                (model, listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
-        IsActiveComplete (Err err) ->
-            (model, Cmd.none)
         IsUse use id ->
             let _ = Debug.log "use" use
                 body = Encode.object 
                     [ ("is_use", Encode.bool use) ]
                     |> Http.jsonBody
             in
-            (model, Api.post (Endpoint.productActive (String.fromInt id)) (Session.cred model.session) IsActiveComplete body Decoder.result)
-        IsPaySelect pay ->
-            ({model | is_pay = pay}, Cmd.none)
+            (model, Api.post (Endpoint.bannerIsUse (String.fromInt id)) (Session.cred model.session) Is_useComplete body (Decoder.result))
         Search ->
-            let
-                old = model.listData.paginate
-                date = {old | page = 1}
-            in
-            
             if model.dateModel == "all" then
             ({model | pageNum = 1}, 
             Cmd.batch
-            [ listApi 1 model.per_page model.name model.is_pay "" "" model.session
-            ,Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            [ Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             , Api.pageNum (Encode.int 1)])
             else
             ({model | page = 1, pageNum = 1}, 
             Cmd.batch 
-            [ listApi 1 model.per_page model.name model.is_pay  model.start_date model.end_date model.session
-            ,Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            [ Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             , Api.pageNum (Encode.int 1)])
         Reset ->
             let
@@ -445,7 +403,7 @@ update msg model =
                 ( endDatePickerData, enddatePickerCmd) = 
                     DatePicker.init "my-datepicker"
             in
-            ({model | page = 1, name = "", is_pay = "null",  datePickerData = datePickerData, endDatePickerData = endDatePickerData, dateModel ="all"}, 
+            ({model | page = 1, title = "",   datePickerData = datePickerData, endDatePickerData = endDatePickerData, dateModel ="all"}, 
             Cmd.batch
                 [ Cmd.map DatePickerMsg datePickerCmd
                 , Cmd.map EndDatePickerMsg enddatePickerCmd])
@@ -548,8 +506,20 @@ update msg model =
                         auth num = List.member num a.menu_auth_code
                     in
                     if auth "30" then
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                        imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
+                        if model.selected_item == "banner" then
+                            if model.dateModel == "all" then
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            listApi model.page model.per_page model.title "" "" model.session)
+                            else
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            listApi model.page model.per_page model.title model.start_date model.end_date model.session)
+                        else
+                            if model.dateModel == "all" then
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            imagelistApi model.page model.per_page model.title "" "" model.session)
+                            else
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
                     else
                         ( {model |  menus = item.data.menus, username = item.data.admin.username},
                         imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
@@ -589,13 +559,12 @@ view model =
                                             )
                                     ]
                                     , columnsHtml [
-                                        formInputEvent "제목명" "제목 명을 입력 해 주세요." False NameInput model.name,
-                                        noEmptyselectForm "유 / 무료" False model.selectModel IsPaySelect model.is_pay,
+                                        formInputEvent "제목명" "제목 명을 입력 해 주세요." False NameInput model.title,
                                         searchB Search Reset 
                                     ]
                             ]
                             , registRoute "상품 등록" Route.PR
-                            , dataCount (String.fromInt model.imageData.paginate.total_count)
+                            , dataCount (String.fromInt model.listData.paginate.total_count)
                             , if List.length model.listData.data > 0 then
                             div [class "table"]
                             ( [headerTable] ++
@@ -630,7 +599,7 @@ view model =
                                 ]
                                 , columnsHtml [
                                     formInputEvent "제목명" "제목 명을 입력 해 주세요." False NameInput model.title,
-                                    searchB ImageSearch ImageReset 
+                                    searchB Search ImageReset 
                                 ]
                             ]
                             , registClick "이미지 등록" ImageRegistPop
@@ -666,32 +635,34 @@ view model =
                 (List.map Page.viewMenu model.menus)
             ]
     }
-            
+
+stringCase item = 
+    case item of
+        Just a ->
+            a
+        Nothing ->
+            ""
 
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
          div [ class "tableCell" ] [text "제목"],
-         div [ class "tableCell" ] [text "유/무료"],
-         div [ class "tableCell" ] [text "기간", span [class "productSmall"][text "(단위/일)"]],
-         div [ class "tableCell" ] [text "가격", span [class "productSmall"][text "(단위/원)"]],
-         div [ class "tableCell" ] [text "상품 분류"],
+         div [ class "tableCell" ] [text "링크"],
+         div [ class "tableCell" ] [text "배너 주소"],
          div [ class "tableCell" ] [text "등록일"],
          div [ class "tableCell" ] [text "게시"]
      ]
 
 tableLayout idx item model = 
         div [class "tableRow"] [
-                div [ class "tableCell", onClick (GoDetail item.id)] [
+                div [ class "tableCell"] [
                     text ( String.fromInt(model.listData.paginate.total_count - ((model.listData.paginate.page - 1) * 10) - (idx)
                     )) 
                 ],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text item.name],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (if item.is_pay then "유료" else "무료")],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (String.fromInt item.day_name)],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (String.fromInt item.price)],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text item.product_code_name],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (String.dropRight 10 item.inserted_at)],
+                div [ class "tableCell"] [text item.title],
+                div [ class "tableCell"] [text (stringCase item.link) ],
+                div [ class "tableCell", style "width" "45%"] [text item.src],
+                div [ class "tableCell"] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell"] [
                     if item.is_use then
                         div [class "button is-small is-success", onClick (IsUse (not item.is_use) item.id)][text "게시 중"]
@@ -711,13 +682,13 @@ imageheaderTable =
 
 imagetableLayout idx item model = 
     div [class "tableRow"] [
-            div [ class "tableCell", onClick (GoDetail item.file_id)] [
+            div [ class "tableCell"] [
                 text ( String.fromInt(model.imageData.paginate.total_count - ((model.imageData.paginate.page - 1) * 10) - (idx)
                 )) 
             ],
-            div [ class "tableCell", onClick (GoDetail item.file_id)] [text item.title],
-            div [ class "tableCell", style "width" "50%" ,onClick (GoDetail item.file_id)] [text item.path],
-            div [ class "tableCell", onClick (GoDetail item.file_id)] [text (String.dropRight 10 item.inserted_at)],
+            div [ class "tableCell"] [text item.title],
+            div [ class "tableCell", style "width" "50%" ] [text item.path],
+            div [ class "tableCell"] [text (String.dropRight 10 item.inserted_at)],
             div [ class "tableCell"] 
             [button [class "button is-small", onClick (ImagePreview item.path)][text "미리보기"]]
         ]
