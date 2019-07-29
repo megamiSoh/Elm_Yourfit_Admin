@@ -50,7 +50,7 @@ type Page
     | PR
     | PD
     | BM
-
+    | BR
 
 
 view: Maybe Cred ->  Page -> {title : String, content: Html msg, menu: Html msg} -> Browser.Document msg

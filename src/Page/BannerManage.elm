@@ -563,12 +563,12 @@ view model =
                                         searchB Search Reset 
                                     ]
                             ]
-                            , registRoute "상품 등록" Route.PR
+                            , registRoute "상품 등록" Route.BR
                             , dataCount (String.fromInt model.listData.paginate.total_count)
                             , if List.length model.listData.data > 0 then
                             div [class "table"]
                             ( [headerTable] ++
-                            (List.indexedMap (\idx item -> tableLayout idx item model) model.listData.data)
+                            (List.indexedMap (\idx item -> tableLayout idx item model ) model.listData.data)
                             )
                             else
                             div [class "table"] [
@@ -607,7 +607,7 @@ view model =
                             , if List.length model.imageData.data > 0 then
                             div [class "table"]
                             ( [imageheaderTable] ++
-                            (List.indexedMap (\idx item -> imagetableLayout idx item model) model.imageData.data)
+                            (List.indexedMap (\idx item -> imagetableLayout idx item model NoOp ImagePreview ) model.imageData.data)
                             )
                             else
                             div [class "table"] [
@@ -680,17 +680,17 @@ imageheaderTable =
         div [ class "tableCell" ] [text "미리보기"]
     ]
 
-imagetableLayout idx item model = 
+imagetableLayout idx item model msg previewMsg= 
     div [class "tableRow"] [
-            div [ class "tableCell"] [
+            div [ class "tableCell", onClick msg] [
                 text ( String.fromInt(model.imageData.paginate.total_count - ((model.imageData.paginate.page - 1) * 10) - (idx)
                 )) 
             ],
-            div [ class "tableCell"] [text item.title],
-            div [ class "tableCell", style "width" "50%" ] [text item.path],
-            div [ class "tableCell"] [text (String.dropRight 10 item.inserted_at)],
-            div [ class "tableCell"] 
-            [button [class "button is-small", onClick (ImagePreview item.path)][text "미리보기"]]
+            div [ class "tableCell", onClick msg] [text item.title],
+            div [ class "tableCell", style "width" "50%" , onClick msg] [text item.path],
+            div [ class "tableCell", onClick msg] [text (String.dropRight 10 item.inserted_at)],
+            div [ class "tableCell", onClick msg] 
+            [button [class "button is-small", onClick (previewMsg item.path)][text "미리보기"]]
         ]
 
 imagePreview path= 

@@ -89,7 +89,7 @@ img {
 }
 .searchWrap {
   border: 1px solid #9c9797;
-  padding: 2rem 5rem 2rem 0;
+  padding: 2rem 2rem;
   box-shadow: 3px 3px #f3f3f3;
   margin: 0 0 1rem 0;
   border-radius: 4px;
@@ -1842,4 +1842,9 @@ textarea.editorStyle {
   padding: 1rem;
   text-align: center;
   font-weight: normal;
+}
+
+.bannerListPop {
+  overflow: hidden;
+  height: 0;
 }

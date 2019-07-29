@@ -384,9 +384,17 @@ update msg model =
                         auth num = List.member num a.menu_auth_code
                     in
                     if auth "30" then
+                        if model.dateModel == "all" then
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                        listApi model.page model.per_page model.name model.is_pay "" "" model.session)
+                        else
                         ( {model |  menus = item.data.menus, username = item.data.admin.username},
                         listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
                     else
+                        if model.dateModel == "all" then
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                        listApi model.page model.per_page model.name model.is_pay "" "" model.session)
+                        else
                         ( {model |  menus = item.data.menus, username = item.data.admin.username},
                         listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
                 Nothing ->

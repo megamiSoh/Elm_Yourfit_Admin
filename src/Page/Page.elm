@@ -465,6 +465,13 @@ formInputEvent title ph read msg model=
             inputText ph read msg model
             ]
 
+formInputEventBtn title ph read msg model btntitle msgbtn =
+        div [ class "field is-horizontal" ] [
+            labelWrap title,
+            inputText ph read msg model
+            , button [class "button is-dark", onClick msgbtn ][text btntitle ]
+            ]
+
 -- inputText :String -> Bool -> Html msg 
 inputText ph read msg model=  
     -- div [class "field has-addons"] [
