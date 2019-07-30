@@ -364,11 +364,11 @@ update msg model =
         TabSelected tab ->
             case tab of
                 "banner" ->
-                    ({model | selected_item = tab, start_date = "", end_date = "" , title = "", pageNum = 1}, listApi model.page model.per_page "" "" "" model.session)
+                    ({model | selected_item = tab, start_date = "", end_date = "" , title = "", pageNum = 1, page = 1}, listApi 1 model.per_page "" "" "" model.session)
                 "image" ->
-                    ({model | selected_item = tab, start_date = "", end_date = "" , title = "" , pageNum = 1}, imagelistApi 1 model.per_page "" "" "" model.session)
+                    ({model | selected_item = tab, start_date = "", end_date = "" , title = "" , pageNum = 1, page = 1}, imagelistApi 1 model.per_page "" "" "" model.session)
                 _ ->
-                    ({model | selected_item = tab}, listApi 1 model.per_page "" "" "" model.session)
+                    ({model | selected_item = tab, start_date = "", end_date = "" , title = "", pageNum = 1, page = 1}, listApi 1 model.per_page "" "" "" model.session)
         GotSession session ->
             ({ model | session = session}, 
             Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -377,7 +377,7 @@ update msg model =
             (model, Cmd.batch[Api.saveData (Encode.string (String.fromInt id))
             ])
         GoDetailComplete go ->
-            (model,Route.pushUrl (Session.navKey model.session) Route.PD)
+            (model,Route.pushUrl (Session.navKey model.session) Route.BD)
         IsUse use id ->
             let _ = Debug.log "use" use
                 body = Encode.object 
@@ -577,6 +577,10 @@ view model =
                                 td [colspan 8, class "noSearch"] [text "검색 결과가 없습니다."]
                                 ]
                             ]
+                            , pagination 
+                                PageBtn
+                                model.listData.paginate
+                                model.pageNum 
                         ] 
                 
                     "image" ->
@@ -655,14 +659,14 @@ headerTable =
 
 tableLayout idx item model = 
         div [class "tableRow"] [
-                div [ class "tableCell"] [
+                div [ class "tableCell", onClick (GoDetail item.id)] [
                     text ( String.fromInt(model.listData.paginate.total_count - ((model.listData.paginate.page - 1) * 10) - (idx)
                     )) 
                 ],
-                div [ class "tableCell"] [text item.title],
-                div [ class "tableCell"] [text (stringCase item.link) ],
-                div [ class "tableCell", style "width" "45%"] [text item.src],
-                div [ class "tableCell"] [text (String.dropRight 10 item.inserted_at)],
+                div [ class "tableCell" , onClick (GoDetail item.id)] [text item.title],
+                div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.link) ],
+                div [ class "tableCell", style "width" "45%", onClick (GoDetail item.id)] [text item.src],
+                div [ class "tableCell", onClick (GoDetail item.id)] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell"] [
                     if item.is_use then
                         div [class "button is-small is-success", onClick (IsUse (not item.is_use) item.id)][text "게시 중"]

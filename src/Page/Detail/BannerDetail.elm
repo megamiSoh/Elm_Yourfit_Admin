@@ -1,4 +1,4 @@
-module Page.Regist.BannerRegist exposing(..)
+module Page.Detail.BannerDetail exposing(..)
 
 import Browser exposing (..)
 import Html exposing (..)
@@ -8,6 +8,7 @@ import Http exposing (..)
 import Api.Endpoint as Endpoint
 import Api.Decode as Decoder
 import Json.Encode as Encode
+import Json.Decode as Decode
 import Api as Api
 import Session exposing(Session)
 import Route as Route
@@ -35,7 +36,20 @@ type alias Model =
     , page : Int
     , per_page : Int
     , pageNum : Int
+    , is_detail : Bool
+    , detailId : String
     }
+
+type alias DetailData = 
+    { data : Detail }
+
+type alias Detail = 
+    { description : String
+    , id : Int
+    , link : Maybe String
+    , src : String
+    , target : Maybe String
+    , title : String }
 
 type alias Menus =
     {
@@ -62,6 +76,10 @@ type alias ImagePaginate =
     , title : String
     , total_count : Int
     }
+
+detailApi session id = 
+    Api.get DetailComplete (Endpoint.bannerDetail id) (Session.cred session) (Decoder.bannerDetailData DetailData Detail)
+
 
 imagelistApi page per_page title start_date end_date session = 
     let
@@ -104,9 +122,12 @@ init session =
     , page = 1
     , per_page = 10
     , pageNum = 1
+    , is_detail = True
+    , detailId = ""
     }
     , Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+    , Api.getParams ()
     ]
     )
 formUrlencoded object =
@@ -119,7 +140,7 @@ formUrlencoded object =
             )
         |> String.join "&"
 
-registApi model = 
+editApi model = 
     let
         body =
             formUrlencoded
@@ -130,7 +151,7 @@ registApi model =
             , ("target", model.target) ]
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
-    Api.post Endpoint.bannerRegist (Session.cred model.session) RegistComplete body (Decoder.result)
+    Api.post (Endpoint.bannerEdit model.detailId) (Session.cred model.session) EditComplete body (Decoder.result)
 
 toSession : Model -> Session
 toSession model = 
@@ -138,7 +159,7 @@ toSession model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Api.params ReceiveId
 
 type Msg  
     = NoOp
@@ -149,17 +170,44 @@ type Msg
     | BannerLink String
     | BannerUrl String
     | SubmitProduct
-    | RegistComplete (Result Http.Error Decoder.Success)
+    | EditComplete (Result Http.Error Decoder.Success)
     | ImageListComplete (Result Http.Error ImageDataList)
     | ImagePreview String
     | FindBanner
     | PageBtn (Int, String)
     | PageChange
     | SelectUrl String
+    | DetailComplete (Result Http.Error DetailData)
+    | ReceiveId Encode.Value
+    | EditOrDetail
+
+caseString item = 
+    case item of
+        Just ok ->
+            ok
+        Nothing ->
+            ""
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        EditOrDetail ->
+            ({model | is_detail = False}, Cmd.none)
+        ReceiveId id ->
+            case Decode.decodeValue Decode.string id of
+                Ok ok ->
+                     ({model | detailId = ok},  detailApi model.session ok)
+            
+                Err _ ->
+                    (model, Cmd.none)
+        DetailComplete (Ok ok) ->
+            ({model | description = ok.data.description, target = caseString ok.data.target, bannerTitle = ok.data.title, link = caseString ok.data.link, bannerPath = ok.data.src}, Cmd.none)
+        DetailComplete (Err err) ->
+            let _ = Debug.log "err" err
+            
+            in
+
+            (model, Cmd.none)
         SelectUrl url ->
             ({model | bannerPath = url, bannerShow = False}, Cmd.none)
         PageChange ->   
@@ -192,9 +240,9 @@ update msg model =
             ({model | imageData = ok}, Cmd.none)
         ImageListComplete (Err err) ->
             (model, Cmd.none)
-        RegistComplete (Ok ok) ->
-            (model, Route.pushUrl(Session.navKey model.session) Route.BM)
-        RegistComplete (Err err) ->
+        EditComplete (Ok ok) ->
+            ({model | is_detail = True}, Cmd.none)
+        EditComplete (Err err) ->
             (model, Cmd.none)
         SubmitProduct ->
             if String.isEmpty model.bannerTitle then
@@ -204,7 +252,7 @@ update msg model =
             else if String.isEmpty model.description then
                 ({model | validationErr = "상품설명을 입력 해 주세요.", validErrShow = True}, Cmd.none)
             else     
-            ({model | validationErr = "", validErrShow = False}, registApi model)
+            ({model | validationErr = "", validErrShow = False}, editApi model)
         BannerUrl date ->
             ({model | bannerPath = date}, Cmd.none)       
         BannerLink link ->
@@ -246,31 +294,34 @@ update msg model =
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
-    { title = "배너 등록"
+    { title = "배너 상세"
     , content =
         div []
-            [ columnsHtml [pageTitle "배너 등록"]
+            [ columnsHtml [pageTitle "배너 상세"]
            
        , div [] 
         [ div [class "searchWrap"] [
             columnsHtml 
-            [ formInputEvent "배너 명" "배너명 입력 해 주세요." False NameInput model.bannerTitle
-            , formInputEvent "배너 링크" "링크를 입력 해 주세요." False BannerLink model.link
+            [ formInputEvent "배너 명" "배너명 입력 해 주세요." model.is_detail NameInput model.bannerTitle
+            , formInputEvent "배너 링크" "링크를 입력 해 주세요." model.is_detail BannerLink model.link
             ]
             ,  columnsHtml 
-            [ formInputEventBtn "배너 URL" "배너를 선택 해 주세요." False BannerUrl model.bannerPath (if model.bannerShow then "찾기창 닫기" else "배너 찾기") FindBanner
-            , formInputEvent "배너 Target" "타겟을 입력 해 주세요." False TargetEvent model.target
+            [ formInputEventBtn "배너 URL" "배너를 선택 해 주세요." model.is_detail BannerUrl model.bannerPath (if model.bannerShow then "찾기창 닫기" else "배너 찾기") FindBanner
+            , formInputEvent "배너 Target" "타겟을 입력 해 주세요. " model.is_detail  TargetEvent model.target
             ]
             , columnsHtml [
                 bannerList model
             ]
             , columnsHtml [
-                textAreaEvent "배너 설명" False model.description TextAreaInput
+                textAreaEvent "배너 설명" model.is_detail model.description TextAreaInput
             ]
         ]
         ]
         , div [ class "buttons" ] [
-            div [ class "button is-primary cursur", onClick SubmitProduct ] [text "등록"],
+            if model.is_detail then
+            div [ class "button is-primary cursur", onClick EditOrDetail ] [text "수정" ]
+            else
+            div [ class "button is-primary cursur", onClick SubmitProduct ] [text  "저장"],
             a [ class "button is-warning", Route.href (Just Route.BM) ] [text "취소"]
         ]
         , validationErr model.validationErr model.validErrShow

@@ -56,7 +56,7 @@ import Page.Regist.ProductRegist as PR
 import Page.Detail.ProductDetail as PD
 import Page.BannerManage as BM
 import Page.Regist.BannerRegist as BR
-
+import Page.Detail.BannerDetail as BD
 
 type Model 
      = Redirect Session
@@ -99,6 +99,7 @@ type Model
      | PDModel PD.Model
      | BMModel BM.Model
      | BRModel BR.Model
+     | BDModel BD.Model
 
 
 main : Program Value Model Msg
@@ -155,6 +156,7 @@ type Msg
     | PDMsg PD.Msg
     | BMMsg BM.Msg
     | BRMsg BR.Msg
+    | BDMsg BD.Msg
 
 subscriptions model = 
     case model of
@@ -238,6 +240,8 @@ subscriptions model =
             Sub.map BMMsg (BM.subscriptions bm)
         BRModel br ->
             Sub.map BRMsg (BR.subscriptions br)
+        BDModel bd ->
+            Sub.map BDMsg (BD.subscriptions bd)
 
 init : Maybe Cred -> Url -> Key -> ( Model, Cmd Msg )
 init maybeViewer url navKey =
@@ -377,6 +381,9 @@ changeRouteTo maybeRoute model =
         Just Route.BR ->
             BR.init session
                 |> updateWith BRModel BRMsg model
+        Just Route.BD ->
+            BD.init session
+                |> updateWith BDModel BDMsg model
             
 
 toSession : Model -> Session
@@ -462,6 +469,8 @@ toSession page =
             BM.toSession mb
         BRModel br ->
             BR.toSession br
+        BDModel bd ->
+            BD.toSession bd
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -643,6 +652,9 @@ update msg model =
         (BRMsg subMsg ,BRModel itemModel) ->
             BR.update subMsg itemModel
                 |> updateWith BRModel BRMsg model
+        (BDMsg subMsg, BDModel itemModel) ->
+            BD.update subMsg itemModel
+                |> updateWith BDModel BDMsg model
         ( _, _ ) ->
             ( model, Cmd.none )  
         
@@ -770,3 +782,5 @@ view model =
                         viewPage Page.BM BMMsg (BM.view itemModel)
                     BRModel itemModel ->
                         viewPage Page.BR BRMsg (BR.view itemModel)
+                    BDModel itemModel ->
+                        viewPage Page.BD BDMsg (BD.view itemModel)

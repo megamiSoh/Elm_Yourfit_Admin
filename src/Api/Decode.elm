@@ -731,3 +731,16 @@ bannerListPage page =
         |> required "start_date" string
         |> required "title" string
         |> required "total_count" int
+
+bannerDetailData data detail = 
+    Decode.succeed data
+        |> required "data" (bannerDetail detail)
+
+bannerDetail detail = 
+    Decode.succeed detail
+        |> required "description" string
+        |> required "id" int
+        |> optional "link" (Decode.map Just string) Nothing
+        |> required "src" string
+        |> optional "target" (Decode.map Just string) Nothing
+        |> required "title" string

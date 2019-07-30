@@ -67,6 +67,8 @@ module Api.Endpoint exposing
     , bannerList
     , bannerIsUse
     , bannerRegist
+    , bannerDetail
+    , bannerEdit
     )
 
 import Http
@@ -327,3 +329,9 @@ bannerIsUse id =
 
 bannerRegist = 
     url ["admin", "banners", "new"][]
+
+bannerDetail id = 
+    url ["admin", "banners", id][]
+
+bannerEdit id = 
+    url ["admin", "banners", id, "edit"][]

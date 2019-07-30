@@ -55,6 +55,7 @@ type Route
     | PD
     | BM
     | BR
+    | BD
 
 -- decoder : Decoder (Cred -> Page)
 -- decoder =
@@ -105,6 +106,7 @@ parser =
         , Parser.map PD (s "productDetail")
         , Parser.map BM (s "bannerManage")
         , Parser.map BR (s "bannerRegist")
+        , Parser.map BD (s "bannerDetail")
         ]
 
 
@@ -230,5 +232,7 @@ routeToString page =
                     ["bannerManage"]
                 BR ->
                     ["bannerRegist"]
+                BD ->
+                    ["bannerDetail"]
     in
     "#/" ++ String.join "/" pages
