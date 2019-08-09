@@ -33,6 +33,7 @@ type alias Model =
     , detailId : String
     , is_detail : Bool
     , pageTitle : String
+    , errType : String
     }
 
 type alias Menus =
@@ -80,10 +81,10 @@ init session =
     , detailId = ""
     , is_detail = True
     , pageTitle = "상품관리 상세"
+    , errType = ""
     }
     , Cmd.batch
-    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    , Api.getParams ()
+    [ Api.getParams ()
     ]
     )
 formUrlencoded object =
@@ -141,20 +142,26 @@ update msg model =
         GoEdit ->
             ({model | is_detail = False, pageTitle = "상품관리 수정"}, Cmd.none)
         GetId id ->
-            let _ = Debug.log "id" id
+            let
                 decode = 
                     Decode.decodeValue Decode.string id
             in
                 case decode of
                     Ok str ->
                         ({model | detailId = str}, 
-                        detailApi model.session str)
+                        Cmd.batch[ detailApi model.session str
+                        , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
                 
                     Err _->
                         (model , Cmd.none)
         GotSession session ->
             ({ model | session = session}, 
-            Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody Decoder.muserInfo )
+            if model.errType == "" then
+            Cmd.batch[ detailApi model.session model.detailId
+            , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
+            else
+            editApi model
+            )
         DetailComplte (Ok ok) ->
             ({model | rage_date = String.fromInt ok.data.day_num, description = ok.data.description , is_pay = if ok.data.is_pay then "true" else "false", product_name = ok.data.name, price = String.fromInt ok.data.price}, Cmd.none)
         DetailComplte (Err err)->
@@ -162,7 +169,7 @@ update msg model =
         EditComplete (Ok ok) ->
             ({model | is_detail = True, pageTitle = "상품관리 상세"}, Cmd.none)
         EditComplete (Err err) ->
-            (model, Cmd.none)
+            ({model | errType = "edit"}, Cmd.none)
         SubmitProduct ->
             if String.isEmpty model.product_name then
                 ({model | validationErr = "상품명을 입력 해 주세요.", validErrShow = True}, Cmd.none)

@@ -521,8 +521,20 @@ update msg model =
                             ( {model |  menus = item.data.menus, username = item.data.admin.username},
                             imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
                     else
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                        imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
+                        if model.dateModel == "all" then
+                            if model.selected_item == "banner" then
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            listApi model.page model.per_page model.title "" "" model.session)
+                            else
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            imagelistApi model.page model.per_page model.title "" "" model.session)
+                        else
+                            if model.selected_item == "banner" then
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            listApi model.page model.per_page model.title model.start_date model.end_date model.session)
+                            else
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
                 Nothing ->
                     ( {model |  menus = item.data.menus, username = item.data.admin.username},
                     imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)

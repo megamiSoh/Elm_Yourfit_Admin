@@ -69,6 +69,7 @@ module Api.Endpoint exposing
     , bannerRegist
     , bannerDetail
     , bannerEdit
+    , shareGo
     )
 
 import Http
@@ -335,3 +336,6 @@ bannerDetail id =
 
 bannerEdit id = 
     url ["admin", "banners", id, "edit"][]
+
+shareGo id =
+    url ["admin", "videos", id , "share"][]

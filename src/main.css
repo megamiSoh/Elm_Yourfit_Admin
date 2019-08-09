@@ -1848,3 +1848,16 @@ textarea.editorStyle {
   overflow: hidden;
   height: 0;
 }
+.thumbShow {
+  display: flex;
+    padding: .5rem;
+    margin-bottom: .5rem;
+}
+.shareContents {
+  font-size : .8rem;
+  border: 1px solid #d8d8d8;
+  border-radius: 5px;
+  width: 100%;
+  text-align: left;
+  padding: .5rem;
+}

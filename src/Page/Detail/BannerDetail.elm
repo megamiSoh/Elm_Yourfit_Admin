@@ -159,7 +159,9 @@ toSession model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Api.params ReceiveId
+    Sub.batch[ Api.params ReceiveId
+    , Session.changes GotSession (Session.navKey model.session)
+    ]
 
 type Msg  
     = NoOp
@@ -180,6 +182,7 @@ type Msg
     | DetailComplete (Result Http.Error DetailData)
     | ReceiveId Encode.Value
     | EditOrDetail
+    | GotSession Session
 
 caseString item = 
     case item of
@@ -191,6 +194,10 @@ caseString item =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GotSession session ->
+            ({ model | session = session}, 
+            Cmd.none
+            )
         EditOrDetail ->
             ({model | is_detail = False}, Cmd.none)
         ReceiveId id ->
@@ -203,10 +210,12 @@ update msg model =
         DetailComplete (Ok ok) ->
             ({model | description = ok.data.description, target = caseString ok.data.target, bannerTitle = ok.data.title, link = caseString ok.data.link, bannerPath = ok.data.src}, Cmd.none)
         DetailComplete (Err err) ->
-            let _ = Debug.log "err" err
-            
+            let
+                error = Api.decodeErrors err
             in
-
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         SelectUrl url ->
             ({model | bannerPath = url, bannerShow = False}, Cmd.none)
@@ -239,10 +248,22 @@ update msg model =
         ImageListComplete (Ok ok) ->
             ({model | imageData = ok}, Cmd.none)
         ImageListComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         EditComplete (Ok ok) ->
             ({model | is_detail = True}, Cmd.none)
         EditComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            (model, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         SubmitProduct ->
             if String.isEmpty model.bannerTitle then

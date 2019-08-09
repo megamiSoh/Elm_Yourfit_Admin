@@ -3,7 +3,7 @@ module Page.ApiVideo exposing (..)
 import Browser
 import Route exposing (Route)
 import Html exposing (..)
-import Html.Attributes exposing( class, style )
+import Html.Attributes exposing( class, style, src )
 import Html.Events exposing(..)
 import Pagenation exposing(..)
 import Page.Page exposing(..)
@@ -17,6 +17,8 @@ import Api.Decode as Decoder
 import Json.Encode as Encode
 import Date exposing (..)
 import DatePicker exposing (Msg(..))
+import Page.Detail.ApiVideoDetail as AD
+
 
 type alias Model = {
     firstSelectedDate : Maybe Date
@@ -42,6 +44,11 @@ type alias Model = {
     , pageNum : Int
     , videoCode : List VideoCode
     , shareShow : Bool
+    , shareTitle : String
+    , description : String
+    , thumb : String
+    , itemDescroption : String
+    , contents_id : String
     }
 
 type alias VideoCodeData = 
@@ -98,8 +105,15 @@ dataApi session page per_page title video_code start_date end_date =
 videoCodeApi session = 
     Api.post Endpoint.videoCode (Session.cred session) VideoCodeComplete Http.emptyBody (Decoder.videoCodeData VideoCodeData VideoCode)
 
+detailApi session id = 
+    Api.get DetailComplete (Endpoint.apiDetail id) (Session.cred session)  (Decoder.apiDetailDataWrap AD.DataWrap AD.Data AD.Snippet AD.Items AD.PageInfo AD.ItemSnippet AD.Thumb AD.ThumbItem AD.Local)   
 
-
+shareApi content id session =
+    let
+        body = ("content=" ++ content)
+            |> Http.stringBody "application/x-www-form-urlencoded"
+    in
+    Api.post (Endpoint.shareGo id) (Session.cred session) ShareComplete body Decoder.result
 init : Session -> (Model, Cmd Msg)
 init session = 
     let
@@ -144,6 +158,11 @@ init session =
         , dateModel = "all"
         , pageNum = 1
         , shareShow = False
+        , shareTitle = ""
+        , description = ""
+        , thumb = ""
+        , itemDescroption = ""
+        , contents_id = ""
     }, Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.myProfileInfo)
     , Cmd.map DatePickerMsg datePickerCmd
@@ -166,9 +185,14 @@ type Msg
     | TitleSearch String
     | Search
     | Reset
-    | IsActive
+    | IsActive Int
     | GoDetail String
     | GoDetailComplete Encode.Value
+    | ShareTitle String
+    | TextAreaEvent String
+    | DetailComplete (Result Http.Error AD.DataWrap)
+    | ShareComplete (Result Http.Error Decoder.Success)
+    | GoShare
     -- | Search
     -- | Reset
 
@@ -176,9 +200,52 @@ toSession : Model -> Session
 toSession model =
     model.session
 
+getItemData item = 
+    case List.head item of
+        Just ok ->
+            ok.snippet
+        Nothing ->
+            { categoryId = ""
+            , channelId = ""
+            , channelTitle = ""
+            , description = ""
+            , liveBroadcastContent = ""
+            , localized = 
+                { description = ""
+                , title = ""}
+            , publishedAt = ""
+            , thumbnails = 
+                { default = 
+                    { height = 0
+                    , url = ""
+                    , width= 0 }
+                }
+            , title = ""
+            }
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GoShare ->
+            (model, shareApi model.description model.contents_id model.session )
+        ShareComplete (Ok ok) ->
+            ({model | shareShow = False}
+            , Api.showToast (Encode.string "공유 되었습니다."))
+        ShareComplete (Err err) ->
+            (model, Cmd.none)
+        DetailComplete (Ok ok) ->
+            let
+                getdata = 
+                    getItemData ok.data.snippet.items
+            in
+
+            ({model | description = ok.data.content, shareTitle = ok.data.title, thumb = getdata.thumbnails.default.url, itemDescroption = getdata.description}, Cmd.none)
+        DetailComplete (Err err) ->
+            (model, Cmd.none)
+        TextAreaEvent description ->
+            ({model | description = description} , Cmd.none)
+        ShareTitle title ->
+            (model, Cmd.none )
         Search ->
             let
                 old = model.data.paginate
@@ -209,8 +276,11 @@ update msg model =
             Cmd.batch
                 [ Cmd.map DatePickerMsg datePickerCmd
                 , Cmd.map EndDatePickerMsg enddatePickerCmd])
-        IsActive ->
-            ({model | shareShow = not model.shareShow}, Cmd.none)
+        IsActive id ->
+            if id == 0 then
+             ({model | shareShow = not model.shareShow}, Cmd.none)
+            else
+            ({model | shareShow = not model.shareShow, contents_id = String.fromInt id}, detailApi model.session (String.fromInt id))
         TitleSearch title ->
             ({model | title = title}, Cmd.none)
         CategoryEvent code ->
@@ -414,11 +484,10 @@ headerTable =
          div [ class "tableCell" ] [text "제목"],
          div [ class "tableCell" ] [text "카테고리"],
          div [ class "tableCell" ] [text "등록일"],
-         div [ class "tableCell" ] [text "공유건수"],
+        --  div [ class "tableCell" ] [text "공유건수"],
          div [ class "tableCell" ] [text "공유"]
      ]
 
---, Route.href (Just Route.UvideoDetail)
 tableLayout idx item model = 
         div [class "tableRow"] [
                 div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [text (
@@ -427,15 +496,29 @@ tableLayout idx item model =
                 , div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [text item.title]
                 , div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [text item.category]
                 , div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [ text (String.dropRight 10 item.inserted_at)]
-                , div [ class "tableCell" , onClick (GoDetail (String.fromInt item.id))] [ text "1 회 (예시)" ]
+                -- , div [ class "tableCell" , onClick (GoDetail (String.fromInt item.id))] [ text "1 회 (예시)" ]
                 , div [ class "tableCell" ] [
-                            button [class "button is-small", onClick IsActive ] [text "공유 하기"]
+                            button [class "button is-small", onClick (IsActive item.id) ] [text "공유 하기"]
                     ]
                 
          ]          
 
 
 shareLayout model = 
-    div [style "display" (if model.shareShow then "flex" else "none")][
-        text "new"
+    div [class "previewWrap", style "display" (if model.shareShow then "flex" else "none") ][
+        div [class "regist_container", style "max-width" "700px"]
+        [ div [ class "contents_container_banner"]
+        [ div [class "banner_title" , style "padding" "1rem"] [text "외부영상 공유"]
+        , div [class "thumbShow"][
+            img[ src model.thumb ][]
+            , p [class "shareContents"][ text model.itemDescroption ]
+        ]
+        , formInputEvent "제목명" "제목 명을 입력 해 주세요." True ShareTitle model.shareTitle
+        , textAreaRegistValue "내용" False "" TextAreaEvent model.description
+        , div [ class "buttons previewBtn" ] [
+            button [ class "button is-primary", onClick GoShare] [text "공유"],
+            div [ class "button is-warning", onClick (IsActive 0)] [text "취소"]
+        ]
+        ]
+        ]
     ]

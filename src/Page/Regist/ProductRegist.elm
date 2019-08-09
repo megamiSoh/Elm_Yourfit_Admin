@@ -29,6 +29,7 @@ type alias Model =
     , rage_date : String
     , validationErr : String
     , validErrShow : Bool
+    , errType : String
     }
 
 type alias Menus =
@@ -58,6 +59,7 @@ init session =
     , rage_date = ""
     , validationErr = ""
     , validErrShow = False
+    , errType = ""
     }
     , Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -92,7 +94,7 @@ toSession model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Session.changes GotSession (Session.navKey model.session)
 
 type Msg  
     = NoOp
@@ -103,14 +105,28 @@ type Msg
     | PriceInput String
     | DateInput String
     | SubmitProduct
+    | GotSession Session
     | RegistComplete (Result Http.Error Decoder.Success)
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        GotSession session ->
+            ({model | session = session}, 
+            if model.errType == "" then
+                Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+            else
+                registApi model
+            )
         RegistComplete (Ok ok) ->
             (model, Route.pushUrl(Session.navKey model.session) Route.PM)
         RegistComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "regist"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         SubmitProduct ->
             if String.isEmpty model.product_name then

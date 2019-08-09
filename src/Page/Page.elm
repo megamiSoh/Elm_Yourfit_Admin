@@ -654,6 +654,17 @@ textAreaRegist  title read article msg=
             ]
        ]
 
+textAreaRegistValue  title read article msg targetValue=
+       div[ class "field is-horizontal" ] [
+           labelWrap title,
+            div [ class "field-body inputWidth" ]
+            [  p [ class "control inputWidth" ]
+                   [ 
+                      textarea [ class "textarea", placeholder article, disabled read, onInput msg, maxlength 250, value targetValue] []
+                    ]
+            ]
+       ]
+
 textAreaWrap : String -> Bool -> Html msg
 textAreaWrap  title read =
        div[ class "field is-horizontal" ] [
