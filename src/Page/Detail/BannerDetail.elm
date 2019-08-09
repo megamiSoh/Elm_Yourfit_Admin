@@ -38,6 +38,7 @@ type alias Model =
     , pageNum : Int
     , is_detail : Bool
     , detailId : String
+    , errType : String
     }
 
 type alias DetailData = 
@@ -124,10 +125,10 @@ init session =
     , pageNum = 1
     , is_detail = True
     , detailId = ""
+    , errType = ""
     }
     , Cmd.batch
-    [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    , Api.getParams ()
+    [ Api.getParams ()
     ]
     )
 formUrlencoded object =
@@ -195,15 +196,24 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GotSession session ->
-            ({ model | session = session}, 
-            Cmd.none
-            )
+            case model.errType of
+            "findBanner" ->
+                update FindBanner { model | session = session}
+            "edit" ->
+                update SubmitProduct {model | session = session }
+            _ ->
+                ({ model | session = session}, 
+                Cmd.batch [detailApi session model.detailId
+                     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
+                )
         EditOrDetail ->
             ({model | is_detail = False}, Cmd.none)
         ReceiveId id ->
             case Decode.decodeValue Decode.string id of
                 Ok ok ->
-                     ({model | detailId = ok},  detailApi model.session ok)
+                     ({model | detailId = ok},  
+                     Cmd.batch [detailApi model.session ok
+                     , Api.post Endpoint.myInfo (Session.cred model.session) GetMyInfo Http.emptyBody (Decoder.muserInfo)])
             
                 Err _ ->
                     (model, Cmd.none)
@@ -218,7 +228,7 @@ update msg model =
             else 
             (model, Cmd.none)
         SelectUrl url ->
-            ({model | bannerPath = url, bannerShow = False}, Cmd.none)
+            ({model | bannerPath = url, bannerShow = False , page = 1}, Cmd.none)
         PageChange ->   
             (model, 
             Cmd.batch 
@@ -241,28 +251,28 @@ update msg model =
                     _ ->
                         (model, Cmd.none)
         FindBanner ->
-            ({model | bannerShow = not model.bannerShow}, imagelistApi 1 10 "" 
+            ({model | bannerShow = not model.bannerShow, page = 1}, imagelistApi model.page 10 "" 
             "" "" model.session)
         ImagePreview path ->
             ({model | path = path}, Cmd.none)
         ImageListComplete (Ok ok) ->
-            ({model | imageData = ok}, Cmd.none)
+            ({model | imageData = ok, errType = ""}, Cmd.none)
         ImageListComplete (Err err) ->
             let
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            (model, Api.changeInterCeptor (Just error))
+            ({model | errType = "findBanner"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
         EditComplete (Ok ok) ->
-            ({model | is_detail = True}, Cmd.none)
+            ({model | is_detail = True, errType = ""}, Cmd.none)
         EditComplete (Err err) ->
             let
                 error = Api.decodeErrors err
             in
             if error == "401"then
-            (model, Api.changeInterCeptor (Just error))
+            ({model | errType = "edit"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
         SubmitProduct ->

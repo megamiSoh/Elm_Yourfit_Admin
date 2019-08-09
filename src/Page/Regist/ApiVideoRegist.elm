@@ -47,6 +47,7 @@ type alias Model =
     , title : String
     , isShow : Bool
     , username : String
+    , errType : String
     }
     
 
@@ -194,6 +195,7 @@ init session =
         , title = ""
         , isShow = False
         , username = ""
+        , errType = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
 toSession : Model -> Session
@@ -233,6 +235,12 @@ update msg model =
         RegistComplete (Ok ok) ->
             (model,Route.pushUrl (Session.navKey model.session) Route.ApiVideo)
         RegistComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "regist"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         RegistGo ->
             (model, registForm model model.session)
@@ -292,10 +300,13 @@ update msg model =
         VideoCodeComplete (Err err) ->
             (model, Cmd.none)
         GotSession session ->
+            if model.errType == "" then
             ({model | session = session},
                  Cmd.batch[Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
                  , videoCodeApi session]
             )
+            else
+            update RegistGo {model | session = session, errType = ""}
         GetMyInfo (Err err) ->
             let
                 error = Api.decodeErrors err

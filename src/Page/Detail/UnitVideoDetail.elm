@@ -260,7 +260,7 @@ update msg model =
                 textEncoder = Encode.string "수정이 완료 되었습니다."
             in
             
-            ({model | edit = not model.edit, loading = False}, Cmd.none)
+            ({model | edit = not model.edit, loading = False, errType = ""}, Cmd.none)
         SucceesEdit (Err err)->
             let
                 error = Api.decodeErrors err
@@ -328,7 +328,7 @@ update msg model =
             in
              ({model | editData = new},Cmd.none)   
         ExerCode (Ok ok) -> 
-            ({model | exerCode = ok.data} ,Cmd.none)
+            ({model | exerCode = ok.data, errType = ""} ,Cmd.none)
         ExerCode (Err err) ->
             let
                 error = Api.decodeErrors err

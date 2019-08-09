@@ -52,6 +52,7 @@ type alias Model =
     , videoId : String
     , username : String
     , goEdit : Bool
+    , errType : String
     }
     
 
@@ -277,6 +278,7 @@ init session =
         , videoId = ""
         , username = ""
         , goEdit = False
+        , errType = ""
     }, Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
     , Api.getParams ()])
@@ -343,8 +345,14 @@ update msg model =
         DetailComplete (Err err) ->
             (model, Cmd.none)
         EditComplete (Ok ok) ->
-            ({model | selectVideo = "Search"},  videoDataApi model.session "" model.per_page model.videoId)
+            ({model | selectVideo = "Search", errType = ""},  videoDataApi model.session "" model.per_page model.videoId)
         EditComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errType = "edit"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         EditGo ->
             if model.is_edit then
@@ -423,10 +431,13 @@ update msg model =
         VideoCodeComplete (Err err) ->
             (model, Cmd.none)
         GotSession session ->
+            if model.errType == "" then
             ({model | session = session},
                  Cmd.batch[Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
                  , videoCodeApi session]
             )
+            else
+            update EditGo { model | session = session}
         GetMyInfo (Err err) ->
             let
                 error = Api.decodeErrors err

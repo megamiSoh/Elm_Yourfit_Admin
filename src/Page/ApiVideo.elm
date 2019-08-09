@@ -49,6 +49,7 @@ type alias Model = {
     , thumb : String
     , itemDescroption : String
     , contents_id : String
+    , errTyle : String
     }
 
 type alias VideoCodeData = 
@@ -163,6 +164,7 @@ init session =
         , thumb = ""
         , itemDescroption = ""
         , contents_id = ""
+        , errTyle = ""
     }, Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.myProfileInfo)
     , Cmd.map DatePickerMsg datePickerCmd
@@ -232,6 +234,12 @@ update msg model =
             ({model | shareShow = False}
             , Api.showToast (Encode.string "공유 되었습니다."))
         ShareComplete (Err err) ->
+            let
+                error = Api.decodeErrors err
+            in
+            if error == "401"then
+            ({model | errTyle = "share"}, Api.changeInterCeptor (Just error))
+            else 
             (model, Cmd.none)
         DetailComplete (Ok ok) ->
             let
@@ -397,9 +405,12 @@ update msg model =
         VideoCodeComplete (Err err) ->
             (model, Cmd.none)
         GotSession session ->
+            if model.errTyle == "" then
             ({ model | session = session}, 
             Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.myProfileInfo)
             )
+            else
+            update GoShare { model | session = session }  
         NoOp ->
             ( model, Cmd.none )
         GetMyInfo (Err err) ->
