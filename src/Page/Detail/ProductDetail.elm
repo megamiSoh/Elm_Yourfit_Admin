@@ -34,6 +34,7 @@ type alias Model =
     , is_detail : Bool
     , pageTitle : String
     , errType : String
+    , auth : List String
     }
 
 type alias Menus =
@@ -82,6 +83,7 @@ init session =
     , is_detail = True
     , pageTitle = "상품관리 상세"
     , errType = ""
+    , auth = []
     }
     , Cmd.batch
     [ Api.getParams ()
@@ -222,20 +224,19 @@ update msg model =
 
         GetMyInfo (Ok item) -> 
             let
-                menuf = List.head (List.filter (\x -> x.menu_id == 5) item.data.menus)
+                menuf = List.head (List.filter (\x -> x.menu_id == 11) item.data.menus)
             in
             case menuf of
                 Just a ->
                     let
                         auth num = List.member num a.menu_auth_code
                     in
-                    if auth "30" then
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},Cmd.none)
-                    else
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},Cmd.none)
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code},Cmd.none)
                 Nothing ->
                     ( {model |  menus = item.data.menus, username = item.data.admin.username},Cmd.none)
 
+
+memberAuth num model= List.member num model.auth
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
@@ -260,10 +261,13 @@ view model =
         ]
         ]
         , div [ class "buttons" ] [
-            if model.is_detail then
-            div [ class "button is-primary cursur", onClick GoEdit ] [text "수정"]
+            if memberAuth "30" model then
+                if model.is_detail then
+                div [ class "button is-primary cursur", onClick GoEdit ] [text "수정"]
+                else
+                div [ class "button is-primary cursur", onClick SubmitProduct ] [text "저장"]
             else
-            div [ class "button is-primary cursur", onClick SubmitProduct ] [text "저장"]
+                div [][]
             ,
             a [ class "button is-warning", Route.href (Just Route.PM) ] [text "취소"]
         ]

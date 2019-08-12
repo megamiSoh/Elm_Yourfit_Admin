@@ -52,6 +52,7 @@ type alias Model =
     , registTitle : String
     , previewUrl : String
     , getFile : List File.File
+    , auth : List String
     }
 type alias BannerList = 
     { data : List Data
@@ -203,6 +204,7 @@ init session =
     , registTitle = ""
     , previewUrl = ""
     , getFile = []
+    , auth = []
     }
     , Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -374,17 +376,23 @@ update msg model =
             Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             )
         GoDetail id ->
+            if memberAuth "20" model then
             (model, Cmd.batch[Api.saveData (Encode.string (String.fromInt id))
             ])
+            else
+            (model, Cmd.none)
         GoDetailComplete go ->
             (model,Route.pushUrl (Session.navKey model.session) Route.BD)
         IsUse use id ->
-            let _ = Debug.log "use" use
+            let
                 body = Encode.object 
                     [ ("is_use", Encode.bool use) ]
                     |> Http.jsonBody
             in
+            if memberAuth "30" model then
             (model, Api.post (Endpoint.bannerIsUse (String.fromInt id)) (Session.cred model.session) Is_useComplete body (Decoder.result))
+            else
+            (model, Cmd.none)
         Search ->
             if model.dateModel == "all" then
             ({model | pageNum = 1}, 
@@ -498,47 +506,33 @@ update msg model =
 
         GetMyInfo (Ok item) -> 
             let
-                menuf = List.head (List.filter (\x -> x.menu_id == 5) item.data.menus)
+                menuf = List.head (List.filter (\x -> x.menu_id == 12) item.data.menus)
             in
             case menuf of
                 Just a ->
                     let
                         auth num = List.member num a.menu_auth_code
                     in
-                    if auth "30" then
                         if model.selected_item == "banner" then
                             if model.dateModel == "all" then
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code},
                             listApi model.page model.per_page model.title "" "" model.session)
                             else
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username , auth = a.menu_auth_code},
                             listApi model.page model.per_page model.title model.start_date model.end_date model.session)
                         else
                             if model.dateModel == "all" then
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username , auth = a.menu_auth_code},
                             imagelistApi model.page model.per_page model.title "" "" model.session)
                             else
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                            imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
-                    else
-                        if model.dateModel == "all" then
-                            if model.selected_item == "banner" then
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                            listApi model.page model.per_page model.title "" "" model.session)
-                            else
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                            imagelistApi model.page model.per_page model.title "" "" model.session)
-                        else
-                            if model.selected_item == "banner" then
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                            listApi model.page model.per_page model.title model.start_date model.end_date model.session)
-                            else
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                            ( {model |  menus = item.data.menus, username = item.data.admin.username , auth = a.menu_auth_code},
                             imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
                 Nothing ->
                     ( {model |  menus = item.data.menus, username = item.data.admin.username},
                     imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
 
+
+memberAuth num model= List.member num model.auth
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
@@ -575,7 +569,7 @@ view model =
                                         searchB Search Reset 
                                     ]
                             ]
-                            , registRoute "상품 등록" Route.BR
+                            , if memberAuth "50" model then registRoute "상품 등록" Route.BR else div [][]
                             , dataCount (String.fromInt model.listData.paginate.total_count)
                             , if List.length model.listData.data > 0 then
                             div [class "table"]
@@ -618,7 +612,7 @@ view model =
                                     searchB Search ImageReset 
                                 ]
                             ]
-                            , registClick "이미지 등록" ImageRegistPop
+                            , if memberAuth "50" model then registClick "이미지 등록" ImageRegistPop else div [][]
                             , dataCount (String.fromInt model.imageData.paginate.total_count)
                             , if List.length model.imageData.data > 0 then
                             div [class "table"]

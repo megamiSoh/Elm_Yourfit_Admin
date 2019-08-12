@@ -41,6 +41,7 @@ type alias Model =
     , selectModel : List { code : String , name : String}
     , pageNum : Int
     , is_use : Bool
+    , auth : List String
     }
 type alias ProductList = 
     { data : List Data
@@ -145,6 +146,7 @@ init session =
         ]
     , pageNum = 1
     , is_use = False
+    , auth = []
     }
     , Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -232,8 +234,11 @@ update msg model =
             Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
             )
         GoDetail id ->
+            if memberAuth "20" model then
             (model, Cmd.batch[Api.saveData (Encode.string (String.fromInt id))
             ])
+            else 
+            (model, Cmd.none)
         GoDetailComplete go ->
             (model,Route.pushUrl (Session.navKey model.session) Route.PD)
         IsActiveComplete (Ok ok) ->
@@ -244,12 +249,15 @@ update msg model =
         IsActiveComplete (Err err) ->
             (model, Cmd.none)
         IsUse use id ->
-            let _ = Debug.log "use" use
+            let
                 body = Encode.object 
                     [ ("is_use", Encode.bool use) ]
                     |> Http.jsonBody
             in
+            if memberAuth "30" model then
             (model, Api.post (Endpoint.productActive (String.fromInt id)) (Session.cred model.session) IsActiveComplete body Decoder.result)
+            else
+            (model, Cmd.none)
         IsPaySelect pay ->
             ({model | is_pay = pay}, Cmd.none)
         Search ->
@@ -286,10 +294,6 @@ update msg model =
         ListComplete (Ok ok) ->
             ({model | listData = ok}, Cmd.none)
         ListComplete (Err err) ->
-            let _ = Debug.log "err " err
-                
-            in
-            
             (model, Cmd.none)
         DateValue str->
             ({model | dateModel = str},Cmd.none)
@@ -376,31 +380,26 @@ update msg model =
 
         GetMyInfo (Ok item) -> 
             let
-                menuf = List.head (List.filter (\x -> x.menu_id == 5) item.data.menus)
+                menuf = List.head (List.filter (\x -> x.menu_id == 11) item.data.menus)
             in
             case menuf of
                 Just a ->
                     let
                         auth num = List.member num a.menu_auth_code
                     in
-                    if auth "30" then
-                        if model.dateModel == "all" then
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                        listApi model.page model.per_page model.name model.is_pay "" "" model.session)
-                        else
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                        listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
+                    if model.dateModel == "all" then
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code},
+                    listApi model.page model.per_page model.name model.is_pay "" "" model.session)
                     else
-                        if model.dateModel == "all" then
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                        listApi model.page model.per_page model.name model.is_pay "" "" model.session)
-                        else
-                        ( {model |  menus = item.data.menus, username = item.data.admin.username},
-                        listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code},
+                    listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
                 Nothing ->
-                    ( {model |  menus = item.data.menus, username = item.data.admin.username},
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = []},
                     listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
 
+
+
+memberAuth num model = List.member num model.auth
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
@@ -429,7 +428,7 @@ view model =
                     searchB Search Reset 
                 ]
         ]
-        , registRoute "상품 등록" Route.PR
+        , if memberAuth "50" model then registRoute "상품 등록" Route.PR else div [][]
         , dataCount (String.fromInt model.listData.paginate.total_count)
         , if List.length model.listData.data > 0 then
          div [class "table"]
