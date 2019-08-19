@@ -721,6 +721,8 @@ bannerListData list =
         |> required "link" (Decode.nullable string)
         |> required "src" string 
         |> required "title" string
+        |> required "link" (Decode.nullable string)
+        |> required "backcolor" (Decode.nullable string)
 
 bannerListPage page = 
     Decode.succeed page
@@ -744,3 +746,4 @@ bannerDetail detail =
         |> required "src" string
         |> optional "target" (Decode.map Just string) Nothing
         |> required "title" string
+        |> required "backcolor" (Decode.nullable string)

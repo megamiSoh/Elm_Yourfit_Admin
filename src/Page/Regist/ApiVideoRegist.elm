@@ -233,7 +233,8 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         RegistComplete (Ok ok) ->
-            (model,Route.pushUrl (Session.navKey model.session) Route.ApiVideo)
+            (model,Cmd.batch[Route.pushUrl (Session.navKey model.session) Route.ApiVideo
+            , Api.showToast (Encode.string "등록 되었습니다.")])
         RegistComplete (Err err) ->
             let
                 error = Api.decodeErrors err

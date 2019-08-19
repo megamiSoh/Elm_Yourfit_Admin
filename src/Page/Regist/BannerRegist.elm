@@ -35,6 +35,7 @@ type alias Model =
     , page : Int
     , per_page : Int
     , pageNum : Int
+    , bg_color : String
     }
 
 type alias Menus =
@@ -104,6 +105,7 @@ init session =
     , page = 1
     , per_page = 10
     , pageNum = 1
+    , bg_color = ""
     }
     , Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
@@ -127,7 +129,8 @@ registApi model =
             , ("description", model.description)
             , ("src", model.bannerPath)
             , ("link", model.link)
-            , ("target", model.target) ]
+            , ("target", model.target)
+            , ("backcolor", model.bg_color) ]
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
     Api.post Endpoint.bannerRegist (Session.cred model.session) RegistComplete body (Decoder.result)
@@ -156,10 +159,13 @@ type Msg
     | PageBtn (Int, String)
     | PageChange
     | SelectUrl String
+    | BgColorInput String
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        BgColorInput bg ->
+            ({model | bg_color = bg}, Cmd.none)
         SelectUrl url ->
             ({model | bannerPath = url, bannerShow = False}, Cmd.none)
         PageChange ->   
@@ -193,7 +199,9 @@ update msg model =
         ImageListComplete (Err err) ->
             (model, Cmd.none)
         RegistComplete (Ok ok) ->
-            (model, Route.pushUrl(Session.navKey model.session) Route.BM)
+            (model, Cmd.batch [ Route.pushUrl(Session.navKey model.session) Route.BM
+            , Api.showToast (Encode.string "등록 되었습니다.")
+            ])
         RegistComplete (Err err) ->
             (model, Cmd.none)
         SubmitProduct ->
@@ -266,6 +274,9 @@ view model =
             ]
             , columnsHtml [
                 textAreaEvent "배너 설명" False model.description TextAreaInput
+            ]
+            , columnsHtml [
+                formInputEvent "배경 컬러" "배경 컬러를 입력 해 주세요." False BgColorInput model.bg_color
             ]
         ]
         ]

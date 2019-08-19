@@ -55,6 +55,7 @@ img {
   padding: .5rem;
   border-left: 1px solid #e1dada;
   border-top: 1px solid #e1dada;
+  word-break: break-all;
 }
 
 .tableCell:first-child {

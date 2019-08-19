@@ -64,7 +64,9 @@ type alias Data =
     , is_use : Bool
     , link : Maybe String
     , src : String
-    , title : String }
+    , title : String
+    , target : Maybe String
+    , backcolor : Maybe String }
 
 type alias Paginate = 
     { end_date : String
@@ -264,10 +266,22 @@ update msg model =
         Is_useComplete (Err err) ->
             (model, Cmd.none)
         PageChange ->   
-            (model, 
-            Cmd.batch 
-            [ imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session
-            ,  Api.pageNum (Encode.int model.page)])
+            case model.selected_item of
+                "banner" ->
+                    (model, 
+                    Cmd.batch 
+                    [ listApi model.page model.per_page model.title model.start_date model.end_date model.session
+                    ,  Api.pageNum (Encode.int model.page)])
+                "image" ->
+                    (model, 
+                    Cmd.batch 
+                    [ imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session
+                    ,  Api.pageNum (Encode.int model.page)])
+                _ ->
+                    (model, 
+                    Cmd.batch 
+                    [ listApi model.page model.per_page model.title model.start_date model.end_date model.session
+                    ,  Api.pageNum (Encode.int model.page)])
         PageBtn (idx, str) ->
             let 
                 list num = 
@@ -319,7 +333,8 @@ update msg model =
                 , Cmd.map EndDatePickerMsg enddatePickerCmd])
         ImageRegistComplete (Ok ok) ->
             ({model | getFile = [], registTitle = "", filename = "", showRegist = False, previewUrl = ""}
-            , imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session) 
+            , Cmd.batch[imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session
+            , Api.showToast (Encode.string "등록 되었습니다.")]) 
         ImageRegistComplete (Err err) ->
             (model, Cmd.none) 
         GoRegist ->
@@ -569,7 +584,7 @@ view model =
                                         searchB Search Reset 
                                     ]
                             ]
-                            , if memberAuth "50" model then registRoute "상품 등록" Route.BR else div [][]
+                            , if memberAuth "50" model then registRoute "배너 등록" Route.BR else div [][]
                             , dataCount (String.fromInt model.listData.paginate.total_count)
                             , if List.length model.listData.data > 0 then
                             div [class "table"]
@@ -655,23 +670,27 @@ stringCase item =
 
 headerTable = 
       div [ class "tableRow headerStyle"] [
-         div [ class "tableCell" ] [text "No"],
-         div [ class "tableCell" ] [text "제목"],
-         div [ class "tableCell" ] [text "링크"],
-         div [ class "tableCell" ] [text "배너 주소"],
-         div [ class "tableCell" ] [text "등록일"],
-         div [ class "tableCell" ] [text "게시"]
+            div [ class "tableCell" ] [text "No"],
+            div [ class "tableCell" ] [text "제목"],
+            div [ class "tableCell" ] [text "링크"],
+            div [ class "tableCell" ] [text "배너 주소"],
+            div [ class "tableCell" ] [text "target"],
+                div [ class "tableCell" ] [text "배경색"],
+            div [ class "tableCell" ] [text "등록일"],
+            div [ class "tableCell" ] [text "게시"]
      ]
 
 tableLayout idx item model = 
         div [class "tableRow"] [
-                div [ class "tableCell", onClick (GoDetail item.id)] [
+                div [ class "tableCell", style "width" "3%", onClick (GoDetail item.id)] [
                     text ( String.fromInt(model.listData.paginate.total_count - ((model.listData.paginate.page - 1) * 10) - (idx)
                     )) 
                 ],
-                div [ class "tableCell" , onClick (GoDetail item.id)] [text item.title],
+                div [ class "tableCell", style "width" "10%" , onClick (GoDetail item.id)] [text item.title],
                 div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.link) ],
-                div [ class "tableCell", style "width" "45%", onClick (GoDetail item.id)] [text item.src],
+                div [ class "tableCell", style "width" "30%", onClick (GoDetail item.id)] [text item.src],
+                div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.target)],
+                div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.backcolor)],
                 div [ class "tableCell", onClick (GoDetail item.id)] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell"] [
                     if item.is_use then
@@ -692,7 +711,7 @@ imageheaderTable =
 
 imagetableLayout idx item model msg previewMsg= 
     div [class "tableRow"] [
-            div [ class "tableCell", onClick msg] [
+            div [ class "tableCell", onClick msg, style "width" "3%"] [
                 text ( String.fromInt(model.imageData.paginate.total_count - ((model.imageData.paginate.page - 1) * 10) - (idx)
                 )) 
             ],

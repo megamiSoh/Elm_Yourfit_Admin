@@ -40,6 +40,7 @@ type alias Model =
     , detailId : String
     , errType : String
     , auth : List String
+    , bg_color : String
     }
 
 type alias DetailData = 
@@ -51,7 +52,8 @@ type alias Detail =
     , link : Maybe String
     , src : String
     , target : Maybe String
-    , title : String }
+    , title : String 
+    , backcolor : Maybe String}
 
 type alias Menus =
     {
@@ -128,6 +130,7 @@ init session =
     , detailId = ""
     , errType = ""
     , auth = []
+    , bg_color = ""
     }
     , Cmd.batch
     [ Api.getParams ()
@@ -151,7 +154,8 @@ editApi model =
             , ("description", model.description)
             , ("src", model.bannerPath)
             , ("link", model.link)
-            , ("target", model.target) ]
+            , ("target", model.target) 
+            , ("backcolor", model.bg_color)]
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
     Api.post (Endpoint.bannerEdit model.detailId) (Session.cred model.session) EditComplete body (Decoder.result)
@@ -186,6 +190,7 @@ type Msg
     | ReceiveId Encode.Value
     | EditOrDetail
     | GotSession Session
+    | BgColorInput String
 
 caseString item = 
     case item of
@@ -197,6 +202,8 @@ caseString item =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        BgColorInput color ->
+            ({model | bg_color = color}, Cmd.none)
         GotSession session ->
             case model.errType of
             "findBanner" ->
@@ -220,7 +227,7 @@ update msg model =
                 Err _ ->
                     (model, Cmd.none)
         DetailComplete (Ok ok) ->
-            ({model | description = ok.data.description, target = caseString ok.data.target, bannerTitle = ok.data.title, link = caseString ok.data.link, bannerPath = ok.data.src}, Cmd.none)
+            ({model | description = ok.data.description, target = caseString ok.data.target, bannerTitle = ok.data.title, link = caseString ok.data.link, bannerPath = ok.data.src, bg_color = caseString ok.data.backcolor}, Cmd.none)
         DetailComplete (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -268,7 +275,7 @@ update msg model =
             else 
             (model, Cmd.none)
         EditComplete (Ok ok) ->
-            ({model | is_detail = True, errType = ""}, Cmd.none)
+            ({model | is_detail = True, errType = ""}, Api.showToast (Encode.string "수정 되었습니다."))
         EditComplete (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -345,6 +352,9 @@ view model =
             ]
             , columnsHtml [
                 textAreaEvent "배너 설명" model.is_detail model.description TextAreaInput
+            ]
+            , columnsHtml [
+                formInputEvent "배경 컬러" "배경 컬러를 입력 해 주세요." model.is_detail BgColorInput model.bg_color
             ]
         ]
         ]
