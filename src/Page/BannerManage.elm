@@ -66,7 +66,8 @@ type alias Data =
     , src : String
     , title : String
     , target : Maybe String
-    , backcolor : Maybe String }
+    , backcolor : Maybe String
+    , is_vertical : Bool }
 
 type alias Paginate = 
     { end_date : String
@@ -675,7 +676,8 @@ headerTable =
             div [ class "tableCell" ] [text "링크"],
             div [ class "tableCell" ] [text "배너 주소"],
             div [ class "tableCell" ] [text "target"],
-                div [ class "tableCell" ] [text "배경색"],
+            div [ class "tableCell" ] [text "배경색"],
+            div [ class "tableCell" ] [text "Vertical"],
             div [ class "tableCell" ] [text "등록일"],
             div [ class "tableCell" ] [text "게시"]
      ]
@@ -687,10 +689,11 @@ tableLayout idx item model =
                     )) 
                 ],
                 div [ class "tableCell", style "width" "10%" , onClick (GoDetail item.id)] [text item.title],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.link) ],
+                div [ class "tableCell", style "width" "15%", onClick (GoDetail item.id)] [text (stringCase item.link) ],
                 div [ class "tableCell", style "width" "30%", onClick (GoDetail item.id)] [text item.src],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.target)],
+                div [ class "tableCell", style "width" "15%", onClick (GoDetail item.id)] [text (stringCase item.target)],
                 div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.backcolor)],
+                div [ class "tableCell", onClick (GoDetail item.id)] [text (if item.is_vertical then "True" else "False")],
                 div [ class "tableCell", onClick (GoDetail item.id)] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell"] [
                     if item.is_use then
