@@ -36,25 +36,24 @@ type alias Model =
     }
 
 type alias EditData = 
-    { title:String 
-    , difficulty:String
-    , exercise:String
-    , instrument:String
-    , video:String
-    , description:String
-    , part_details:List String
+    { title : String 
+    , difficulty : String
+    , exercise : String
+    , instrument : String
+    , video : String
+    , description : String
+    , part_details : List String
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code : List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias PartDetail = 
-    { code: String
-    , name: String
+    { code : String
+    , name : String
     }
 
 type alias ListData = 
@@ -66,7 +65,7 @@ type alias Level =
 
 
 type alias ResultDecoder = 
-    {result : String}
+    { result : String }
 
 
 init: Session -> (Model, Cmd Msg)
@@ -98,7 +97,7 @@ init session =
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
     ]
     )
-
+editEncoder : EditData -> Session -> Cmd Msg
 editEncoder editData session = 
     let
         newinput text=
@@ -132,7 +131,6 @@ toSession : Model -> Session
 toSession model =
     model.session
 
-
 type Msg 
     =  
      TitleText String
@@ -148,7 +146,6 @@ type Msg
     | SucceesEdit (Result Http.Error ResultDecoder)
     | GoEdit
     | AreaMsg String
-    -- | RetryChange Session
     | GotSession Session
     | GetMyInfo (Result Http.Error D.DataWrap)
 
@@ -157,8 +154,6 @@ type Msg
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
     case msg of
-        -- RetryChange session ->
-        --     ({model | session = session}, editEncoder model.editData session)
         GetMyInfo (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -356,13 +351,4 @@ view model =
   
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch 
-    [ Session.changes GotSession (Session.navKey model.session)
-    -- , Session.retryChange RetryChange (Session.navKey model.session)
-    ]
-
-validtitle model = 
-    if String.isEmpty model.title then
-        []
-    else
-        []
+    Session.changes GotSession (Session.navKey model.session)

@@ -723,6 +723,7 @@ bannerListData list =
         |> required "title" string
         |> required "link" (Decode.nullable string)
         |> required "backcolor" (Decode.nullable string)
+        |> required "is_vertical" bool
 
 bannerListPage page = 
     Decode.succeed page
@@ -747,3 +748,4 @@ bannerDetail detail =
         |> optional "target" (Decode.map Just string) Nothing
         |> required "title" string
         |> required "backcolor" (Decode.nullable string)
+        |> required "is_vertical" bool 

@@ -7,21 +7,14 @@ import Html.Attributes exposing(..)
 import Html.Events exposing(onClick)
 import Page.Page as Page
 
-type alias Model =
-    Bool
+type alias Model = Bool
+
 init : Model
 init = False
 
 type Msg = Collapse | Expand | Checked Bool
 
--- null: Maybe Model -> Bool
--- null model =
---     case model of
---         Nothing ->
---             False
-    
---         Just ok ->
---             ok
+
 
 update : Msg -> Model -> Model
 update msg model =
@@ -163,57 +156,3 @@ adminSearchPop model read =
         button [ class "button is-small" , href "#", onClick Expand, disabled read   ] [
             text "관리자 등록"
         ]
--- test : List String -> String
-
-
--- videoFilter : Model -> Html Msg
--- videoFilter model exerpart level exer tool=
---     if model then
---         div [] [
---             -- div [ class "layerWrap" , onClick Collapse] [],
---         div [ class "widePop"] [
---             Page.popTitle "필터 설정" ,
---             div [ class "closeBtn"][
---                     i [ class "far fa-times-circle" , onClick Collapse]
---                     []
---                 ],
---             Page.columnsHtml[
---                 Page.labelWrap "운동부위"
---             ],
---             Page.columnsHtml [
---             --    div [] (List.map filterBtn exerpart )
---             ],
-            
---             Page.columnsHtml[
---                 Page.labelWrap "난이도"
---             ],
---             Page.columnsHtml [
---                 -- div [] (List.map filterBtn level)
---             ],
---             Page.columnsHtml[
---                 Page.labelWrap "운동종류"
---             ],
---              Page.columnsHtml [
---                 -- div [] (List.map filterBtn exer)
---             ],
---             Page.columnsHtml[
---                 Page.labelWrap "기구"
---             ],
---              Page.columnsHtml [
---                 -- div [] (List.map filterBtn tool)
---             ],
---             Page.columnsHtml [
---                 div [ class "layerBtn"] [
---                     div [ class "button is-primary" , onClick Collapse]
---                     [ text "확인" ]
---                     ,  div [ class "button is-warning"  , onClick Collapse]
---                     [ text "취소" ]
---                 ]
---             ]
---         ]
---         ]
---     else
---         button [ class "button is-small is-primary" , href "#", onClick Expand  ] [
---             text "필터 설정"
---         ]
-

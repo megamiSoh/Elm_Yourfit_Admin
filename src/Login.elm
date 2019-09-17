@@ -10,7 +10,6 @@ import Json.Decode.Pipeline exposing (..)
 import Json.Encode as Encode
 import Route exposing (Route)
 import Session exposing (Session)
-import Viewer exposing (Viewer)
 import Api.Endpoint as Endpoint
 import Json.Decode.Pipeline as Pipeline exposing (optional, required)
 import Time
@@ -83,9 +82,7 @@ viewForm form model =
              div [ class "loginWrap"] [
            h1 [ class "loginText"] [text "Yourfit Admin"],
            div [ class "field" ]
-        [
-            -- viewForm form,
-                div [class "loginErr"] [
+        [ div [class "loginErr"] [
                     text model.err
                 ]
             , p [ class "control has-icons-left has-icons-right" ]
@@ -265,10 +262,7 @@ trimFields form =
 
 
 
--- HTTP
-
-
--- login : TrimmedForm -> Http.Request Viewer
+login : TrimmedForm -> Cmd Msg
 login (Trimmed form) =
     let
         user =
@@ -283,12 +277,10 @@ login (Trimmed form) =
     in
     Api.login body CompletedLogin tokenDecoder 
 
+tokenDecoder : Decoder Api.Cred
 tokenDecoder =
     Decode.succeed Api.Cred
         |> required "token" Decode.string
-
--- EXPORT
-
 
 toSession : Model -> Session
 toSession model =

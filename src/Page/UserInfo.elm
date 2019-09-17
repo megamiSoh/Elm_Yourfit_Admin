@@ -16,64 +16,60 @@ import Api.Decode as Decoder
 import Page.Origin.AdminManage as AdminManage
 import Page as Page
 
-
-
-type alias Model =
-    {
-        session: Session
-        , data : Data
-        , problems : String
-        , authMenus : List Authmenu
-        , authCode : List AuthCode
-        , menus : List Menus
-        , menuss : List Menuss
-        , username : String
-        , errType : String
-    }
 type Problem
     = InvalidEntry String
     | ServerError String
 
+
+type alias Model =
+    { session: Session
+    , data : Data
+    , problems : String
+    , authMenus : List Authmenu
+    , authCode : List AuthCode
+    , menus : List Menus
+    , menuss : List Menuss
+    , username : String
+    , errType : String
+    }
+
 type alias Menuss =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code : List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias DataWrap = 
     { data : Data }
 
 type alias Data = 
-    {
-        admin : Admin,
-        menus : List Menus
+    { admin : Admin
+    , menus : List Menus
     }
+
 type alias Admin = 
-    {
-        connected_at : String,
-        id : Int,
-        joined_at : String,
-        nickname : Maybe String,
-        username : String,
-        profile : Maybe String
+    { connected_at : String
+    , id : Int
+    , joined_at : String
+    , nickname : Maybe String
+    , username : String
+    , profile : Maybe String
     }
+
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int
-        -- menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
     }
 
 type alias Authmenus = 
-    { data : List Authmenu}
+    { data : List Authmenu }
 
 type alias Authmenu =
     { id : Int
-    , name : String}
+    , name : String }
 
 type alias AuthCodes =  
-    { data: List AuthCode}
+    { data: List AuthCode }
 
 type alias AuthCode = 
     { code : String
@@ -84,8 +80,7 @@ type alias AuthCode =
 init : Session -> (Model, Cmd Msg)
 init session = 
     (
-    {
-     menus = []
+    { menus = []
     , menuss = []
     , authMenus = []
     , authCode = []
@@ -110,6 +105,8 @@ init session =
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
         ]
     )   
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Session.changes GotSession (Session.navKey model.session)
@@ -118,7 +115,7 @@ toSession : Model -> Session
 toSession model = 
     model.session
 
-
+managelist : Session -> Cmd Msg
 managelist session =
     Api.post Endpoint.myInfo (Session.cred session) GetList Http.emptyBody (Decoder.userInfo DataWrap Data Admin Menus) 
 
@@ -129,6 +126,7 @@ type Msg
     | GetCode (Result Http.Error AuthCodes)
     | GotSession Session
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
+
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -208,13 +206,13 @@ view model =
                 [   pageTitle "내 정보",
                     figure [ class "image is-64x64" ]
                     [ 
-                        case model.data.admin.profile of
-                            Just image ->
-                                img [src image] []
-                        
-                            Nothing ->
-                                i [ class "fas fa-user-circle" ]
-                                []
+                    case model.data.admin.profile of
+                        Just image ->
+                            img [src image] []
+                    
+                        Nothing ->
+                            i [ class "fas fa-user-circle" ]
+                            []
                     ]
                 ]
             , div [ class "media-content" ]
@@ -242,6 +240,7 @@ view model =
     ]
     }
 
+adminLayout : Bool -> List Authmenu -> List AuthCode -> List Menus -> Model -> Html Msg
 adminLayout disabled menu code menuId model=
         div [ class "box" ]
         [ 
@@ -252,32 +251,32 @@ adminLayout disabled menu code menuId model=
                 div [class "table"] [
                         thead [] [AdminManage.authTable code],
                         tbody [] ( 
-                            List.map (\i ->
-                                authTableContent i disabled (
-                                    let
-                                        get = List.head (List.filter (\x ->
-                                                x.menu_id == i.id 
-                                                    ) menuId)
-                                    in
-                                    case get of
-                                        Just g ->
-                                            g
-                                        Nothing ->
-                                            { menu_id = 0, menu_auth_code = [] }
-                                ) 
-                            ) menu 
+                        List.map (\i ->
+                            authTableContent i disabled (
+                                let
+                                    get = List.head (List.filter (\x ->
+                                            x.menu_id == i.id 
+                                                ) menuId)
+                                in
+                                case get of
+                                    Just g ->
+                                        g
+                                    Nothing ->
+                                        { menu_id = 0, menu_auth_code = [] }
+                            ) 
+                        ) menu 
                         )
-                    ]
-                        
+                    ]  
                 ]
             ]
         ]
 
+
+authTableContent : Authmenu -> Bool -> Menus -> Html Msg
 authTableContent authMenu d x= 
     let
         checkFilter check = List.member check x.menu_auth_code
     in
-    
     div[ class "tableRow"][
         div [class "tableCell"] [text authMenu.name ],
         div [class "tableCell"] [

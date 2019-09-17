@@ -9,7 +9,6 @@ import Url exposing (Url)
 import Html.Attributes as Attr
 import Url.Parser as UrlParser
 import Browser.Navigation as Nav
-import SearchPage as Spage
 import Page.AdminManage as AdminM
 import Page.UserManage as UserM
 import Page.VideoUnit as VideoU
@@ -48,7 +47,7 @@ import Login as Login
 import Api exposing(..)
 import Login exposing(..)
 import Json.Decode as Decode exposing (Value)
-import Viewer exposing (Viewer)
+-- import Viewer exposing (Viewer)
 import Page.Contact as C
 import Page.Detail.ContactDetail as CD
 import Page.ProductManage as PM
@@ -104,7 +103,7 @@ type Model
 
 main : Program Value Model Msg
 main =
-    Api.application Api.storageDecoder
+    Api.application 
         { init = init
         , onUrlChange = ChangedUrl
         , onUrlRequest = ClickedLink
@@ -158,6 +157,7 @@ type Msg
     | BRMsg BR.Msg
     | BDMsg BD.Msg
 
+subscriptions : Model -> Sub Msg
 subscriptions model = 
     case model of
         NotFound _ ->
@@ -658,7 +658,7 @@ update msg model =
         ( _, _ ) ->
             ( model, Cmd.none )  
         
-            
+updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )            
 updateWith toModel toMsg model (subModel, subCmd) =
     (toModel subModel
     , Cmd.map toMsg subCmd)

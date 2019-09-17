@@ -19,7 +19,8 @@ import Api.Endpoint as Endpoint
 import Api.Decode as Decoder
 import Page as Page
 
-
+type Problem
+    = ServerError String
 
 type alias Model =
     { firstSelectedDate : Maybe Date
@@ -47,46 +48,53 @@ type alias Model =
     , errType : String
     }
 
-
-
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 
-type Problem
-    = ServerError String
+type alias DataForm = 
+    { connected_at : String
+    , id : Int
+    , joined_at : String
+    , nickname : Maybe String
+    , username : String
+    }
 
-type Msg
-    = Show
-    | EndShow
-    | DatePickerMsg DatePicker.Msg
-    | GotSession Session
-    | GetList (Result Http.Error ResultForm)
-    | Nickname String
-    | Username String
-    | Search
-    | Reset
-    | GetId String
-    | Check Encode.Value
-    -- | SessionCheck Encode.Value
-    | EndDatePickerMsg DatePicker.Msg
-    | DateValue String
-    | PageBtn (Int, String)
-    | GetMyInfo (Result Http.Error Decoder.DataWrap)
-    | ReceivePnum Encode.Value
+type alias ResultForm = 
+    { data : List DataForm
+    , pagenate : Pagenate
+    }
 
+type alias ListForm =
+    { page : Int
+    , per_page : Int
+    , username : String
+    , nickname : String
+    , start_date : String
+    , end_date : String
+    }
+
+type alias Pagenate = 
+    { end_date : String
+    , nickname : String
+    , page : Int
+    , per_page : Int
+    , start_date : String
+    , total_count : Int
+    , username : String 
+    }
+
+listInit : ListForm
 listInit = 
-    {
-        page = 1,
-        per_page = 10,
-        username= "",
-        nickname= "",
-        start_date = "",
-        end_date = ""
+    { page = 1
+    , per_page = 10
+    , username= ""
+    , nickname= ""
+    , start_date = ""
+    , end_date = ""
     }
 
 init : Session-> ( Model, Cmd Msg )
@@ -136,72 +144,54 @@ init session=
     , Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
-        -- , managelist listInit session 
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
         ]
     )
 
 
-type alias DataForm = 
-    {
-        connected_at : String,
-        id : Int,
-        joined_at : String,
-        nickname : Maybe String,
-        username : String
-    }
-
-type alias ResultForm = {
-    data : List DataForm,
-    pagenate : Pagenate
-    }
-
-type alias ListForm =
-    {
-        page : Int,
-        per_page : Int,
-        username: String,
-        nickname: String,
-        start_date : String,
-        end_date : String
-    }
-
-type alias Pagenate = 
-    {
-        end_date: String,
-        nickname: String,
-        page: Int,
-        per_page: Int,
-        start_date: String,
-        total_count: Int,
-        username : String 
-    }
-
-
-
+managelist : ListForm -> Session -> Cmd Msg
 managelist form session =
     let
         body =
             manageEncode form   
                 |> Http.jsonBody
     in
-   
-         Api.post Endpoint.usermanageList (Session.cred session) GetList body (Decoder.userformDecoder ResultForm DataForm Pagenate)
+    Api.post Endpoint.usermanageList (Session.cred session) GetList body (Decoder.userformDecoder ResultForm DataForm Pagenate)
+
 
 toSession : Model -> Session
 toSession model =
     model.session
 
+
+manageEncode : ListForm -> Encode.Value
 manageEncode form =
     Encode.object
-                [ ("page", Encode.int form.page)
-                , ("per_page", Encode.int form.per_page)
-                , ("username", Encode.string form.username)
-                , ("nickname", Encode.string form.nickname)
-                , ("start_date", Encode.string form.start_date)
-                , ("end_date", Encode.string form.end_date)
-                ]
+        [ ("page", Encode.int form.page)
+        , ("per_page", Encode.int form.per_page)
+        , ("username", Encode.string form.username)
+        , ("nickname", Encode.string form.nickname)
+        , ("start_date", Encode.string form.start_date)
+        , ("end_date", Encode.string form.end_date)
+        ]
 
+type Msg
+    = Show
+    | EndShow
+    | DatePickerMsg DatePicker.Msg
+    | GotSession Session
+    | GetList (Result Http.Error ResultForm)
+    | Nickname String
+    | Username String
+    | Search
+    | Reset
+    | GetId String
+    | Check Encode.Value
+    | EndDatePickerMsg DatePicker.Msg
+    | DateValue String
+    | PageBtn (Int, String)
+    | GetMyInfo (Result Http.Error Decoder.DataWrap)
+    | ReceivePnum Encode.Value
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -211,7 +201,6 @@ update msg model =
             let 
                 val = Decode.decodeValue Decode.int num
             in
-            
             case val of
                 Ok ok ->
                     let
@@ -222,22 +211,18 @@ update msg model =
                                 ok // 10
                                 else
                                 ok // 10 + 1
-                        
                     in
-                    
                     if model.dateModel == "all" then
                         let
                             old = model.listForm
                             new = {old | page = ok, end_date = "", start_date = ""}
                         in
-                        
                         ({model | listForm = new ,  pageNum = pageNum} , managelist new model.session)
                     else
                         let
                             old = model.listForm
                             new = {old | page = ok}
                         in
-                        
                         ({model | listForm = new ,  pageNum = pageNum} , managelist new model.session)
                 Err err ->
                     (model, Cmd.none)
@@ -255,19 +240,19 @@ update msg model =
                 menuf = List.head (List.filter (\x -> x.menu_id == 1) item.data.menus)
             in
             case menuf of
-                        Just a ->
-                            let
-                                auth num = List.member num a.menu_auth_code
-                            in
-                            
-                                if auth "20" then
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Api.pageNum (Encode.int 0) )
-                                else if auth "50" then
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Api.pageNum (Encode.int 0) )
-                                else
-                                ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
-                        Nothing ->
-                            ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
+                Just a ->
+                    let
+                        auth num = List.member num a.menu_auth_code
+                    in
+                    
+                        if auth "20" then
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goDetail = True}, Api.pageNum (Encode.int 0) )
+                        else if auth "50" then
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username, goRegist = True}, Api.pageNum (Encode.int 0) )
+                        else
+                        ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
+                Nothing ->
+                    ( {model |  menus = item.data.menus, username = item.data.admin.username}, Api.pageNum (Encode.int 0) )
             
         PageBtn (idx, str) ->
             let
@@ -319,14 +304,7 @@ update msg model =
         DateValue str->
             ({model | dateModel = str},Cmd.none)
         GetList (Err err) ->
-            -- let
-            --     error = Api.decodeErrors err
-            -- in
-            -- if error == "401"then
-            -- ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
-            -- else 
             (model, Cmd.none)
-
         GetList (Ok item) ->
             ( {model | resultForm = item, dataForm = item.data}
             , Cmd.none )
@@ -343,7 +321,6 @@ update msg model =
                         , Cmd.map DatePickerMsg cmd
                         )
                    )
-
                 |> (\( newModel, cmd ) ->
                     let
                         old = model.listForm
@@ -355,7 +332,6 @@ update msg model =
                                 let
                                     new = {old | end_date = getFormattedDate (Just currentSelectedDate) model.endday}
                                 in
-                                
                                 ( { newModel | secondSelectedDate = Just currentSelectedDate, listForm = new, endShow = False }
                                 , cmd
                                 )
@@ -363,7 +339,6 @@ update msg model =
                                 let
                                     new = {old | end_date = getFormattedDate (Just todaydate) model.endday}
                                 in
-                                
                                 ( { newModel | endday = Just todaydate, secondSelectedDate = Just todaydate, listForm = new , todaySave = getFormattedDate (Just todaydate) model.endday}
                                 , cmd
                                 )
@@ -377,7 +352,6 @@ update msg model =
                         , Cmd.map DatePickerMsg cmd
                         )
                    )
-
                 |> (\( newModel, cmd ) ->
                         let
                             old = model.listForm
@@ -423,14 +397,12 @@ update msg model =
                 new = 
                     {listFirst | nickname = str}
             in
-            
             ({model | listForm = new}, Cmd.none)
         Username str ->      
             let
                 listFirst = model.listForm
                 new = {listFirst | username = str}
             in
-              
             ({model | listForm = new} , Cmd.none)
         Search ->
             let 
@@ -447,7 +419,6 @@ update msg model =
                 date = 
                     {old | page = 1}
             in
-            
             if model.dateModel == "all" then
             ({model | pageNum = 1},
             Cmd.batch
@@ -488,13 +459,13 @@ update msg model =
             in
             (model ,Api.saveData idEncoder)
 
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch[
     Session.changes GotSession (Session.navKey model.session),
     Api.saveCheck Check
     , Api.sendPageNum ReceivePnum
-    -- , Api.onSucceesSession SessionCheck
     ]
 
 
@@ -509,14 +480,14 @@ viewProblem problem =
     in
     li [] [ text errorMessage ]
 
+
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     {
         title = "사용자 관리",
         content = 
             div []
-                [               
-                    columnsHtml [pageTitle "사용자 관리" ]
+                [ columnsHtml [pageTitle "사용자 관리" ]
                     , div [ class "searchWrap" ] [
                         columnsHtml [
                             searchDate 
@@ -531,14 +502,12 @@ view model =
                             else
                                 ""
                             )
-                            
                         ],
                         columnsHtml [
                             formInputEvent "닉네임" "닉네임을 입력 해 주세요" False Nickname model.listForm.nickname,
                             formInputEvent "아이디" "아이디를 입력 해 주세요" False Username model.listForm.username,
                             searchB Search Reset
                         ]
-                        
                     ]
                 , dataCount (String.fromInt(model.resultForm.pagenate.total_count)), 
                 if List.length (model.resultForm.data) > 0 then
@@ -556,8 +525,6 @@ view model =
                     PageBtn
                     model.resultForm.pagenate
                     model.pageNum 
-                
-                -- Pagenation.pagination PageBtn model.resultForm.pagenate
             ]
             , menu =  
                 aside [ class "menu"] [
@@ -568,14 +535,14 @@ view model =
         }
 
 
-
+listData : List DataForm -> Model -> Html Msg
 listData dataForm model=
     div [] [
         div [ class "table" ] ([headerTable] ++ (List.indexedMap(\ idx x -> tableLayout idx x model)  dataForm))
         ]
 
 
-
+headerTable : Html Msg
 headerTable = 
      div [ class "tableRow headerStyle"] [
         div [ class "tableCell" ] [text "No"],
@@ -585,22 +552,21 @@ headerTable =
     ]
 
 
+tableLayout : Int -> DataForm -> Model -> Html Msg
 tableLayout idx item model = 
         div[class "tableRow cursor", onClick (GetId (String.fromInt(item.id)))
         ]
-         [
-                div [ class "tableCell" ] [text (
-                    String.fromInt(model.resultForm.pagenate.total_count - ((model.resultForm.pagenate.page - 1) * 10) - (idx)  )
-                )],
-                div [ class "tableCell" ] [
-                    case item.nickname of
-                        Just name ->
-                            text name
-                        Nothing ->
-                            text ""
-                        
-                ],
-                div [ class "tableCell" ] [text item.username],
-                div [ class "tableCell" ] [text (String.dropRight 10 item.joined_at)]
+         [ div [ class "tableCell" ] [text (
+                String.fromInt(model.resultForm.pagenate.total_count - ((model.resultForm.pagenate.page - 1) * 10) - (idx)  )
+            )],
+            div [ class "tableCell" ] [
+                case item.nickname of
+                    Just name ->
+                        text name
+                    Nothing ->
+                        text ""
+            ],
+            div [ class "tableCell" ] [text item.username],
+            div [ class "tableCell" ] [text (String.dropRight 10 item.joined_at)]
         ]
 

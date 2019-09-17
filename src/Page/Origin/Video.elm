@@ -20,7 +20,66 @@ onChange tagger =
 targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
-registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  url   model openbtn check filterResult addItem  goedit textAreaInput filterTitle pointCheck payMsg sexMsg checkAge allAge=
+
+-- registformView : Html msg 
+--     -> Html msg 
+--     -> List { code : String, name : String } 
+--     -> (String -> msg) 
+--     -> List { code : String, name : String } 
+--     -> (String -> msg) 
+--     -> (String -> msg) 
+--     -> Route 
+--     -> { titleModel : String, levelModel : String, partModel : String, is_pay : String, is_sex : String, checkPoint : List String, pointCode : List { code : String , name : String}, age : List { code : String , name : String}, checkAge : List String, gofilter : List String, partDetail : List { code : String , name : String}, levelData : List { code : String , name : String}, exerCode : List { code : String , name : String}, instrument : List { code : String , name : String}, openFilter : Bool
+--     , filter : { difficulty_code : List String
+--         , exercise_code : List String
+--         , instrument_code : List String
+--         , part_detail_code : List String
+--         , title : String
+--         , page : Int
+--         , per_page : Int
+--         }
+--     , filtertitle : String
+--     , btnTitle : String
+--     , description : String
+--     , disabled : Bool
+--     , editItem : List { action_id :  String
+--         , is_rest :  String
+--         , value :  String}
+--     , errType : String
+--     , filterData : List { difficulty_name : Maybe String
+--         , exercise_name : Maybe String
+--         , id : Maybe Int
+--         , instrument_name : Maybe String
+--         , part_detail_name : List (Maybe String)
+--         , title : Maybe String
+--         , value : Maybe Int
+--         , is_rest : Maybe Bool
+--         , thembnail : String
+--         , duration : String
+--         }
+--     , filterName : List String
+--     , getId : String
+--     , loading : Bool
+--     , menus : List { menu_auth_code: List String
+--         , menu_id : Int
+--         , menu_name : String
+--         }
+--     , newStyle : String
+--     }
+--     -> msg 
+--     -> ((String, String, String) -> msg) 
+--     -> msg 
+--     -> (Maybe Int -> msg) 
+--     -> msg 
+--     -> (String -> msg) 
+--     -> (String -> msg) 
+--     -> ((String, String )-> msg) 
+--     -> (String -> msg) 
+--     -> (String -> msg) 
+--     -> ((String, String) -> msg)
+--     -> msg
+--     -> Html msg
+registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg url { titleModel, levelModel, partModel, is_pay, is_sex, checkPoint, checkAge, age, pointCode, gofilter, partDetail, levelData ,exerCode,instrument,openFilter,filter,filtertitle} openbtn check filterResult addItem  goedit textAreaInput filterTitle pointCheck payMsg sexMsg checkAgeMsg allAge =
     div[] [
         columnsHtml [pageTitle "유어핏영상 등록"],
         columnsHtml [
@@ -28,19 +87,20 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
         ],
         div [class "searchWrap"] [
             columnsHtml [
-            formInputEvent "운동 제목" "운동 제목을 입력 해 주세요." False titlemsg model.titleModel 
+            formInputEvent "운동 제목" "운동 제목을 입력 해 주세요." False titlemsg titleModel 
             ],
             columnsHtml [
-            noEmptyselectForm "난이도" False levelmodel seletmsg  model.levelModel,
-            noEmptyselectForm "운동 부위" False partmodel partmsg  model.partModel
+            noEmptyselectForm "난이도" False levelmodel seletmsg  levelModel,
+            noEmptyselectForm "운동 부위" False partmodel partmsg  partModel
             ]
             ,columnsHtml [
-            noEmptyselectForm "유 / 무료" False [{code = "false", name = "무료"}, {code = "true", name = "유료"}] payMsg  model.is_pay
-            , noEmptyselectForm "성별" (if model.is_pay == "false" then True else False) [{code = "", name = "구분 없음"},{code = "true", name = "남성"}, {code = "false", name = "여성"}] sexMsg model.is_sex
+            noEmptyselectForm "유 / 무료" False [{code = "false", name = "무료"}, {code = "true", name = "유료"}] payMsg  is_pay
+            , noEmptyselectForm "성별" (if is_pay == "false" then True else False) [{code = "", name = "구분 없음"},{code = "true", name = "남성"}, {code = "false", name = "여성"}] sexMsg is_sex
             ]
             , columnsHtml [
-            checkBoxCustom model.pointCode (if model.is_pay == "false" then True else False) model.checkPoint pointCheck model.checkPoint
-           , checkBoxCustomAge model.age (if model.is_pay == "false" then True else False) model.checkAge checkAge model.checkAge allAge
+        --     checkBoxCustompointCode (if is_pay == "false" then True else False) checkPoint pointCheck checkPoint
+        --    , 
+           checkBoxCustomAge age (if is_pay == "false" then True else False) checkAge checkAgeMsg checkAge allAge
             ]
             , columnsHtml [
                 textAreaRegist "운동 설명" False "250자까지 입력 가능" textAreaInput
@@ -55,7 +115,7 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
                 button [ class "button is-small is-primary" , disabled False, onClick openbtn ] [
                 text "필터 설정"
                 ]
-                ,filterItem model.gofilter
+                ,filterItem gofilter
             ] 
         ],
         columnsHtml [
@@ -107,7 +167,7 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg  u
         ]
         
          , 
-        videoFilter model.partDetail model.levelData model.exerCode model.instrument model.openFilter openbtn check model.filter filterResult filterTitle model.filtertitle
+        videoFilter partDetail levelData exerCode instrument openFilter openbtn check filter filterResult filterTitle filtertitle
     ]
 
 checkBoxCustom list disabled checkV partMsg checkModel=

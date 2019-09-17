@@ -20,9 +20,8 @@ import Api.Decode as D
 import Page as Page
 
 type alias Model =
-    { 
-     disabled : Bool
-     , username : String
+    { disabled : Bool
+    , username : String
     , session : Session
     , menus : List Menus
     , partData : List SelectItem
@@ -88,18 +87,17 @@ type alias ScreenInfo =
     , scrollTop : Int
     , offsetHeight : Int}
 
-
 type alias PreviewWrap =  
     { data : DataPreview }
+
 type alias DataPreview = 
     { file : String
     , image : String }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias Value = 
@@ -108,7 +106,7 @@ type alias Value =
 
 type alias EditVideo =
     { title : String
-    , difficulty: String
+    , difficulty : String
     , exercise_part: String
     , items : List EditItem }
 
@@ -142,7 +140,6 @@ type alias SelectItem =
 type alias FilterDetail = 
     { data : List FilterItem 
     , paginate : Paginate}
-
 
 type alias Paginate =
     { difficulty_code : List String
@@ -180,23 +177,20 @@ type alias ExerItem =
     , value: Int}
 
 type alias Success = 
-    { result : String}
+    { result : String }
 
+scrollEvent : (ScreenInfo -> msg) -> Attribute msg 
 scrollEvent msg = 
     on "scroll" (Decode.map msg scrollInfoDecoder)
 
+scrollInfoDecoder : Decode.Decoder ScreenInfo
 scrollInfoDecoder =
     Decode.map3 ScreenInfo
         (Decode.at [ "target", "scrollHeight" ] Decode.int)
         (Decode.at [ "target", "scrollTop" ] Decode.int)
         (Decode.at [ "target", "offsetHeight" ] Decode.int) 
 
-editItem edit=
-    Encode.object   
-        [ ("action_id", Encode.int edit.id)
-        , ("is_rest", Encode.bool edit.is_rest)
-        , ("value", Encode.int edit.value)]
-
+editItenEncoder : EditItems -> String
 editItenEncoder item = 
     urlencoded 
         [ ("action_id", 
@@ -208,9 +202,12 @@ editItenEncoder item =
         , ("is_rest", item.is_rest)
         , ("value", item.value)]
 
+
+editResult : EditItems -> String
 editResult item= 
     editItenEncoder item
 
+formUrlencoded : List (String , String) -> String
 formUrlencoded object =
     object
         |> List.map
@@ -221,6 +218,7 @@ formUrlencoded object =
             )
         |> String.join "&"
 
+urlencoded : List (String , String) -> String
 urlencoded object =
     object
         |> List.map
@@ -231,6 +229,8 @@ urlencoded object =
             )
         |> String.join ","
 
+
+listformUrlencoded : List EditItems -> String
 listformUrlencoded object =
     object
         |> List.map
@@ -241,6 +241,7 @@ listformUrlencoded object =
             )
         |> String.join ","
 
+directionEncoded : List String -> String
 directionEncoded object =
     object
         |> List.map
@@ -249,6 +250,7 @@ directionEncoded object =
             )
         |> String.join ","
 
+registVideo : Model -> List EditItems -> Session -> Cmd Msg
 registVideo model edit session=
     let
         newInput text = 
@@ -273,6 +275,7 @@ registVideo model edit session=
     Api.post (Endpoint.videoRegistRegist)(Session.cred session) GoEditApi list ((D.resultDecoder Success))
 
 
+videoFilterResult : ExerFilterList -> Session -> Int -> Int -> String -> Cmd Msg
 videoFilterResult e session page perpage filtertitle= 
     let
         list = 
@@ -366,6 +369,14 @@ toSession : Model -> Session
 toSession model =
     model.session
 
+takeLists : Int -> List FilterItem -> List FilterItem
+takeLists idx model = 
+    List.take idx model
+
+dropLists : Int -> List FilterItem -> List FilterItem
+dropLists idx model = 
+    List.drop idx model
+
 type Msg 
     = GetLevel (Result Http.Error ListData)
     | GetPart (Result Http.Error ListData)
@@ -388,9 +399,7 @@ type Msg
     | PlusMinusDeleteSet Int String Int
     | GoRegist 
     | GoEditApi(Result Http.Error Success)
-    -- | RetryChange Session
     | GotSession Session
-    -- | SecRetry Session
     | GetPreview (Int, String)
     | PreviewComplete (Result Http.Error PreviewWrap)
     | VideoClose
@@ -405,11 +414,6 @@ type Msg
     | AgeCheck (String, String)
     | AllAge
 
-takeLists idx model = 
-    List.take idx model
-
-dropLists idx model = 
-    List.drop idx model
     
 update : Msg -> Model ->  (Model, Cmd Msg)
 update msg model =
@@ -483,10 +487,6 @@ update msg model =
         GetPreview (id, title)->
             ({model | videoShow = not model.videoShow , previewId = id}, Cmd.batch[Api.get PreviewComplete (Endpoint.unitVideoShow (String.fromInt(id))) (Session.cred model.session) (D.videoData PreviewWrap DataPreview),
              Api.heightControll (not model.videoShow)])
-        -- SecRetry session ->
-        --     ({model | session = session }, videoFilterResult model.filter session model.page model.per_page model.filtertitle)
-        -- RetryChange session ->
-        --     ({model | session = session} , registVideo model model.editItem session)
         GetMyInfo (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -826,7 +826,7 @@ update msg model =
             
 -- helperFunction
 
-
+exerciseMap : Model -> Html Msg
 exerciseMap model=
        div [class "scrollStyle", scrollEvent ScrollEvent] [
         p [ class "title" ]
@@ -835,6 +835,7 @@ exerciseMap model=
         ) model.filterData)
         ]
 
+emptyList : Model -> Html Msg
 emptyList model=
         div [] (List.indexedMap (
             \idx item ->
@@ -852,9 +853,7 @@ view model=
             , content =
                 div [] [
                 div [class "adminloadingMask"][spinner]
-                -- , div [class "adminAuthMask"] []
-                   
-                ]
+                 ]
                 , menu =  
                     aside [ class "menu"] [
                         Page.header model.username
@@ -943,10 +942,4 @@ view model=
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch 
-    [ 
-        -- Api.onSucceesSession SessionCheck
     Session.changes GotSession (Session.navKey model.session)
-    -- , Session.retryChange RetryChange (Session.navKey model.session)
-    -- , Session.secRetryChange SecRetry (Session.navKey model.session)
-    ]

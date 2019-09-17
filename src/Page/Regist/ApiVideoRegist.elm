@@ -17,19 +17,16 @@ import Http as Http
 import Api.Endpoint as Endpoint
 import Api.Decode as Decoder
 
-type alias VideoItem = {
-    check : Bool,
-    thumb : String,
-    title : String,
-    article : String
+type alias VideoItem = 
+    { check : Bool
+    , thumb : String
+    , title : String
+    , article : String
     }
-
-
 
 type alias Model = 
     { popup : Bool
     , videoSelected : List VideoItem
-    -- , originVideo : List VideoItem
     , videoShow : List VideoItem
     , session: Session
     , menus : List Menus
@@ -75,6 +72,7 @@ type alias VideoSnippet =
     , thumbnails : Thumbnail
     , title : String
     }
+
 type alias Paginate = 
     { next_token : String
     , page_token : String
@@ -86,11 +84,11 @@ type alias Paginate =
 type alias Thumbnail = 
     { default : ThumbnailItem
     }
+
 type alias ThumbnailItem =
     { height: Int
     , url: String
     , width : Int }
-
 
 type alias VideoCodeData = 
     { data : List VideoCode}
@@ -100,12 +98,12 @@ type alias VideoCode =
     , name : String }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
+formUrlencoded : List ( String, String ) -> String
 formUrlencoded object =
     object
         |> List.map
@@ -115,7 +113,8 @@ formUrlencoded object =
                     ++ value
             )
         |> String.join "&"
---  "\"" ++++ "\""
+
+registForm : Model -> Session -> Cmd Msg        
 registForm model session =
     let
         list=
@@ -127,8 +126,8 @@ registForm model session =
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
     Api.post (Endpoint.youtubeRegist) (Session.cred session) RegistComplete list (Decoder.resultDecoder Decoder.Success)
-    
 
+videoDataApi : Session -> String -> Int-> String -> Cmd Msg
 videoDataApi session page_token per_page keyword = 
     let
         body = 
@@ -140,6 +139,7 @@ videoDataApi session page_token per_page keyword =
     in
     Api.post Endpoint.youtubeVideoApi (Session.cred session) VideoDataComplete body (Decoder.youtubeVideoData VideoData VideoDataInfo VideoId VideoSnippet Paginate Thumbnail ThumbnailItem )
 
+videoCodeApi : Session -> Cmd Msg
 videoCodeApi session = 
     Api.post Endpoint.videoCode (Session.cred session) VideoCodeComplete Http.emptyBody (Decoder.videoCodeData VideoCodeData VideoCode)
 
@@ -148,7 +148,6 @@ init session =
     ({
         popup = False,
         videoSelected = [],
-        -- originVideo = initMapVideo,
         videoShow = []
         , menus = []
         , videoCode = []
@@ -346,10 +345,7 @@ view model =
     , content = 
         div [ class "apiVideoRegistStyle"] [
         div [] 
-            [ columnsHtml [
-            -- pageTitle "외부 API 영상 등록" 
-            ]
-            , layerPop model
+            [ layerPop model
             , ApiVideo.apiVideoLayout
             "외부 Api 영상 등록"
             False
@@ -375,13 +371,14 @@ view model =
     ]
     }
     
-
+selectedVideoList : Model -> Html Msg
 selectedVideoList model=
     if List.length model.videoShow > 0 then
         videoResultLayout model
     else
         ApiVideo.noSelected
 
+videoListLayout : Model -> Html Msg
 videoListLayout model =
     div [class "apiVideoItem" ] [
         if List.isEmpty model.videoData.data then
@@ -393,6 +390,8 @@ videoListLayout model =
     ) model.videoData.data 
     )]
 
+
+videoResultLayout : Model -> Html Msg
 videoResultLayout model=
     div [class "apiVideoItem"] (
         List.indexedMap (
@@ -401,5 +400,6 @@ videoResultLayout model=
     )
 
 
+layerPop : Model -> Html Msg
 layerPop model=
         ApiVideo.apiVideoList False (videoListLayout model ) PopUpClose VideoResult VideoSearchInput VideoSearch model.preview model.isShow "외부 영상 선택"

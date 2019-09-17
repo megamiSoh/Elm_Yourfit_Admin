@@ -21,8 +21,8 @@ import Date exposing (..)
 import DatePicker exposing (Msg(..))
 import Page as Page
 
-type alias Model = {
-    session: Session
+type alias Model =
+    { session: Session
     , problems : String
     , listForm : ListForm
     , resultForm : ResultForm
@@ -45,47 +45,44 @@ type alias Model = {
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias DataForm = 
-    {
-        connected_at : String,
-        id : Int,
-        joined_at : String,
-        nickname : Maybe String,
-        username : String
+    { connected_at : String
+    , id : Int
+    , joined_at : String
+    , nickname : Maybe String
+    , username : String
     }
 
-type alias ResultForm = {
-    data : List DataForm,
-    pagenate : Pagenate
+type alias ResultForm = 
+    { data : List DataForm
+    , pagenate : Pagenate
     }
 
 type alias ListForm =
-    {
-        page : Int,
-        per_page : Int,
-        username: String,
-        nickname: String,
-        start_date : String,
-        end_date : String
+    { page : Int
+    , per_page : Int
+    , username: String
+    , nickname: String
+    , start_date : String
+    , end_date : String
     }
 
 type alias Pagenate = 
-    {
-        end_date: String,
-        nickname: String,
-        page: Int,
-        per_page: Int,
-        start_date: String,
-        total_count: Int,
-        username : String 
+    { end_date: String
+    , nickname: String
+    , page: Int
+    , per_page: Int
+    , start_date: String
+    , total_count: Int
+    , username : String 
     }
 
+managelist : ListForm -> Session -> Cmd Msg
 managelist form session =
     let
         list =
@@ -103,15 +100,15 @@ managelist form session =
     in
     Api.post Endpoint.adminList (Session.cred session) GetList body (Decoder.userformDecoder ResultForm DataForm Pagenate)
 
+listInit : ListForm
 listInit = 
-            {
-                page = 1,
-                per_page = 10,
-                username= "",
-                nickname= "",
-                start_date = "",
-                end_date = ""
-            }
+        { page = 1
+        , per_page = 10
+        , username= ""
+        , nickname= ""
+        , start_date = ""
+        , end_date = ""
+        }
 
 init : Session -> (Model, Cmd Msg)
 init session =
@@ -157,13 +154,16 @@ init session =
     }, Cmd.batch
         [ Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
-        -- , managelist listInit session
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo) 
         ]
      )
 
-type Msg = 
-        NoOp 
+toSession : Model -> Session
+toSession model =
+    model.session
+
+type Msg  
+        = NoOp 
         | GetList (Result Http.Error ResultForm) 
         | Nickname String
         | Username String
@@ -172,7 +172,6 @@ type Msg =
         | GotSession Session
         | GetUserId String
         | CheckResult Encode.Value
-        -- | SessionCheck Encode.Value
         | EndDatePickerMsg DatePicker.Msg
         | DatePickerMsg DatePicker.Msg
         | Show
@@ -181,12 +180,6 @@ type Msg =
         | PageBtn (Int, String)
         | GetMyInfo (Result Http.Error Decoder.DataWrap)    
         | ReceivePnum Encode.Value
-
-
-toSession : Model -> Session
-toSession model =
-    model.session
-
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -376,12 +369,6 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
         GetList (Err err) ->
-            -- let
-            --     error = Api.decodeErrors err
-            -- in
-            -- if error == "401"then
-            -- ({model | errType = "GetList"}, Api.changeInterCeptor (Just error))
-            -- else 
             (model, Cmd.none)
         GetList (Ok item) ->
             ( {model | resultForm = item}, Cmd.none )
@@ -501,7 +488,6 @@ view model =
                     formInputEvent "아이디" "아이디를 입력 해 주세요" False Username model.listForm.username,
                     searchB Search Reset
                 ]
-                
             ],
         
         div [ class "registWrap"] 
@@ -540,9 +526,10 @@ view model =
                     ,ul [ class "menu-list yf-list"] 
                         (List.map Page.viewMenu model.menus)
                 ]
-    
     }
 
+
+headerTable : Html Msg
 headerTable = 
      div [ class "tableRow headerStyle"] [
         div [ class "tableCell" ] [text "No"],
@@ -552,6 +539,7 @@ headerTable =
     ]
 
 
+tableLayout : Int -> DataForm -> Model -> Html Msg
 tableLayout idx item model = 
         div [class "tableRow cursor"
         , onClick (GetUserId (String.fromInt(item.id)))
@@ -564,8 +552,7 @@ tableLayout idx item model =
                         Just name ->
                             text name
                         Nothing ->
-                            text ""
-                        
+                            text "" 
                 ],
                 div [ class "tableCell" ] [text item.username],
                 div [ class "tableCell" ] [text (String.dropRight 10 item.joined_at)]

@@ -41,7 +41,13 @@ type alias Model =
     , errType : String
     , auth : List String
     , bg_color : String
+    , is_vertical : String
+    , verticalList : List Code
     }
+
+type alias Code =
+    { code : String
+    , name : String}
 
 type alias DetailData = 
     { data : Detail }
@@ -53,7 +59,8 @@ type alias Detail =
     , src : String
     , target : Maybe String
     , title : String 
-    , backcolor : Maybe String}
+    , backcolor : Maybe String
+    , is_vertical : Bool }
 
 type alias Menus =
     {
@@ -131,6 +138,10 @@ init session =
     , errType = ""
     , auth = []
     , bg_color = ""
+    , is_vertical = ""
+    , verticalList = 
+        [ { code = "true", name = "vertical" }
+        , { code = "false", name = "horizontal" }]
     }
     , Cmd.batch
     [ Api.getParams ()
@@ -155,7 +166,8 @@ editApi model =
             , ("src", model.bannerPath)
             , ("link", model.link)
             , ("target", model.target) 
-            , ("backcolor", model.bg_color)]
+            , ("backcolor", model.bg_color)
+            , ("is_vertical", model.is_vertical)]
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
     Api.post (Endpoint.bannerEdit model.detailId) (Session.cred model.session) EditComplete body (Decoder.result)
@@ -191,6 +203,7 @@ type Msg
     | EditOrDetail
     | GotSession Session
     | BgColorInput String
+    | VerticalEvent String
 
 caseString item = 
     case item of
@@ -202,6 +215,8 @@ caseString item =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        VerticalEvent vertical ->
+            ({model | is_vertical = vertical}, Cmd.none)
         BgColorInput color ->
             ({model | bg_color = color}, Cmd.none)
         GotSession session ->
@@ -227,7 +242,7 @@ update msg model =
                 Err _ ->
                     (model, Cmd.none)
         DetailComplete (Ok ok) ->
-            ({model | description = ok.data.description, target = caseString ok.data.target, bannerTitle = ok.data.title, link = caseString ok.data.link, bannerPath = ok.data.src, bg_color = caseString ok.data.backcolor}, Cmd.none)
+            ({model | description = ok.data.description, target = caseString ok.data.target, bannerTitle = ok.data.title, link = caseString ok.data.link, bannerPath = ok.data.src, bg_color = caseString ok.data.backcolor, is_vertical = (if ok.data.is_vertical then "true" else "false")}, Cmd.none)
         DetailComplete (Err err) ->
             let
                 error = Api.decodeErrors err
@@ -355,6 +370,7 @@ view model =
             ]
             , columnsHtml [
                 formInputEvent "배경 컬러" "배경 컬러를 입력 해 주세요." model.is_detail BgColorInput model.bg_color
+                , noEmptyselectForm "Vertical" model.is_detail model.verticalList VerticalEvent model.is_vertical
             ]
         ]
         ]

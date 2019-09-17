@@ -43,6 +43,7 @@ type alias Model =
     , is_use : Bool
     , auth : List String
     }
+
 type alias ProductList = 
     { data : List Data
     , paginate : Paginate}
@@ -67,8 +68,6 @@ type alias Paginate =
     , start_date : String
     , total_count : Int}
 
-
-
 type alias Menus =
     {
         menu_auth_code: List String,
@@ -76,6 +75,7 @@ type alias Menus =
         menu_name : String
     }
 
+listApi : Int -> Int -> String -> String -> String -> String -> Session -> Cmd Msg
 listApi page per_page name is_pay start_date end_date session = 
     let
         body =
@@ -122,7 +122,6 @@ init session =
         { data = []
         , paginate = 
             { end_date = ""
-            -- , is_pay = Nothing
             , is_use = Nothing
             , name = ""
             , page = 1
@@ -398,8 +397,10 @@ update msg model =
                     listApi model.page model.per_page model.name model.is_pay model.start_date model.end_date model.session)
 
 
+memberAuth : String -> Model -> Bool
+memberAuth num model = 
+    List.member num model.auth
 
-memberAuth num model = List.member num model.auth
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
@@ -456,6 +457,7 @@ view model =
     }
             
 
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
@@ -468,6 +470,7 @@ headerTable =
          div [ class "tableCell" ] [text "게시"]
      ]
 
+tableLayout : Int -> Data -> Model -> Html Msg
 tableLayout idx item model = 
         div [class "tableRow"] [
                 div [ class "tableCell", onClick (GoDetail item.id)] [

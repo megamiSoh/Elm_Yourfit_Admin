@@ -1,23 +1,15 @@
 module Session exposing (..)
 
 import Api exposing (..)
--- import Avatar exposing (Avatar)
 import Browser.Navigation as Nav
 import Json.Decode as Decode exposing (Decoder)
--- import Json.Decode.Pipeline exposing (custom, required)
 import Json.Encode as Encode exposing (Value)
--- import Profile exposing (Profile)
 import Time
--- import Viewer exposing (Viewer)
 import Http exposing (..)
--- TYPES
 
 type Session
     = LoggedIn Nav.Key Cred
     |  Guest Nav.Key
-
-
--- INFO
 
 
 viewer : Session -> Maybe Cred
@@ -25,10 +17,8 @@ viewer session =
     case session of
         LoggedIn _ val ->
             Just val
-
         Guest _ ->
             Nothing
-
 
 cred : Session -> Maybe Cred
 cred session =
@@ -37,11 +27,7 @@ cred session =
             Just (val)
 
         Guest _ ->
-            
-            
             Nothing
-
-
 
 navKey : Session -> Nav.Key
 navKey session =
@@ -51,15 +37,12 @@ navKey session =
         LoggedIn key _ ->
             key
 
-
-
--- interceptor : Http.Error -> List String
+changeInterCeptor : Maybe String -> Cmd msg
 changeInterCeptor error=
     case error of
         Just err ->
             if err == "401" then
             Cmd.batch[
-                -- Api.getRefreshToken (), 
                 Api.secRefreshFetch ()
             ]
             else
@@ -68,19 +51,15 @@ changeInterCeptor error=
         Nothing ->
                 Cmd.none
 
-
--- interceptor toMsg key err msg =
---     if err == "401" then
---         Api.receiveRefreshToken msg
---     else 
---         tokenChange toMsg key
+retryChange : (Session -> msg) -> Nav.Key -> Sub msg
 retryChange toMsg key =
     Api.retryRequest (\maybeViewer -> toMsg (fromViewer key maybeViewer)) Api.credDecoder
 
+secRetryChange : (Session -> msg) -> Nav.Key -> Sub msg
 secRetryChange toMsg key = 
     Api.secRetryRequest (\maybeViewer -> toMsg (fromViewer key maybeViewer)) Api.credDecoder
 
-
+changes : (Session -> msg) -> Nav.Key -> Sub msg
 changes toMsg key =
     Api.viewerChanges (\maybeViewer -> toMsg (fromViewer key maybeViewer)) Api.credDecoder
 

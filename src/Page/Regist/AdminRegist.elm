@@ -47,7 +47,7 @@ type alias AuthCode =
     , name : String
     }
 
-type alias SendBody=
+type alias SendBody =
     { page : Int
     , per_page : Int
     , username : String
@@ -81,10 +81,9 @@ type alias GetBody =
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias Authmenus = 
@@ -92,9 +91,10 @@ type alias Authmenus =
 
 type alias Authmenu =
     { id : Int
-    , name : String}
+    , name : String }
+
 type alias Success = 
-    { result : String}
+    { result : String }
 
 init : Session -> (Model, Cmd Msg)
 init session = 
@@ -141,6 +141,7 @@ init session =
        Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
         )
 
+encoderSendBody : SendBody -> Session -> Cmd Msg
 encoderSendBody model session= 
     let
         list = 
@@ -155,11 +156,13 @@ encoderSendBody model session=
     in
     Api.post Endpoint.adminSearch (Session.cred session) GetData body (D.decoderBody ResultForm GetBody Paginate)
 
+authEncoder : RegistData -> Encode.Value
 authEncoder model=
     Encode.object 
         [ ("menu_id", Encode.int model.menu_id)
         , ("menu_auth_code", (Encode.list Encode.string model.menu_auth_code))]
 
+registEncoder : List RegistData -> Model -> Session -> Cmd Msg
 registEncoder form model session =
     let
         list = Encode.object
@@ -174,7 +177,6 @@ registEncoder form model session =
 toSession : Model -> Session
 toSession model =
     model.session
-
 
 type Msg 
     = PopEvent 
@@ -391,7 +393,9 @@ view model =
                         (List.map Page.viewMenu model.menus)
                 ]
     }
--- menu codemenuId
+
+
+adminLayout : Msg -> String -> Bool -> Bool -> String -> String -> ResultForm -> (String -> Msg) -> GetBody -> List AuthCode -> List Authmenu -> Html Msg
 adminLayout popEvent title disabled popModel nickModel idModel userData choiceMsg choiceData code menus=
         div [ class "box" ]
         [ article [ class "media" ]
@@ -431,22 +435,17 @@ adminLayout popEvent title disabled popModel nickModel idModel userData choiceMs
                     ,div [class "table"] [
                             thead [] [AdminManage.authTable code]
                            ,tbody []
-                            -- [authTableContent disabled]
                            ( 
                             List.map (\x-> 
                                     authTableContent x  disabled 
                                 ) menus
-
                             )
-                    
-                        
+                    ]
                 ]
-               
-           
             ]
         ]
-        ]
 
+authTableContent : Authmenu -> Bool -> Html Msg
 authTableContent menu d= 
     div[ class "tableRow"][
         div [class "tableCell"] [text menu.name],

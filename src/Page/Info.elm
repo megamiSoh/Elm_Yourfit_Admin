@@ -20,17 +20,16 @@ import Page as Page
 import Api.Decode as Decoder
 
 type alias ListForm =
-    {
-        page : Int,
-        per_page : Int,
-        title: String,
-        start_date : String,
-        end_date : String
+    { page : Int
+    , per_page : Int
+    , title : String
+    , start_date : String
+    , end_date : String
     }
 
 
-type alias Model = {
-    session: Session
+type alias Model = 
+    { session: Session
     , listInit : ListForm
     , resultForm : ResultForm
     , isActive : Bool
@@ -53,11 +52,11 @@ type alias Model = {
     , errType : String
     , activeId : String
     }
+
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String}
+    { menu_auth_code : List String
+    , menu_id : Int
+    , menu_name : String }
     
 
 type alias ResultForm = 
@@ -66,9 +65,9 @@ type alias ResultForm =
 
 type alias Data =
     { id : Int
-    , inserted_at: String
-    , is_use: Bool
-    , title: String
+    , inserted_at : String
+    , is_use : Bool
+    , title : String
     }
 
 type alias Paginate  =
@@ -81,8 +80,9 @@ type alias Paginate  =
     }
 
 type alias ActiveModel = 
-    {result : String}
+    { result : String }
 
+dataDecoder : Decoder Data
 dataDecoder = 
     Decode.succeed Data
         |> required "id" int
@@ -90,6 +90,7 @@ dataDecoder =
         |> required "is_use" bool
         |> required "title" string
 
+pagenateDecoder : Decoder Paginate
 pagenateDecoder = 
     Decode.succeed Paginate
         |> required "end_date" string
@@ -98,73 +99,29 @@ pagenateDecoder =
         |> required "start_date" string
         |> required "title" string
         |> required "total_count" int
-        -- |> hardcoded 1.0
 
+resultFormDecoder : Decoder ResultForm
 resultFormDecoder = 
     Decode.succeed ResultForm
         |> required "data" (list dataDecoder )
         |> required "paginate" pagenateDecoder
 
-listInitial = 
-    {
-    page= 1,
-    per_page= 10,
-    title= "",
-    start_date= "",
-    end_date= ""
-    }
-init : Session -> (Model, Cmd Msg)
-init session = 
-    let
-        ( datePickerData, datePickerCmd ) =
-            DatePicker.init "my-datepicker"
-        ( endDatePickerData, enddatePickerCmd) = 
-            DatePicker.init "my-datepicker"
-    in
-    
-    ({
-        session = session
-        , listInit = listInitial
-        , isActive = False
-        , datePickerData = datePickerData
-        , endDatePickerData = endDatePickerData
-        , firstSelectedDate = Nothing
-        , secondSelectedDate = Nothing
-        , show = False
-        , today = Nothing
-        , endShow = False
-        , endday = Nothing
-        , dateModel = "all"
-        , todaySave = ""
-        , goRegist = False
-        , goDetail = False
-        , username = ""
-        , menus = []
-        , pageNum = 1
-        , auth = []
-        , resultForm = 
-            {
-                data = [],
-                paginate = {
-                    end_date = "",
-                    title = "",
-                    page = 0,
-                    per_page = 0,
-                    start_date = "",
-                    total_count = 0
-                }
-            }
-        , errType = ""
-        , activeId = ""
-    }, 
-    Cmd.batch
-    [  Cmd.map DatePickerMsg datePickerCmd
-    , Cmd.map EndDatePickerMsg enddatePickerCmd
-    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    ])
+resultDecoder : Decoder ActiveModel
+resultDecoder = 
+    Decode.succeed ActiveModel
+        |>required "result" string
 
--- managelist listInitial session
---     ,
+
+listInitial : ListForm
+listInitial = 
+    { page= 1
+    , per_page= 10
+    , title= ""
+    , start_date= ""
+    , end_date= ""
+    }
+
+managelist : ListForm -> Session -> Cmd Msg
 managelist form session =
     let
         list =
@@ -181,11 +138,70 @@ managelist form session =
     in
     Api.post Endpoint.info (Session.cred session) GetList body resultFormDecoder 
 
+encodeList : Bool -> String -> Session -> Cmd Msg
+encodeList use idstr session=  
+    let
+        body = 
+            Encode.object
+                [("is_use", Encode.bool use)]   
+                    |> Http.jsonBody 
+    in
+        Api.post (Endpoint.infoActive idstr) (Session.cred session) HttpResult body resultDecoder
+    
+
+init : Session -> (Model, Cmd Msg)
+init session = 
+    let
+        ( datePickerData, datePickerCmd ) =
+            DatePicker.init "my-datepicker"
+        ( endDatePickerData, enddatePickerCmd) = 
+            DatePicker.init "my-datepicker"
+    in
+    (
+    { session = session
+    , listInit = listInitial
+    , isActive = False
+    , datePickerData = datePickerData
+    , endDatePickerData = endDatePickerData
+    , firstSelectedDate = Nothing
+    , secondSelectedDate = Nothing
+    , show = False
+    , today = Nothing
+    , endShow = False
+    , endday = Nothing
+    , dateModel = "all"
+    , todaySave = ""
+    , goRegist = False
+    , goDetail = False
+    , username = ""
+    , menus = []
+    , pageNum = 1
+    , auth = []
+    , resultForm = 
+        {
+            data = [],
+            paginate = {
+                end_date = "",
+                title = "",
+                page = 0,
+                per_page = 0,
+                start_date = "",
+                total_count = 0
+            }
+        }
+    , errType = ""
+    , activeId = ""
+    }, 
+    Cmd.batch
+    [  Cmd.map DatePickerMsg datePickerCmd
+    , Cmd.map EndDatePickerMsg enddatePickerCmd
+    , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
+    ])
+
 
 toSession : Model -> Session
 toSession model = 
     model.session
-
 
 type Msg 
     = NoOp
@@ -198,7 +214,6 @@ type Msg
     | Check Encode.Value
     | IsActive String Bool
     | HttpResult (Result Http.Error ActiveModel)
-    -- | SessionCheck  Encode.Value
     | EndDatePickerMsg DatePicker.Msg
     | DatePickerMsg DatePicker.Msg
     | Show
@@ -461,20 +476,13 @@ update msg model =
             ({model | listInit = new} , Cmd.none)
 
         GotSession session ->
-            -- ({model | session = session}
             case model.errType of
                 "GetList" ->
                     update Search {model | session = session}
-                    -- Cmd.batch
-                    -- [ managelist listInitial session
-                    -- , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)]
                 "HttpResult" ->
                     update ShowList {model | session = session}
-                    -- encodeList model.isActive model.activeId session
                 _ ->
                     (model, Cmd.none)
-                    -- managelist listInitial session
-            -- )
         GetId id ->
             let
                 encode = Encode.string id
@@ -521,15 +529,6 @@ update msg model =
             ({model | errType = "HttpResult"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
-        -- SessionCheck check ->
-        --     let
-        --         decodeCheck = Decode.decodeValue Decode.string check
-        --     in
-        --         case decodeCheck of
-        --             Ok continue ->
-        --                 (model, managelist model.listInit model.session)
-        --             Err _ ->
-        --                 (model, Cmd.none)
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
@@ -558,7 +557,6 @@ view model =
                     searchB Search Reset 
                 ]
             ],
-            
             div [] [
                 if model.goRegist then
                 registRoute "등록" Route.InfoRegist
@@ -580,7 +578,6 @@ view model =
                         td [colspan 4, class "noSearch"] [text "검색 결과가 없습니다."]
                         ]
                     ]
-                    
            ]
             , pagination 
                     PageBtn
@@ -593,22 +590,9 @@ view model =
                     ,ul [ class "menu-list yf-list"] 
                         (List.map Page.viewMenu model.menus)
                 ]
-    
     }
 
-encodeList use idstr session=  
-    let
-        body = 
-            Encode.object
-                [("is_use", Encode.bool use)]   
-                    |> Http.jsonBody 
-    in
-        Api.post (Endpoint.infoActive idstr) (Session.cred session) HttpResult body resultDecoder
-    
-resultDecoder = 
-    Decode.succeed ActiveModel
-        |>required "result" string
-
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
@@ -617,6 +601,7 @@ headerTable =
          div [ class "tableCell" ] [text "게시"]
      ]
 
+tableLayout : Int -> Data -> Model -> Html Msg
 tableLayout idx item model = 
         div [class "tableRow", style "cursor" (
             if model.goDetail then
@@ -642,11 +627,11 @@ tableLayout idx item model =
                             button [class "button is-small"] [text "게시 하기"]
                  ]
          ]
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch[
     Session.changes GotSession (Session.navKey model.session)
     , Api.infoCheck Check
-    -- , Api.onSucceesSession SessionCheck
     , Api.sendPageNum ReceivePnum
     ]

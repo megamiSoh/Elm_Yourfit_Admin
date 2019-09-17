@@ -1,7 +1,6 @@
 module Page.Video exposing (..)
 
 import Browser
-
 import Html exposing (..)
 import Html.Attributes exposing( class, colspan, style )
 import Pagenation exposing(..)
@@ -71,6 +70,7 @@ type alias YfVideoData =
     , pairing : List Fairing
     , title : String
     }
+
 type alias YFVideoItems = 
     { descriptions : Maybe String
     , duration : String
@@ -80,15 +80,17 @@ type alias YFVideoItems =
     , title : String
     , value : Int
     }
+
 type alias Fairing = 
     { file : String
     , image : String
-    , title : String}
+    , title : String }
+
 type alias Success = 
-    { result : String}
+    { result : String }
 
 type alias ListData = 
-    { data : List Level}
+    { data : List Level }
 
 type alias Level = 
     { code : String
@@ -130,6 +132,7 @@ type alias VideoData =
     , duration: String
     }
 
+listInit : SendBody
 listInit = 
     { page = 1
     , per_page = 10
@@ -202,13 +205,13 @@ init session =
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
         ])
--- videoEncoder listInit session Getbody
---     , 
+
 toSession : Model -> Session
 toSession model = 
     model.session
 
-videoEncoder model session getBody=
+videoEncoder : SendBody -> Session -> (Result Http.Error GetBody -> msg) -> Cmd msg
+videoEncoder model session getBody =
     let
         list = 
             Encode.object 
@@ -226,10 +229,16 @@ videoEncoder model session getBody=
     in
     Api.post Endpoint.videoRegist (Session.cred session) getBody body (D.videoDecoder GetBody  VideoData Paginate)
 
--- videoPostCode = 
 
-
--- yourfitVideoShow id
+activeEncode : Session -> Bool -> String -> Cmd Msg
+activeEncode session active id= 
+    let
+        list = 
+            Encode.object   
+                [("is_use", Encode.bool active)]
+                    |> Http.jsonBody
+    in
+    Api.post( Endpoint.videoActive id) (Session.cred session) GoActive list (D.resultDecoder Success)
 
 type Msg 
     = IsActive (Bool, String)
@@ -261,8 +270,11 @@ type Msg
     | VideoShow
     | Active
 
+oldModel : Model-> SendBody
 oldModel model =
     model.sendBody
+
+listDataSet : Int -> SendBody -> SendBody
 listDataSet idx old= 
     { page = idx
     , per_page = 10
@@ -272,6 +284,8 @@ listDataSet idx old=
     , start_date = old.start_date
     , end_date = old.end_date
     }
+
+allListDataSet : Int -> SendBody -> SendBody    
 allListDataSet idx old = 
     { page = idx
     , per_page = 10
@@ -282,6 +296,7 @@ allListDataSet idx old =
     , end_date = ""
     }
 
+allListDataSetComplete : SendBody -> SendBody
 allListDataSetComplete old = 
     { page = old.page
     , per_page = 10
@@ -361,10 +376,6 @@ update msg model =
                                 ( {model |  menus = item.data.menus, username = item.data.admin.username, auth = a.menu_auth_code}, Api.pageNum (Encode.int 0) )
                         Nothing ->
                             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
-        -- VideoRetry retry ->
-            -- ({model | session = retry},
-            --     Api.get VideoShowResult (Endpoint.yourfitVideoShow model.showId) (Session.cred retry) (D.yfVideo YfVideo YfVideoData YFVideoItems Fairing )
-            -- )
         Sort id ->
             let
                 s = List.head (
@@ -655,12 +666,6 @@ update msg model =
             [ Api.post Endpoint.unitLevel (Session.cred model.session) GetLevel Http.emptyBody (D.unitLevelsDecoder ListData Level)
             , Api.post Endpoint.part (Session.cred model.session) GetPart Http.emptyBody (D.unitLevelsDecoder ListData Level)])
         Getbody (Err err) ->
-            -- let
-            --     error = Api.decodeErrors err
-            -- in
-            -- if error == "401"then
-            -- ({model | errType = "Getbody"}, Api.changeInterCeptor (Just error))
-            -- else 
             (model, Cmd.none)
         GetbodySecond (Ok ok)->
             ({model | videoData = ok.data ,  paginate = ok.paginate} ,  Cmd.none)
@@ -682,10 +687,8 @@ view model =
     { title = "유어핏 영상"
     , content = 
         div [ class "" ]
-        [ 
-            div [class "adminAuthMask"] []
-            , 
-            columnsHtml [pageTitle "유어핏 영상"],
+        [ div [class "adminAuthMask"] []
+        , columnsHtml [pageTitle "유어핏 영상"],
             div [class "searchWrap"] [
                 columnsHtml [
                     searchDate 
@@ -707,7 +710,6 @@ view model =
                 ],
                 columnsHtml [
                     selectForm "운동 부위" False model.partData PartValue "" model.sendBody.exercise_part_code
-                    -- searchBtn
                     , searchB Search Reset
                 ]
             ]
@@ -735,7 +737,6 @@ view model =
                 PageBtn
                 model.paginate
                 model.pageNum 
-            -- Pagenation.pagination PageBtn model.paginate
             , (yfVideoShow model.videoShow VideoShowClose model.yfvideo model.sort Sort)
         ]  
         , menu =  
@@ -772,12 +773,10 @@ view model =
                 ],
                 columnsHtml [
                     selectForm "운동 부위" False model.partData PartValue "" model.sendBody.exercise_part_code
-                    -- searchBtn
                     , searchB Search Reset
                 ]
             ]
-            ,
-            div [] [
+            , div [] [
                 if model.goRegist then
                 registRoute "영상 등록" Route.VideoRegist
                 else
@@ -810,17 +809,7 @@ view model =
                 ]
     }
 
-
-activeEncode session active id= 
-    let
-        list = 
-            Encode.object   
-                [("is_use", Encode.bool active)]
-                    |> Http.jsonBody
-    in
-    Api.post( Endpoint.videoActive id) (Session.cred session) GoActive list (D.resultDecoder Success)
-
-
+headerTable : Html Msg
 headerTable = 
      div [ class "tableRow headerStyle"] [
         div [ class "tableCell" ] [text "No"],
@@ -834,6 +823,7 @@ headerTable =
     ]
 
 
+tableLayout : Int -> VideoData -> Model -> Html Msg
 tableLayout idx item model= 
     let
         newinput text=
@@ -841,14 +831,12 @@ tableLayout idx item model=
                 |> String.replace "%26" "&" 
                 |> String.replace "%25" "%" 
     in
-    
         div [class "tableRow", style "cursor" (
                 if model.goDetail then
                 "pointer"
                 else 
                 "no-drop"
-        )] [
-                div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text (
+        )] [ div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))) ] [text (
                     String.fromInt(model.paginate.total_count - ((model.paginate.page - 1) * 10) - (idx)  )
                 )],
                 div [ class "tableCell", onClick (DetailGo (String.fromInt(item.id))), style "width" "600px" ] [text (newinput item.title)],
@@ -878,7 +866,5 @@ subscriptions model =
     Sub.batch 
     [ Api.saveCheck Complete
     , Session.changes GotSession (Session.navKey model.session)
-    -- , Session.retryChange RetryRequest (Session.navKey model.session)
-    -- , Session.secRetryChange VideoRetry (Session.navKey model.session)
     , Api.sendPageNum ReceivePnum
     ]

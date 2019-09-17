@@ -6,8 +6,6 @@ import Browser
 import Html exposing (..)
 import Html.Attributes exposing(..)
 import Html.Events exposing (..)
--- import Page.Page exposing(..)
--- import ExpandEvent as ExEvent
 import Json.Decode
 import String
 import Route exposing (Route)
@@ -19,6 +17,8 @@ pageTitle title =
     [
         text title
     ]
+
+
 popTitle : String -> Html msg
 popTitle title =
     h3[ class "poptitle" ]
@@ -42,16 +42,13 @@ searchSelect title =
                     ]
             ]                    
 
-
-
-
-                    
+        
 normalBtn : String -> String -> Html msg        
 normalBtn title style =
     div [ class ("button " ++ style) ]
         [ text title ]
 
--- goNormalBtn : String -> String-> String -> Html msg       
+goNormalBtn : String -> String-> Maybe Route -> Html msg       
 goNormalBtn title style link =
     a [ class ("button " ++ style), Route.href link ]
         [ text title ]
@@ -68,6 +65,7 @@ registBtn title =
                 , text title 
                 ]
         ]
+
 
 registSetBtn : String -> Html msg
 registSetBtn link =
@@ -111,26 +109,28 @@ editSetBtn link back =
             a [ class "button is-warning", href back ] [text "취소"]
         ]
 
--- editEventBtn : String -> String-> Html msg
+editEventBtn : Html msg
 editEventBtn =
         div [ class "buttons" ] [
             div [ class "button is-primary" ] [text "저장"],
             div [ class "button is-warning" ] [text "취소"]
         ]
 
--- detailEventBtn : Route -> Route-> Html msg
+detailEventBtn : String -> msg -> Route -> Html msg
 detailEventBtn  title msg route=
         div [ class "buttons" ] [
             div [ class "button is-primary", onClick msg] [text title],
             a  [ class "button is-warning", Route.href (Just route) ] [text "취소"]
         ]
 
+disabledBtn : String -> msg -> Route -> Html msg
 disabledBtn  title msg route=
         div [ class "buttons" ] [
             div [ class "button is-primary", onClick msg] [text title],
             a  [ class "button is-warning", Route.href (Just route) ] [text "취소"]
         ]
 
+backPageBtn : Route -> Html msg
 backPageBtn route =
         div [ class "buttons" ] [
             a [ class "button is-warning", Route.href (Just route) ] [text "취소"]
@@ -160,6 +160,7 @@ registRoute title link =
                 ]
         ]
 
+registClick : String -> msg -> Html msg
 registClick title msg =
     div [ class "registWrap"] 
             [
@@ -331,8 +332,6 @@ userData link=
             ]
         ]
 
-
-
 userInfoData : Html msg
 userInfoData =
     table [ class "table" ]
@@ -396,48 +395,50 @@ userInfo nickname username createDate updateDate=
             ]
         ]
 
-columns:  List String -> Html msg
+columns :  List String -> Html msg
 columns title = 
         div [ class "columns" ] 
         (List.map column title)
 
-column: String -> Html msg
+column : String -> Html msg
 column menuTitle = 
          div [ class "column" ]
             [ text menuTitle ]
         
-
+columnsHtmlBtn : List { class : String, contents : Html msg } -> Html msg
 columnsHtmlBtn item = 
         div [ class "columns" ] 
         (List.map (
             \x -> (columnHtmlBtn x )
         ) item )
--- columnHtml: String ->String -> Html msg
+
+columnHtmlBtn : { class : String, contents : Html msg } -> Html msg 
 columnHtmlBtn item = 
          div [class ("column " ++ item.class)] [
              item.contents
          ]
 
-
-
--- columnsHtml: (a -> b) -> List megami->  Html msg
+columnsHtml : List (Html msg) ->  Html msg
 columnsHtml title  = 
         div [ class "columns" ] 
         (List.map columnHtml title)
--- columnHtml: String ->String -> Html msg
+
+columnHtml : Html msg -> Html msg
 columnHtml title= 
          div [class  "column"] [
              title
          ]
+
+columnsHtmlADmin : List (Html msg) -> Html msg
 columnsHtmlADmin title  = 
         div [ class "columns" ] 
         (List.map columnHtmlAdmin title)
--- columnHtml: String ->String -> Html msg
+
+columnHtmlAdmin : Html msg -> Html msg
 columnHtmlAdmin title= 
          div [class  "column adminColumn"] [
              title
          ]
-
 
 commonInput : String -> String -> Bool -> Html msg
 commonInput title ph read =
@@ -450,7 +451,6 @@ commonLabel title =
     label [] [text title]
 
 
-
 formInput : String -> String -> Bool -> Html msg
 formInput title ph read=
         div [ class "field is-horizontal" ] [
@@ -458,13 +458,14 @@ formInput title ph read=
             inputWrap ph read
             ]
 
--- formInputEvent : String -> String -> Bool -> Html msg
+formInputEvent : String -> String -> Bool -> (String -> msg) -> String -> Html msg
 formInputEvent title ph read msg model=
         div [ class "field is-horizontal" ] [
             labelWrap title,
             inputText ph read msg model
             ]
 
+formInputEventBtn : String -> String -> Bool -> (String -> msg) -> String -> String -> msg -> Html msg
 formInputEventBtn title ph read msg model btntitle msgbtn =
         div [ class "field is-horizontal" ] [
             labelWrap title,
@@ -472,9 +473,8 @@ formInputEventBtn title ph read msg model btntitle msgbtn =
             , button [class "button is-dark", onClick msgbtn, disabled read ][text btntitle ]
             ]
 
--- inputText :String -> Bool -> Html msg 
+inputText :String -> Bool -> (String -> msg) -> String -> Html msg 
 inputText ph read msg model=  
-    -- div [class "field has-addons"] [
         div [ class "field-body" ]
             [ div [ class "control inputWidth" ]
                 [  
@@ -482,7 +482,6 @@ inputText ph read msg model=
                     []
                 ]
             ]
-
 
 formInfoInput : String -> String  -> String ->  Html msg
 formInfoInput title ph info=
@@ -509,6 +508,7 @@ formSelect title read =
             labelWrap title,
             selectWrap read
             ]
+    
 labelWrap : String -> Html msg
 labelWrap title= 
     div [class "field-label is-normal"] [
@@ -532,19 +532,21 @@ selectWrap  read=
                     ]
             ] 
 
--- selectForm : String-> Bool -> Html msg
+selectForm : String-> Bool -> List { code : String , name : String } -> (String -> msg) -> String -> String -> Html msg
 selectForm title read instrument select empty selectModel= 
     div [ class "field is-horizontal" ] [
             labelWrap title,
             selectEvent read instrument select empty selectModel
             ]
 
+noEmptyselectForm : String -> Bool -> List { code : String , name : String } -> (String -> msg) -> String -> Html msg
 noEmptyselectForm title read instrument select selectModel= 
     div [ class "field is-horizontal" ] [
             labelWrap title,
             noEmptyselectEvent read instrument select selectModel
             ]        
--- selectEvent :  Bool  -> Html msg
+
+noEmptyselectEvent : Bool -> List { code : String , name : String } -> (String -> msg) -> String -> Html msg
 noEmptyselectEvent  read instrument selectmsg  selectModel=
         div [ class "field-body" ]
             [ 
@@ -558,6 +560,8 @@ noEmptyselectEvent  read instrument selectmsg  selectModel=
                 ]
             ] 
             ]
+
+selectEvent : Bool -> List { code : String , name : String } -> (String -> msg) -> String -> String -> Html msg          
 selectEvent  read instrument selectmsg empty selectModel=
         div [ class "field-body" ]
             [ 
@@ -571,32 +575,20 @@ selectEvent  read instrument selectmsg empty selectModel=
                 ]
             ] 
             ]
-selectAll empty= 
+
+selectAll : String -> Html msg
+selectAll empty = 
     option [ value empty ]
         [ span [] [text "전체"] ] 
+
+selectOption : { code : String , name : String } -> String -> Html msg
 selectOption item selectModel= 
     option [ value item.code, selected (item.code == selectModel)][
         text item.name
-    ]
-
--- normalSelect : String -> Bool  -> Html msg
--- normalSelect title read=
---         div []
---             [ 
---                 label [] [ text title ],
---                 div [ class "select" ]
---                     [ select [ disabled read ]
---                         [ option []
---                             [ text "전체" ]
---                         , option []
---                             [ text "사용자 지정" ]
---                         ]
---                     ]
---             ]  
+    ] 
 
 inputWrap :String -> Bool -> Html msg 
 inputWrap ph read =  
-    -- div [class "field has-addons"] [
         div [ class "field-body" ]
             [ div [ class "control inputWidth" ]
                 [  
@@ -604,12 +596,7 @@ inputWrap ph read =
                     []
                 ]
             ]
-        -- ]
 
-
-
-
-    -- ]
 inputBtn : String -> Bool -> String ->  Html msg
 inputBtn ph read btn=
         div [ class "field-body" ]
@@ -631,7 +618,7 @@ inputBtn ph read btn=
             ]
 
 
--- textAreaEvent : String -> Bool -> String -> Html msg
+textAreaEvent : String -> Bool -> String -> (String -> msg) -> Html msg
 textAreaEvent  title read article msg =
        div[ class "field is-horizontal" ] [
            labelWrap title,
@@ -643,6 +630,7 @@ textAreaEvent  title read article msg =
             ]
        ]
 
+textAreaRegist : String -> Bool -> String -> (String -> msg) -> Html msg
 textAreaRegist  title read article msg=
        div[ class "field is-horizontal" ] [
            labelWrap title,
@@ -654,6 +642,7 @@ textAreaRegist  title read article msg=
             ]
        ]
 
+textAreaRegistValue : String -> Bool -> String -> (String -> msg) -> String -> Html msg
 textAreaRegistValue  title read article msg targetValue=
        div[ class "field is-horizontal" ] [
            labelWrap title,
@@ -700,7 +689,7 @@ searchBtn =
             ]
     ]
 
--- search : Html msg
+searchB : msg -> msg -> Html msg
 searchB msg reset= 
     div [ class "field has-addons has-addons-right searchBtnStyle" ] [
         div [ class "field-body " ]
@@ -763,7 +752,7 @@ searchDataSet title=
             ]
        
 
--- searchDate : String -> String -> Html msg
+searchDate : String -> msg -> Html msg -> String -> msg -> Html msg -> String -> (String -> msg) -> String -> String -> Html msg
 searchDate title msg datePicker firstDate endmsg enddatepicker endDate dateVal dateModel readOnly=
         div [ class "field is-horizontal" ]
             [ 
@@ -830,10 +819,7 @@ searchDate title msg datePicker firstDate endmsg enddatepicker endDate dateVal d
                         ]
             ]
           
-
-
-
-
+customBox : List String -> Html msg
 customBox title=
         div [ class "field-body customBox" ]
             [ div [ class "field  is-fullwidth" ]
@@ -851,7 +837,7 @@ checkBox title=
             [], text title 
         ]       
 
--- checkBoxReadOnly : String -> Bool -> Html msg
+checkBoxReadOnly : String -> Bool -> Html msg
 checkBoxReadOnly title readOnly= 
     label [ class "checkbox" ]
         [ input [ type_ "checkbox", disabled readOnly]
@@ -867,8 +853,6 @@ textArea title read=
             []
         ]
 
-
--- datepicker
 endDatePicker model enddatemsg= 
     if model.endShow then
     div [class "datepickerPosition"] 
@@ -898,7 +882,7 @@ datepicker model startdatemsg=
     else
     span [] []
 
-
+getFormattedDate : Maybe Date -> Maybe Date -> String
 getFormattedDate model whenday= 
     let
         year x = Date.year x
@@ -936,6 +920,7 @@ type Day
     | Sat
     | Sun
 
+validationErr : String -> Bool -> Html msg
 validationErr err validErrShow = 
     div [ class  (
         if validErrShow then
@@ -948,9 +933,7 @@ validationErr err validErrShow =
         div [ class "validText" ] [text err] 
         ]
 
-
-
--- mediaShow 
+videoShow : String -> Bool -> msg -> Html msg
 videoShow title show showBtn=
     if show then
         div [ class "videoPop" ] [
@@ -965,6 +948,7 @@ videoShow title show showBtn=
     else
         div [ id "myElement"] []
 
+detailvideoShow : String -> Bool -> Html msg
 detailvideoShow title show =
     if show then
         div [ class "videoPop" ] [
@@ -978,7 +962,6 @@ detailvideoShow title show =
             ]
     else
         div [] []
-
 
 yfVideoShow show close model sort sortMsg=
     if show then
@@ -1016,7 +999,7 @@ yfVideoShow show close model sort sortMsg=
         div [] []
 
 
-
+spinner : Html msg
 spinner = 
     div [ class "lds-ring" ]
         [ div []

@@ -20,8 +20,8 @@ import Date exposing (..)
 import DatePicker exposing (Msg(..))
 
 
-type alias Model = {
-    firstSelectedDate : Maybe Date
+type alias Model = 
+    { firstSelectedDate : Maybe Date
     , secondSelectedDate : Maybe Date
     , datePickerData : DatePicker.Model
     , endDatePickerData :DatePicker.Model
@@ -43,10 +43,9 @@ type alias Model = {
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias Faq = 
@@ -73,6 +72,7 @@ type alias Page =
     , total_count : Int
     , username : String
     }
+
 type alias SendData = 
     { page : Int
     , per_page : Int
@@ -84,7 +84,7 @@ type alias SendData =
     } 
 
 
-
+faqEncoder : SendData -> Session -> String -> String -> Cmd Msg
 faqEncoder model session start end= 
     let
         body = 
@@ -107,6 +107,7 @@ faqEncoder model session start end=
     in
     Api.post Endpoint.contactList (Session.cred session) GetListData body (Decoder.faqlist Faq Data Page)
 
+send : SendData
 send = 
     { page = 1
     , per_page = 10
@@ -117,6 +118,10 @@ send =
     , end_date = ""
     } 
 
+toSession : Model -> Session
+toSession model =
+    model.session
+
 init : Session -> (Model, Cmd Msg)
 init session = 
     let
@@ -126,7 +131,6 @@ init session =
         ( endDatePickerData, enddatePickerCmd) = 
             DatePicker.init "my-datepicker"
     in
-    
     ({ datePickerData = datePickerData
         , endDatePickerData = endDatePickerData
         , firstSelectedDate = Nothing
@@ -162,7 +166,6 @@ init session =
         Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    -- , faqEncoder send session "" ""
     ])
 
 type Msg 
@@ -184,17 +187,6 @@ type Msg
     | PageBtn (Int, String)
     | GotSession Session
     | ReceivePnum Encode.Value
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch[Api.saveCheck SaveId
-    , Session.changes GotSession(Session.navKey model.session)
-    , Api.sendPageNum ReceivePnum
-    ]
-
-toSession : Model -> Session
-toSession model =
-    model.session
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -227,7 +219,6 @@ update msg model =
                         ({model | sendData = new , pageNum = pageNum} , faqEncoder new model.session "" "")
                     else
                         let
-                            -- old = model.sendData
                             new = {old | page = ok}
                         in
                         
@@ -236,17 +227,6 @@ update msg model =
                     (model, Cmd.none)
         GotSession session ->
             update Search {model | session = session}
-            -- ( {model | session = session} , 
-
-            --         Cmd.batch
-            --         [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-            --         , if model.dateModel == "all" then
-            --             faqEncoder send session "" ""
-            --         else
-            --             faqEncoder send session old.start_date old.end_date]
-            
-            -- )
-            
         PageBtn (idx, str) ->
             let
                 result = {old | page = idx}
@@ -416,12 +396,6 @@ update msg model =
         GetListData (Ok ok)->
             ({model | faqList = ok}, Cmd.none)
         GetListData (Err err)->
-            -- let
-            --     error = Api.decodeErrors err
-            -- in
-            -- if error == "401"then
-            -- ({model | errType = "GetListData"}, Api.changeInterCeptor (Just error))
-            -- else 
             (model, Cmd.none)
         NoOp ->
             ( model, Cmd.none )
@@ -581,7 +555,6 @@ view model =
                     PageBtn
                     model.faqList.pagination
                     model.pageNum 
-            -- Pagenation.pagination PageBtn model.faqList.pagination
         ] 
       , menu =  
                 aside [ class "menu"] [
@@ -591,6 +564,7 @@ view model =
                 ]
     }
 
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
@@ -600,7 +574,7 @@ headerTable =
          div [ class "tableCell" ] [text "답변"]
      ]
 
---, Route.href (Just Route.UvideoDetail)
+tableLayout : Int -> Data -> Model -> Html Msg
 tableLayout idx item model = 
         div [ class "tableRow cursor", onClick (GoDetail item.id)] [
             div [ class "tableCell"] [ text (
@@ -621,3 +595,10 @@ tableLayout idx item model =
                 div [ class "tableCell" ] [text "미완료"]
          ]
 
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch[Api.saveCheck SaveId
+    , Session.changes GotSession(Session.navKey model.session)
+    , Api.sendPageNum ReceivePnum
+    ]

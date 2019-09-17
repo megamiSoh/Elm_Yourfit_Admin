@@ -1,6 +1,5 @@
 module Page exposing (..)
 
--- import VideoCall exposing(VidioCallPortMsg)
 import Browser exposing (Document)
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -9,6 +8,12 @@ import Route exposing (Route)
 import Login as Login
 import Api exposing(..)
 import Session exposing (Session)
+
+type alias MenusType = 
+    { menu_auth_code : List String
+    , menu_id : Int
+    , menu_name : String }
+
 type Page 
     = Home
     | Other
@@ -54,7 +59,7 @@ type Page
     | BD
 
 
-view: Maybe Cred ->  Page -> {title : String, content: Html msg, menu: Html msg} -> Browser.Document msg
+view : Maybe Cred ->  Page -> {title : String, content: Html msg, menu: Html msg} -> Browser.Document msg
 view maybeViewer page { title, content, menu }  =
     case maybeViewer of
         Nothing ->
@@ -66,23 +71,21 @@ view maybeViewer page { title, content, menu }  =
             , body = viewHeader page maybeViewer:: contents content page maybeViewer menu :: [viewFooter] 
             }
 
+login : Html msg -> Html msg
 login content  =
   div [ class "tile is-ancestor" ]
     [ 
         content 
     ]
--- contents : Model ->Html Msg
+
+contents : Html msg -> Page -> Maybe Api.Cred -> Html msg -> Html msg
 contents content page maybeViewer menu=
     case maybeViewer of
         Nothing ->
             div [ class "tile is-parent" ]
                     [ div [ class "tile is-child box" ]
                         [ p []
-                            [ 
-                                content
-                                
-                            ]
-                            
+                            [content]
                         ]
                     ]
         Just viewer ->
@@ -101,11 +104,6 @@ contents content page maybeViewer menu=
                         ]
                     ]
                 ]
-
-
-
-
-
 viewHeader : Page -> Maybe Cred -> Html msg
 viewHeader page maybeViewer =
     case maybeViewer of
@@ -129,18 +127,9 @@ viewHeader page maybeViewer =
                         []
                     ]
                 ]
-            -- , div [ id "navbarBasicExample", class "navbar-menu" ]
-            --     [ div [ class "navbar-end" ]
-            --         [ i [ class "fa fa-user-circle" ]
-            --                     [], div [ class "navbar-item" ]
-            --             [ div []
-            --                 [ 
-            --                     a [ Route.href  ( Just Route.UserInfo )] [text "FinalCompany"]
-            --                 ]
-            --             ]
-            --         ]
-            --     ]
             ]
+
+header : String -> Html msg
 header username = 
     div [class  "userprofile" ] [
             a [ Route.href  ( Just Route.UserInfo ), class "userProfileInside cursor"] [text username]
@@ -151,8 +140,10 @@ navbarLink : Page -> Maybe Route -> List (Html msg) -> Html msg
 navbarLink page route linkContent =
     li [ classList [ ( "nav-item", True ), ( "active", isActive page route ) ] ]
         [ a [ class "nav-link", Route.href route ] linkContent ]
-emptyMenu item =
-    li [] [ a [ class "nav-link", Route.href(Just Route.UserInfo) ][]]
+
+
+
+viewMenu : MenusType -> Html msg
 viewMenu item  =
     case item.menu_id of
         1 ->
@@ -182,7 +173,7 @@ viewMenu item  =
         _ ->
             li [] [ a [ class "nav-link", Route.href(Just Route.UserInfo) ][text item.menu_name]]
 
--- viewAside : Page -> Html msg
+viewAside : MenusType -> Html msg
 viewAside page =
     aside [ class "menu"] [
         ul [ class "menu-list yf-list"] 

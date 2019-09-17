@@ -1,5 +1,4 @@
 module Page.Blank exposing (view)
-
 import Html exposing (Html)
 
 

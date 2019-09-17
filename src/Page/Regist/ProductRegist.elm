@@ -33,10 +33,9 @@ type alias Model =
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 init : Session -> (Model , Cmd Msg)
@@ -65,6 +64,8 @@ init session =
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
     ]
     )
+
+formUrlencoded : List (String, String) -> String
 formUrlencoded object =
     object
         |> List.map
@@ -75,6 +76,8 @@ formUrlencoded object =
             )
         |> String.join "&"
 
+
+registApi : Model -> Cmd Msg
 registApi model = 
     let
         body =

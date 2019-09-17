@@ -15,18 +15,17 @@ import Api.Endpoint as Endpoint
 import Api.Decode as Decoder
 
 type alias Model =
-    {
-        popup : Bool,
-        session: Session,
-        popShow : Bool
-        , menus : List Menus
-        , username : String
+    { popup : Bool
+    , session : Session
+    , popShow : Bool
+    , menus : List Menus
+    , username : String
     }
+
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 init : Session -> (Model, Cmd Msg)
@@ -38,7 +37,6 @@ init session =
         , menus = []
         , username = ""
     }, Cmd.batch[Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    -- , Api.pgGo ()
     ]
     )
 
@@ -90,30 +88,6 @@ view model =
     { title = "음식 칼로리 관리"
     , content = 
         div [] [text "준비 중 입니다."]
-        -- div [ class "container is-fluid" ]
-        -- [ 
-            
-        --     columnsHtml [pageTitle "음식 칼로리 관리"],
-        --     div [ class "searchWrap" ] [
-        --         columnsHtml [
-        --             searchDataSet "등록일"
-        --         ],
-        --         columnsHtml [
-        --             formInput "음식명" "음식 명을 입력 해 주세요." False,
-        --             searchBtn
-        --         ]
-                
-        --     ],
-        --     registBtn,
-        --     div [ class "table" ] ([headerTable] ++ (List.map tableLayout datatable ))
-        --     , Pagenation.pagenation
-        --     , foodRegist model
-        --     , 
-        --     if model.popShow then
-        --         deleteConfirm
-        --     else
-        --      span [] []
-        -- ]
         , menu =  
                 aside [ class "menu"] [
                     Page.header model.username
@@ -123,7 +97,7 @@ view model =
     }
 
 
-
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
@@ -133,7 +107,7 @@ headerTable =
          div [ class "tableCell" ] [text "삭제"]
      ]
 
---, Route.href Route.UvideoDetail
+tableLayout : { no : Int, foodTitle : String, calorie : String, createDate : String } -> Html Msg
 tableLayout item = 
         div [class "tableRow"] [
                  div [ class "tableCell" ] [text (String.fromInt(item.no))],
@@ -145,7 +119,7 @@ tableLayout item =
                      ]
          ]
 
-
+deleteConfirm : Html Msg
 deleteConfirm = 
     div [ class "positionLayout" ] [
         div [ class "deleteConfirm"] [
@@ -186,6 +160,7 @@ registSet=
             button [ class "button is-warning", onClick PopClose ] [text "취소"]
         ]
 
+foodRegist : Model -> Html Msg
 foodRegist model = 
     if model.popup  then
             div [class "foodRegist"] [
@@ -209,7 +184,7 @@ foodRegist model =
     else
         p [] []
 
-
+datatable : List { no : Int, foodTitle : String, calorie : String, createDate : String }
 datatable 
     = [
         {

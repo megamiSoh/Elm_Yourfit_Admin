@@ -2,7 +2,6 @@ module Page.BannerManage exposing(..)
 
 import Browser exposing (..)
 import Html exposing (..)
--- import Html.Attributes exposing (..)
 import Http exposing (..)
 import Html.Events exposing(..)
 import Html exposing (..)
@@ -54,6 +53,7 @@ type alias Model =
     , getFile : List File.File
     , auth : List String
     }
+
 type alias BannerList = 
     { data : List Data
     , paginate : Paginate}
@@ -66,7 +66,8 @@ type alias Data =
     , src : String
     , title : String
     , target : Maybe String
-    , backcolor : Maybe String }
+    , backcolor : Maybe String
+    , is_vertical : Bool }
 
 type alias Paginate = 
     { end_date : String
@@ -98,17 +99,17 @@ type alias ImagePaginate =
 
 type alias ImgRegist = 
     { data : ImgRegistData }
+
 type alias ImgRegistData =
     { path : String}
 
-
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
+listApi :Int -> Int -> String -> String -> String -> Session -> Cmd Msg
 listApi page per_page title start_date end_date session = 
     let
         body =
@@ -123,6 +124,7 @@ listApi page per_page title start_date end_date session =
     Api.post Endpoint.bannerList (Session.cred session) ListComplete body 
     (Decoder.bannerList BannerList Data Paginate)
 
+imagelistApi : Int -> Int -> String -> String -> String -> Session -> Cmd Msg
 imagelistApi page per_page title start_date end_date session = 
     let
        body =
@@ -136,6 +138,7 @@ imagelistApi page per_page title start_date end_date session =
     in
     Api.post Endpoint.bannerImagelist (Session.cred session) ImageListComplete body (Decoder.bannerimageList ImageDataList ImageData ImagePaginate)
 
+imageregistApi : String -> Session -> List File.File -> Cmd Msg
 imageregistApi title session getFile = 
     let
     
@@ -145,8 +148,6 @@ imageregistApi title session getFile =
              |> Http.multipartBody  
     in
     Api.post Endpoint.bannerimgregist (Session.cred session) ImageRegistComplete body (Decoder.imgRegist ImgRegist ImgRegistData)
-
-
 
 init : Session -> (Model , Cmd Msg)
 init session = 
@@ -362,7 +363,6 @@ update msg model =
                 Just a ->
                    
                     ({model | filename = File.name a, getFile = filename}
-                    -- , Cmd.none
                    , Task.perform GotPreviews <| Task.sequence <|
                     List.map File.toUrl filename
                     )
@@ -546,20 +546,18 @@ update msg model =
                     ( {model |  menus = item.data.menus, username = item.data.admin.username},
                     imagelistApi model.page model.per_page model.title model.start_date model.end_date model.session)
 
-
-memberAuth num model= List.member num model.auth
+memberAuth : String -> Model -> Bool
+memberAuth num model = List.member num model.auth
 
 view : Model -> {title : String , content : Html Msg, menu : Html Msg}
 view model =
     { title = "배너 관리"
     , content =
         div [class "bannerManage_container"]
-            [   --tab
-                div [class "selectedTab"]
+                [ div [class "selectedTab"]
                 [ p [class (if model.selected_item == "banner" then "selectedTab_selected" else ""), onClick (TabSelected "banner")][text "배너관리"]
                 , p [class (if model.selected_item == "image" then "selectedTab_selected" else ""), onClick (TabSelected "image")][text "이미지관리"]
                 ] ,
-                -- 배너관리
                 case model.selected_item of
                     "banner" ->
                        div [ class "banner_container"][
@@ -661,6 +659,7 @@ view model =
             ]
     }
 
+stringCase : Maybe String -> String
 stringCase item = 
     case item of
         Just a ->
@@ -668,6 +667,7 @@ stringCase item =
         Nothing ->
             ""
 
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
             div [ class "tableCell" ] [text "No"],
@@ -675,11 +675,13 @@ headerTable =
             div [ class "tableCell" ] [text "링크"],
             div [ class "tableCell" ] [text "배너 주소"],
             div [ class "tableCell" ] [text "target"],
-                div [ class "tableCell" ] [text "배경색"],
+            div [ class "tableCell" ] [text "배경색"],
+            div [ class "tableCell" ] [text "Vertical"],
             div [ class "tableCell" ] [text "등록일"],
             div [ class "tableCell" ] [text "게시"]
      ]
 
+tableLayout : Int -> Data -> Model -> Html Msg
 tableLayout idx item model = 
         div [class "tableRow"] [
                 div [ class "tableCell", style "width" "3%", onClick (GoDetail item.id)] [
@@ -687,10 +689,11 @@ tableLayout idx item model =
                     )) 
                 ],
                 div [ class "tableCell", style "width" "10%" , onClick (GoDetail item.id)] [text item.title],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.link) ],
+                div [ class "tableCell", style "width" "15%", onClick (GoDetail item.id)] [text (stringCase item.link) ],
                 div [ class "tableCell", style "width" "30%", onClick (GoDetail item.id)] [text item.src],
-                div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.target)],
+                div [ class "tableCell", style "width" "15%", onClick (GoDetail item.id)] [text (stringCase item.target)],
                 div [ class "tableCell", onClick (GoDetail item.id)] [text (stringCase item.backcolor)],
+                div [ class "tableCell", onClick (GoDetail item.id)] [text (if item.is_vertical then "True" else "False")],
                 div [ class "tableCell", onClick (GoDetail item.id)] [text (String.dropRight 10 item.inserted_at)],
                 div [ class "tableCell"] [
                     if item.is_use then
@@ -700,6 +703,7 @@ tableLayout idx item model =
                 ]
          ]
 
+imageheaderTable : Html Msg
 imageheaderTable = 
     div [ class "tableRow headerStyle"] [
         div [ class "tableCell" ] [text "No"],
@@ -709,6 +713,7 @@ imageheaderTable =
         div [ class "tableCell" ] [text "미리보기"]
     ]
 
+imagetableLayout : Int -> ImageData -> Model -> msg -> (String -> msg) -> Html msg
 imagetableLayout idx item model msg previewMsg= 
     div [class "tableRow"] [
             div [ class "tableCell", onClick msg, style "width" "3%"] [
@@ -722,6 +727,7 @@ imagetableLayout idx item model msg previewMsg=
             [button [class "button is-small", onClick (previewMsg item.path)][text "미리보기"]]
         ]
 
+imagePreview : String -> Html Msg
 imagePreview path= 
     div [class "previewWrap", style "display" (if String.isEmpty path then "none" else "flex" )][
         div [class "preview_contents"]
@@ -731,6 +737,7 @@ imagePreview path=
         , div [class "button is-danger", style "width" "100%", onClick (ImagePreview "")][text "닫기"]]
     ]
 
+imageRegist : Bool -> String -> String -> String -> Html Msg
 imageRegist showRegist registTitle filename previewUrl= 
     div [class "previewWrap", style "display" (if showRegist then "flex" else "none" )][
         div [class "regist_container"]
@@ -769,5 +776,6 @@ imageRegist showRegist registTitle filename previewUrl=
     ]
 
 
+targetFiles : Decode.Decoder (List File)
 targetFiles = 
     Decode.at ["target", "files"] (Decode.list File.decoder)

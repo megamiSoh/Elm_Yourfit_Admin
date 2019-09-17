@@ -20,8 +20,8 @@ import Date exposing (..)
 import DatePicker exposing (Msg(..))
 
 
-type alias Model = {
-    firstSelectedDate : Maybe Date
+type alias Model = 
+    { firstSelectedDate : Maybe Date
     , secondSelectedDate : Maybe Date
     , datePickerData : DatePicker.Model
     , endDatePickerData :DatePicker.Model
@@ -47,10 +47,9 @@ type alias Model = {
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code : List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias Faq = 
@@ -74,6 +73,7 @@ type alias Page =
     , title : String
     , total_count : Int
     }
+
 type alias SendData = 
     { page : Int
     , per_page : Int
@@ -82,16 +82,7 @@ type alias SendData =
     , end_date : String
     } 
 
--- usepost is_use session id =
---     let
---         body =
---             Encode.object
---                 [( "is_use ", Encode.bool is_use)]
---                     |> Http.jsonBody
---     in
-    
---     Api.post (Endpoint.faqUse id) (Session.cred session) GetUseSuccess body (Decoder.result) 
-
+faqEncoder : SendData -> Session -> String -> String -> Cmd Msg
 faqEncoder model session start end= 
     let
         body = 
@@ -105,6 +96,7 @@ faqEncoder model session start end=
     in
     Api.post Endpoint.faqList (Session.cred session) GetListData body (Decoder.faqNewList Faq Data Page)
 
+send : SendData 
 send = 
     { page = 1
     , per_page = 10
@@ -122,7 +114,6 @@ init session =
         ( endDatePickerData, enddatePickerCmd) = 
             DatePicker.init "my-datepicker"
     in
-    
     ({ datePickerData = datePickerData
         , endDatePickerData = endDatePickerData
         , firstSelectedDate = Nothing
@@ -160,7 +151,6 @@ init session =
         Cmd.map DatePickerMsg datePickerCmd
         , Cmd.map EndDatePickerMsg enddatePickerCmd
         , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
-    -- , faqEncoder send session "" ""
     ])
 
 type Msg 
@@ -181,7 +171,6 @@ type Msg
     | SelectAnswer String
     | PageBtn (Int, String)
     | GotSession Session
-    -- | GetUseSuccess (Result Http.Error Decoder.Success)
     | UseGo Bool String
     | SuccessUse (Result Http.Error Decoder.Success)
     | ReceivePnum Encode.Value
@@ -262,16 +251,6 @@ update msg model =
             in
             
             ({model | useId = id, use = use}, Api.post (Endpoint.faqUse id) (Session.cred model.session) SuccessUse body (Decoder.result) )
-        -- GetUseSuccess (Ok ok) ->
-        --     (model, Cmd.none)
-        -- GetUseSuccess (Err err) ->
-        --     let
-        --         error = Api.decodeErrors err
-        --     in
-        --     if error == "401"then
-        --     ({model | errType = "GetUseSuccess"}, Api.changeInterCeptor (Just error))
-        --     else 
-        --     (model, Cmd.none)
         GotSession session ->
             case model.errType of
                 "GetMyInfo" ->
@@ -459,6 +438,7 @@ update msg model =
                             ( {model |  menus = item.data.menus, username = item.data.admin.username}, Cmd.none )
             
 
+memberAuth : String -> Model -> Bool
 memberAuth num model= List.member num model.auth
 
 
@@ -559,12 +539,10 @@ view model =
                     ]
                 ]
             ]
-            
             , pagination 
                     PageBtn
                     model.faqList.pagination
                     model.pageNum 
-            -- Pagenation.pagination PageBtn model.faqList.pagination
         ] 
       , menu =  
                 aside [ class "menu"] [
@@ -574,6 +552,7 @@ view model =
                 ]
     }
 
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
@@ -582,6 +561,7 @@ headerTable =
          div [ class "tableCell" ] [text "게시"]
      ]
 
+tableLayout : Int -> Data -> Model -> Html Msg
 tableLayout idx item model = 
         div [ class "tableRow cursor"] [
             div [ class "tableCell", onClick (GoDetail item.id)] [ text (

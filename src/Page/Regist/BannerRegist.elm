@@ -36,13 +36,18 @@ type alias Model =
     , per_page : Int
     , pageNum : Int
     , bg_color : String
+    , verticalList : List Code
+    , choiceList : String
     }
 
+type alias Code =
+    { code : String
+    , name : String}
+
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias ImageDataList = 
@@ -64,6 +69,7 @@ type alias ImagePaginate =
     , total_count : Int
     }
 
+imagelistApi : Int -> Int -> String -> String -> String -> Session -> Cmd Msg
 imagelistApi page per_page title start_date end_date session = 
     let
        body =
@@ -106,11 +112,17 @@ init session =
     , per_page = 10
     , pageNum = 1
     , bg_color = ""
+    , verticalList = 
+        [ { code = "true", name = "vertical" }
+        , { code = "false", name = "horizontal" }]
+    , choiceList = "true"
     }
     , Cmd.batch
     [ Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)
     ]
     )
+
+formUrlencoded : List ( String, String ) -> String
 formUrlencoded object =
     object
         |> List.map
@@ -121,6 +133,7 @@ formUrlencoded object =
             )
         |> String.join "&"
 
+registApi : Model -> Cmd Msg
 registApi model = 
     let
         body =
@@ -130,7 +143,9 @@ registApi model =
             , ("src", model.bannerPath)
             , ("link", model.link)
             , ("target", model.target)
-            , ("backcolor", model.bg_color) ]
+            , ("backcolor", model.bg_color) 
+            , ("is_vertical", model.choiceList)
+            ]
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
     Api.post Endpoint.bannerRegist (Session.cred model.session) RegistComplete body (Decoder.result)
@@ -160,10 +175,13 @@ type Msg
     | PageChange
     | SelectUrl String
     | BgColorInput String
+    | VerticalEvent String
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        VerticalEvent is_vertical ->
+            ({model | choiceList = is_vertical}, Cmd.none)
         BgColorInput bg ->
             ({model | bg_color = bg}, Cmd.none)
         SelectUrl url ->
@@ -277,6 +295,7 @@ view model =
             ]
             , columnsHtml [
                 formInputEvent "배경 컬러" "배경 컬러를 입력 해 주세요." False BgColorInput model.bg_color
+                , noEmptyselectForm "Vertical" False model.verticalList VerticalEvent model.choiceList
             ]
         ]
         ]
@@ -295,7 +314,8 @@ view model =
                 (List.map Page.viewMenu model.menus)
             ]
     }
-            
+
+bannerList : Model -> Html Msg            
 bannerList model = 
     div [ class "bannerListPop", style "height" (if model.bannerShow then "100%" else "")][
         div [class "table"]
@@ -308,6 +328,7 @@ bannerList model =
             model.pageNum 
     ]
 
+imagePreview : String -> Html Msg
 imagePreview path= 
     div [class "previewWrap", style "display" (if String.isEmpty path then "none" else "flex" )][
         div [class "preview_contents"]
@@ -316,6 +337,8 @@ imagePreview path=
         ] 
         , div [class "button is-danger", style "width" "100%", onClick (ImagePreview "")][text "닫기"]]
     ]
+
+imageheaderTable : Html Msg
 imageheaderTable = 
     div [ class "tableRow headerStyle"] [
         div [ class "tableCell" ] [text "No"],
@@ -326,6 +349,7 @@ imageheaderTable =
         div [ class "tableCell" ] [text "선택"]
     ]
 
+imagetableLayout : Int -> ImageData -> Model -> Msg -> (String -> Msg) -> Html Msg
 imagetableLayout idx item model msg previewMsg= 
     div [class "tableRow"] [
             div [ class "tableCell", onClick msg] [

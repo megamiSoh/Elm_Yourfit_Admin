@@ -53,10 +53,9 @@ type alias Model = {
      }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 type alias VideoData = 
     { data : VideoDetailData }
@@ -109,6 +108,7 @@ type alias Paginate =
     , total_count: Int
     }
 
+listInit : ListModel
 listInit = 
     { page  = 1
     , per_page = 10
@@ -174,11 +174,10 @@ init  session =
     Cmd.batch[ Cmd.map DatePickerMsg datePickerCmd
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)
-    -- , listEncode listInit session
-    -- , Api.pageNum (Encode.int 0)
-     ]
+    ]
     )
 
+listEncode : ListModel -> Session -> Cmd Msg
 listEncode model session= 
     let
         list = 
@@ -198,34 +197,13 @@ listEncode model session=
     in
     Api.post Endpoint.unitList (Session.cred session) GetList body (D.unitListDecoder DataList UnitList Paginate)
 
--- listEncodeSec model session= 
---     let
---         list = 
---             Encode.object
---                 [ ("page", Encode.int  model.page)
---                 , ("per_page", Encode.int model.per_page)
---                 , ("title", Encode.string model.titleList)
---                 , ("difficulty_code", Encode.string model.difficulty_code)
---                 , ("exercise_code", Encode.string model.exercise_code)
---                 , ("instrument_code", Encode.string model.instrument_code)
---                 , ("part_detail_code", Encode.string model.part_detail_code)
---                 , ("start_date", Encode.string model.start_date)
---                 , ("end_date", Encode.string model.end_date)
---                 ]
---         body = 
---             list |> Http.jsonBody
---     in
---     Api.post Endpoint.unitList (Session.cred session) GetListSec body (D.unitListDecoder DataList UnitList Paginate)
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch[
         Api.receiveData ReceivedDataFromJS
         , Api.saveCheck ReceiveId
-        -- , Session.retryChange RetryRequest (Session.navKey model.session)
         , Session.changes GotSession (Session.navKey model.session)
         , Api.sendPageNum ReceivePnum
-        
     ]
 
 toSession : Model -> Session
@@ -241,7 +219,6 @@ type Msg
     | GetTool (Result Http.Error Data)
     | GetPart (Result Http.Error Data)
     | GetList (Result Http.Error DataList)
-    -- | GetListSec (Result Http.Error DataList)
     | SelectTool String
     | SelectPart String
     | SelectLevel String
@@ -250,7 +227,6 @@ type Msg
     | Reset
     | GetId String
     | ReceiveId E.Value
-    -- | RetryRequest Session
     | GotSession Session
     | EndDatePickerMsg DatePicker.Msg
     | DatePickerMsg DatePicker.Msg
@@ -262,9 +238,12 @@ type Msg
     | ReceivePnum Encode.Value
     | PreviewVideo
 
+originModel : Model -> ListModel
 originModel model = 
     model.listmodel
 
+
+dataListSet : Int -> ListModel -> ListModel
 dataListSet idx old =  
     { page  = idx
     , per_page = 10
@@ -277,6 +256,7 @@ dataListSet idx old =
     , part_detail_code= old.part_detail_code
     }
 
+alldataListSet : Int -> ListModel -> ListModel
 alldataListSet idx old=
     { page  = idx
     , per_page = 10
@@ -289,6 +269,7 @@ alldataListSet idx old=
     , part_detail_code= old.part_detail_code
     }
 
+allDataList : ListModel -> ListModel
 allDataList old = 
     { page  = old.page
     , per_page = 10
@@ -300,6 +281,7 @@ allDataList old =
     , end_date =  ""
     , part_detail_code= old.part_detail_code
     }
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -470,21 +452,11 @@ update msg model =
                                 ( newModel, cmd )
                    )
         GotSession session ->
-            -- ({model | session = session}
             case model.errType of
                 "GetList" ->
                     update Search {model | session = session}
-                    -- if model.dateModel == "all" then
-                    --     Cmd.batch
-                    --     [ listEncode (allDataList (originModel model)) session
-                    --     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)]
-                    -- else
-                    --     Cmd.batch
-                    --     [ listEncode model.listmodel session
-                    --     , Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (D.muserInfo)] 
                 "SendDataToJS" ->
                     update PreviewVideo {model | session = session}
-                    -- Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred session) (D.videoData VideoData VideoDetailData)
                 _ ->
                     (model, Cmd.none)
             
@@ -572,13 +544,6 @@ update msg model =
                 new =  {old | difficulty_code = str}
             in
              ({model | listmodel = new},Cmd.none)
-        -- GetListSec (Ok ok) ->
-        --     ({model | getList = ok.data, paginate = ok.paginate}, Cmd.none)
-        -- GetListSec (Err err) ->
-        --     let
-        --         error = Api.newdecodeErrors err
-        --     in
-        --     (model, Api.newdecodeErrors err)
         GetList (Ok ok) ->  
             ({model | getList = ok.data, paginate = ok.paginate},
             Cmd.batch
@@ -635,8 +600,6 @@ update msg model =
             ({model | errType = "SendDataToJS"}, Api.changeInterCeptor (Just error))
             else 
             (model, Cmd.none)
-        -- RetryRequest retry->
-        --     ({model | session = retry}, Api.get SendDataToJS (Endpoint.unitVideoShow model.videoId) (Session.cred retry) (D.videoData VideoData VideoDetailData))
         GetVideoFile (title, id)->   
                 ({model | title = title, videoShow = not model.videoShow, videoId = id }, 
                 Cmd.batch [
@@ -695,7 +658,6 @@ view model =
                          selectForm "난이도" False model.levels SelectLevel "" model.listmodel.difficulty_code,
                          searchB Search Reset
                      ]
-                    
                  ],
                  div [] [
                     if model.goRegist then
@@ -721,8 +683,6 @@ view model =
                     PageBtn
                     model.paginate
                     model.pageNum 
-                 
-                --  Pagenation.pagination PageBtn model.paginate
                  , (videoShow model.title model.videoShow  VideoClose)
              ] 
              , menu =  
@@ -736,7 +696,7 @@ view model =
 
   
             
-
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
@@ -749,6 +709,7 @@ headerTable =
          div [ class "tableCell" ] [text "미리보기"]
      ]
 
+tableLayout : Int -> UnitList -> Model -> Html Msg
 tableLayout idx item model= 
         let
             newinput text=

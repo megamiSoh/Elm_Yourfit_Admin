@@ -1,6 +1,5 @@
 module Route exposing (..)
 
--- import Article.Slug as Slug exposing (Slug)
 import Browser.Navigation as Nav
 import Html exposing (Attribute)
 import Html.Attributes as Attr
@@ -9,8 +8,6 @@ import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (custom, required)
 import Json.Encode as Encode exposing (Value)
-
--- ROUTING
 
 
 type Route
@@ -57,10 +54,6 @@ type Route
     | BR
     | BD
 
--- decoder : Decoder (Cred -> Page)
--- decoder =
---     Decode.succeed Viewer
---         |> custom (Decode.field "username" Avatar.decoder)
 
 parser : Parser (Route -> a) a
 parser =
@@ -130,6 +123,7 @@ pushUrl : Nav.Key -> Route ->Cmd msg
 pushUrl key route =
     Nav.pushUrl key (routeToString route)
 
+reload : Cmd msg
 reload =
     Nav.reload
 
@@ -137,10 +131,6 @@ fromUrl : Url -> Maybe Route
 fromUrl url =
     { url | path = Maybe.withDefault "" url.fragment, fragment = Nothing }
         |> Parser.parse parser
-
--- modifyUrl : Route -> Cmd msg
--- modifyUrl =
---     routeToString >> modifyUrl
 
 -- INTERNAL
 

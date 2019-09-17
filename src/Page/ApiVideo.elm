@@ -20,8 +20,8 @@ import DatePicker exposing (Msg(..))
 import Page.Detail.ApiVideoDetail as AD
 
 
-type alias Model = {
-    firstSelectedDate : Maybe Date
+type alias Model = 
+    { firstSelectedDate : Maybe Date
     , secondSelectedDate : Maybe Date
     , datePickerData : DatePicker.Model
     , endDatePickerData :DatePicker.Model
@@ -80,15 +80,13 @@ type alias Paginate =
     , total_count : Int
     , video_code : String }
 
-
-
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
+dataApi : Session -> Int -> Int -> String -> String -> String -> String -> Cmd Msg
 dataApi session page per_page title video_code start_date end_date = 
     let
         body = 
@@ -103,18 +101,22 @@ dataApi session page per_page title video_code start_date end_date =
     in
     Api.post Endpoint.apilist (Session.cred session) ApiListComplete body (Decoder.apivideolist Data ApiData Paginate)
 
+videoCodeApi : Session -> Cmd Msg
 videoCodeApi session = 
     Api.post Endpoint.videoCode (Session.cred session) VideoCodeComplete Http.emptyBody (Decoder.videoCodeData VideoCodeData VideoCode)
 
+detailApi : Session -> String -> Cmd Msg
 detailApi session id = 
     Api.get DetailComplete (Endpoint.apiDetail id) (Session.cred session)  (Decoder.apiDetailDataWrap AD.DataWrap AD.Data AD.Snippet AD.Items AD.PageInfo AD.ItemSnippet AD.Thumb AD.ThumbItem AD.Local)   
 
+shareApi : String -> String -> Session -> Cmd Msg
 shareApi content id session =
     let
         body = ("content=" ++ content)
             |> Http.stringBody "application/x-www-form-urlencoded"
     in
     Api.post (Endpoint.shareGo id) (Session.cred session) ShareComplete body Decoder.result
+
 init : Session -> (Model, Cmd Msg)
 init session = 
     let
@@ -171,6 +173,34 @@ init session =
     , Cmd.map EndDatePickerMsg enddatePickerCmd
     ] )
 
+toSession : Model -> Session
+toSession model =
+    model.session
+
+getItemData : List AD.Items ->  AD.ItemSnippet
+getItemData item = 
+    case List.head item of
+        Just ok ->
+            ok.snippet
+        Nothing ->
+            { categoryId = ""
+            , channelId = ""
+            , channelTitle = ""
+            , description = ""
+            , liveBroadcastContent = ""
+            , localized = 
+                { description = ""
+                , title = ""}
+            , publishedAt = ""
+            , thumbnails = 
+                { default = 
+                    { height = 0
+                    , url = ""
+                    , width= 0 }
+                }
+            , title = ""
+            }
+
 type Msg 
     = NoOp
     | GetMyInfo (Result Http.Error Decoder.Profile)
@@ -195,35 +225,6 @@ type Msg
     | DetailComplete (Result Http.Error AD.DataWrap)
     | ShareComplete (Result Http.Error Decoder.Success)
     | GoShare
-    -- | Search
-    -- | Reset
-
-toSession : Model -> Session
-toSession model =
-    model.session
-
-getItemData item = 
-    case List.head item of
-        Just ok ->
-            ok.snippet
-        Nothing ->
-            { categoryId = ""
-            , channelId = ""
-            , channelTitle = ""
-            , description = ""
-            , liveBroadcastContent = ""
-            , localized = 
-                { description = ""
-                , title = ""}
-            , publishedAt = ""
-            , thumbnails = 
-                { default = 
-                    { height = 0
-                    , url = ""
-                    , width= 0 }
-                }
-            , title = ""
-            }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -487,18 +488,17 @@ view model =
     } 
 
 
-
-
+headerTable : Html Msg
 headerTable = 
       div [ class "tableRow headerStyle"] [
          div [ class "tableCell" ] [text "No"],
          div [ class "tableCell" ] [text "제목"],
          div [ class "tableCell" ] [text "카테고리"],
          div [ class "tableCell" ] [text "등록일"],
-        --  div [ class "tableCell" ] [text "공유건수"],
          div [ class "tableCell" ] [text "공유"]
      ]
 
+tableLayout : Int -> ApiData -> Model -> Html Msg
 tableLayout idx item model = 
         div [class "tableRow"] [
                 div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [text (
@@ -507,14 +507,13 @@ tableLayout idx item model =
                 , div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [text item.title]
                 , div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [text item.category]
                 , div [ class "tableCell" , Route.href (Just Route.ApiDetail) , onClick (GoDetail (String.fromInt item.id))] [ text (String.dropRight 10 item.inserted_at)]
-                -- , div [ class "tableCell" , onClick (GoDetail (String.fromInt item.id))] [ text "1 회 (예시)" ]
                 , div [ class "tableCell" ] [
                             button [class "button is-small", onClick (IsActive item.id) ] [text "공유 하기"]
                     ]
-                
          ]          
 
 
+shareLayout : Model -> Html Msg
 shareLayout model = 
     div [class "previewWrap", style "display" (if model.shareShow then "flex" else "none") ][
         div [class "regist_container", style "max-width" "700px"]

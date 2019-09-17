@@ -5,11 +5,9 @@ import Html exposing (..)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onCheck, onClick, onInput)
 import Html.Lazy
--- import Json.Encode as JE
 import Markdown.Block as Block exposing (Block)
 import Markdown.Config exposing (HtmlOption(..),  defaultSanitizeOptions)
 import Markdown.Inline as Inline
--- import Regex exposing (Regex)
 import Page.Page exposing(..)
 import Page.Origin.Info as Info
 import Session exposing (Session)
@@ -27,6 +25,12 @@ defaultOptions =
     { softAsHardLineBreak = False
     , rawHtml = ParseUnsafe
     }
+
+type EditorTab
+    = Editor
+
+type PreviewTab
+    = RealTime
 
 type alias Model =
     { textarea : String
@@ -46,10 +50,9 @@ type alias Model =
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias ResultForm =
@@ -73,6 +76,7 @@ init session=
     , errType = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
+faqRegist : Model -> Session -> Cmd Msg
 faqRegist model session =
     let
         list = 
@@ -87,6 +91,7 @@ faqRegist model session =
         Api.post Endpoint.faqRegist (Session.cred session) GetList body resultFormDecoder
     
 
+resultFormDecoder : Decoder ResultForm
 resultFormDecoder = 
     Decode.succeed ResultForm
         |> required "result" string
@@ -95,20 +100,11 @@ toSession : Model -> Session
 toSession model =
     model.session
 
-type EditorTab
-    = Editor
-
-
-type PreviewTab
-    = RealTime
-
-
 type Msg
     = TextAreaInput String
     | GetList (Result Http.Error ResultForm)
     | SubmitInfo
     | Title String
-    -- | SessionCheck Encode.Value
     | GotSession Session
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
 
@@ -136,17 +132,6 @@ update msg model =
                 _ ->
                     Cmd.none
             )
-        -- SessionCheck check ->
-        --     let
-        --         decodeCheck = Decode.decodeValue Decode.string check
-        --     in
-        --         case decodeCheck of
-        --             Ok continue ->
-        --                 (model, Cmd.batch [
-        --                     faqRegist model model.session
-        --                 ])
-        --             Err _ ->
-        --                 (model, Cmd.none)
         Title str ->    
             ({model | title = str}, Cmd.none)
         TextAreaInput str ->

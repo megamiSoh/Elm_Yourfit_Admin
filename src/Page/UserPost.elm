@@ -13,18 +13,18 @@ import Api.Decode as Decoder
 import Http as Http
 import Api as Api
 import Api.Endpoint as Endpoint
+
 type alias Model =
-    {
-        popUp : Bool,
-        session : Session
-        , menus : List Menus
-        , username: String
+    { popUp : Bool
+    , session : Session
+    , menus : List Menus
+    , username: String
     }
+
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 init : Session -> (Model, Cmd Msg)
@@ -36,15 +36,16 @@ init session=
         , username = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo)) 
 
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Session.changes GotSession (Session.navKey model.session)
+
 type Msg 
     = PopClose 
     | PopOpen 
     | GetMyInfo (Result Http.Error Decoder.DataWrap)
     | GotSession Session
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -80,30 +81,6 @@ view model =
     { title = "사용자 게시물 관리"
     , content =
         div [] [text "준비 중 입니다."]
-        -- div [ class "container is-fluid" ]
-        -- [ 
-        --     columnsHtml [pageTitle "사용자 게시물 관리"],
-        --     div [ class "searchWrap" ] [
-        --         columnsHtml [
-        --             searchDataSet "등록일"
-        --         ],
-        --         columnsHtml [
-        --             formInput "사용자 ID" "사용자 ID을 입력 해 주세요." False,
-        --             searchBtn
-        --         ]
-                
-        --     ],
-        --     columnsHtml [
-        --         userDataCount
-        --     ],
-        --     columnsHtml [
-        --         div [class "userPostWrap"] (
-        --         List.indexedMap userPostItem userPost
-        --         )
-        --     ]
-        --     , Pagenation.pagenation,
-        --     detailPop model
-        -- ]
         , menu =  
                 aside [ class "menu"] [
                     Page.header model.username
@@ -112,7 +89,7 @@ view model =
                 ]
     }
 
-
+detailPop : Model -> Html Msg
 detailPop model = 
     if model.popUp then
         div [ class "userPostPopWrap"] [
@@ -140,36 +117,11 @@ detailPop model =
     else 
         span [] []
 
-userPostItem idx item =
-    label [ class "media", onClick PopOpen ]
-        [ 
-            figure [ class "media-left" ]
-            [ p [ class "image is-64x64" ]
-                [ img [ src item.thumb ]
-                    []
-                ]
-            ]
-        , div [ class "media-content" ]
-            [ div [ class "content" ]
-                [ p []
-                    [ strong []
-                    [ text item.userId ]
-                    , div []
-                        [text item.article ] 
-                    ]
-                ]
-            
-            ]
-        , div [ class "media-content" ]
-            [ div [ class "content" ]
-                [ p [class "dateWrap"]
-                    [
-                        text item.createDate
-                    ]
-                ]
-            ]
-        ]
-    
+userPost : 
+    List{ thumb : String 
+        , userId : String
+        , article : String
+        , createDate : String }  
 userPost =
     [
         {   

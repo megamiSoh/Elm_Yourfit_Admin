@@ -5,11 +5,9 @@ import Html exposing (..)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onCheck, onClick, onInput)
 import Html.Lazy
--- import Json.Encode as JE
 import Markdown.Block as Block exposing (Block)
 import Markdown.Config exposing (HtmlOption(..),  defaultSanitizeOptions)
 import Markdown.Inline as Inline
--- import Regex exposing (Regex)
 import Page.Page exposing(..)
 import Page.Origin.Info as Info
 import Session exposing (Session)
@@ -27,6 +25,13 @@ defaultOptions =
     { softAsHardLineBreak = False
     , rawHtml = ParseUnsafe
     }
+
+
+type EditorTab
+    = Editor
+
+type PreviewTab
+    = RealTime
 
 type alias Model =
     { textarea : String
@@ -46,17 +51,16 @@ type alias Model =
     }
 
 type alias Menus =
-    {
-        menu_auth_code: List String,
-        menu_id : Int,
-        menu_name : String
+    { menu_auth_code: List String
+    , menu_id : Int
+    , menu_name : String
     }
 
 type alias ResultForm =
     { result : String }
 
 init : Session -> (Model, Cmd Msg)
-init session=
+init session =
     ({ textarea = ""
     , onDemandText = ""
     , menus = []
@@ -73,6 +77,8 @@ init session=
     , errType = ""
     }, Api.post Endpoint.myInfo (Session.cred session) GetMyInfo Http.emptyBody (Decoder.muserInfo))
 
+
+infoRegist : Model -> Session -> Cmd Msg
 infoRegist model session=
     let
         list = 
@@ -87,6 +93,7 @@ infoRegist model session=
         Api.post Endpoint.infoRegist (Session.cred session) GetList body resultFormDecoder
     
 
+resultFormDecoder : Decoder ResultForm
 resultFormDecoder = 
     Decode.succeed ResultForm
         |> required "result" string
@@ -94,14 +101,6 @@ resultFormDecoder =
 toSession : Model -> Session
 toSession model =
     model.session
-
-type EditorTab
-    = Editor
-
-
-type PreviewTab
-    = RealTime
-
 
 type Msg
     = TextAreaInput String
