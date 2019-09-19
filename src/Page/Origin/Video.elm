@@ -21,64 +21,6 @@ targetFiles : Json.Decode.Decoder (List String)
 targetFiles = 
     Json.Decode.at ["target", "files"] (Json.Decode.list Json.Decode.string)
 
--- registformView : Html msg 
---     -> Html msg 
---     -> List { code : String, name : String } 
---     -> (String -> msg) 
---     -> List { code : String, name : String } 
---     -> (String -> msg) 
---     -> (String -> msg) 
---     -> Route 
---     -> { titleModel : String, levelModel : String, partModel : String, is_pay : String, is_sex : String, checkPoint : List String, pointCode : List { code : String , name : String}, age : List { code : String , name : String}, checkAge : List String, gofilter : List String, partDetail : List { code : String , name : String}, levelData : List { code : String , name : String}, exerCode : List { code : String , name : String}, instrument : List { code : String , name : String}, openFilter : Bool
---     , filter : { difficulty_code : List String
---         , exercise_code : List String
---         , instrument_code : List String
---         , part_detail_code : List String
---         , title : String
---         , page : Int
---         , per_page : Int
---         }
---     , filtertitle : String
---     , btnTitle : String
---     , description : String
---     , disabled : Bool
---     , editItem : List { action_id :  String
---         , is_rest :  String
---         , value :  String}
---     , errType : String
---     , filterData : List { difficulty_name : Maybe String
---         , exercise_name : Maybe String
---         , id : Maybe Int
---         , instrument_name : Maybe String
---         , part_detail_name : List (Maybe String)
---         , title : Maybe String
---         , value : Maybe Int
---         , is_rest : Maybe Bool
---         , thembnail : String
---         , duration : String
---         }
---     , filterName : List String
---     , getId : String
---     , loading : Bool
---     , menus : List { menu_auth_code: List String
---         , menu_id : Int
---         , menu_name : String
---         }
---     , newStyle : String
---     }
---     -> msg 
---     -> ((String, String, String) -> msg) 
---     -> msg 
---     -> (Maybe Int -> msg) 
---     -> msg 
---     -> (String -> msg) 
---     -> (String -> msg) 
---     -> ((String, String )-> msg) 
---     -> (String -> msg) 
---     -> (String -> msg) 
---     -> ((String, String) -> msg)
---     -> msg
---     -> Html msg
 registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg url { titleModel, levelModel, partModel, is_pay, is_sex, checkPoint, checkAge, age, pointCode, gofilter, partDetail, levelData ,exerCode,instrument,openFilter,filter,filtertitle} openbtn check filterResult addItem  goedit textAreaInput filterTitle pointCheck payMsg sexMsg checkAgeMsg allAge =
     div[] [
         columnsHtml [pageTitle "유어핏영상 등록"],
@@ -98,15 +40,11 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg ur
             , noEmptyselectForm "성별" (if is_pay == "false" then True else False) [{code = "", name = "구분 없음"},{code = "true", name = "남성"}, {code = "false", name = "여성"}] sexMsg is_sex
             ]
             , columnsHtml [
-        --     checkBoxCustompointCode (if is_pay == "false" then True else False) checkPoint pointCheck checkPoint
-        --    , 
            checkBoxCustomAge age (if is_pay == "false" then True else False) checkAge checkAgeMsg checkAge allAge
             ]
             , columnsHtml [
                 textAreaRegist "운동 설명" False "250자까지 입력 가능" textAreaInput
             ]
-
-
         ]
         ,
         columnsHtml [
@@ -147,7 +85,6 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg ur
                     
                 ]
             ]
-
             , div [ class "field-body customBox scrollon" ]
             [ 
                 div [ class "field  is-fullwidth" ]
@@ -165,10 +102,10 @@ registformView exercise empty levelmodel seletmsg  partmodel partmsg titlemsg ur
                     a [ class "button is-warning", Route.href (Just url) ] [text "취소"]
                 ]
         ]
-        
          , 
         videoFilter partDetail levelData exerCode instrument openFilter openbtn check filter filterResult filterTitle filtertitle
     ]
+
 
 checkBoxCustom list disabled checkV partMsg checkModel=
         div [ class "field is-horizontal" ]

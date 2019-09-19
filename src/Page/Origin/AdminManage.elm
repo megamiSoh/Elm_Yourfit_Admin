@@ -11,17 +11,17 @@ import Page.Page exposing (..)
 body item margin=
     div [ class ("table marginTable " ++ margin)][
         div  [class "tableRow tableNotList"] [
-                div [ class "tableCell" ] [text "닉네임"],
-                div [ class "tableCell" ] [
-                    case item.nickname of
-                        Just ok ->
-                            text ok
-                    
-                        option2 ->
-                            text "ㅡ"
-                ],
-                div [ class "tableCell" ] [text "ID"],
-                div [ class "tableCell" ] [text item.username]
+            div [ class "tableCell" ] [text "닉네임"],
+            div [ class "tableCell" ] [
+                case item.nickname of
+                    Just ok ->
+                        text ok
+                
+                    option2 ->
+                        text "ㅡ"
+            ],
+            div [ class "tableCell" ] [text "ID"],
+            div [ class "tableCell" ] [text item.username]
         ],
     div  [class "tableRow tableNotList" ] [
                 div [ class "tableCell" ] [text "등록일"],
@@ -109,11 +109,3 @@ adminRegistPop model popEvent nickmsg idmsg nickModel idModel searchmsg resetmsg
         div [] []
 
 
-
--- helloText code =        
---     label [] [
---             input [type_ "checkbox", value "10"][]
---             ]
-
-    -- else 
-    -- div [] [text "fuck"]
